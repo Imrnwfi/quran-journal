@@ -351,7 +351,7 @@ const TEXT = {
     removeEntryQ: "Buang catatan ini?", edit: "Edit", del: "Padam",
     calLegend: "Kurang", calMore: "Lebih", calTap: "Ketik petak untuk lihat butiran.",
     calDay: (d, n) => n ? `${d}: ${n} muka surat` : `${d}: tiada bacaan`,
-    settings: "Tetapan & backup", language: "Bahasa",
+    settings: "Tetapan", language: "Bahasa",
     theme: "Tema", themeAuto: "Auto", themeLight: "Terang", themeDark: "Gelap", toggleTheme: "Tukar tema terang/gelap",
     sound: "Bunyi pembukaan", soundHint: "Bacaan Bismillah ringkas dan perlahan (Sheikh Saud Al-Shuraim) setiap kali app dibuka.",
     soundOn: "Hidup", soundOff: "Mati", soundPreview: "▶ Dengar",
@@ -450,7 +450,7 @@ const TEXT = {
     removeEntryQ: "Remove this entry?", edit: "Edit", del: "Delete",
     calLegend: "Less", calMore: "More", calTap: "Tap a square to see details.",
     calDay: (d, n) => n ? `${d}: ${n} page${n === 1 ? "" : "s"}` : `${d}: no reading`,
-    settings: "Settings & backup", language: "Language",
+    settings: "Settings", language: "Language",
     theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark", toggleTheme: "Toggle light/dark theme",
     sound: "Opening sound", soundHint: "A short, soft Bismillah (Sheikh Saud Al-Shuraim) each time the app opens.",
     soundOn: "On", soundOff: "Off", soundPreview: "▶ Listen",
@@ -785,6 +785,8 @@ function QuranTracker() {
   const [khatamDraft, setKhatamDraft] = useState(null);
   const [khatamFlash, setKhatamFlash] = useState("");
   const [badgesOpen, setBadgesOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [openSetting, setOpenSetting] = useState(null);
   const [doa, setDoa] = useState(null); // null | { n } (n = 0 when opened from the button)
 
   // target / settings / backup / install
@@ -1374,6 +1376,120 @@ function QuranTracker() {
 
   const syncLabel = { saved: T.syncSaved, saving: T.syncSaving, offline: T.syncOffline, error: T.syncError }[syncState];
 
+  /* ----- settings rows ----- */
+  const notifValue = !serverMode ? "" : role !== "owner" ? "" : notif === "on" ? (settings.reminderMode === "fixed" ? T.remindFixed : T.remindSmart) : notif === "denied" ? "✕" : T.soundOff;
+  const settingRows = [
+    { key: "theme", icon: "🎨", title: T.theme, value: { auto: T.themeAuto, light: T.themeLight, dark: T.themeDark }[settings.theme], body: (
+      <div style={styles.segment}>
+        {[["auto", T.themeAuto], ["light", T.themeLight], ["dark", T.themeDark]].map(([k, l]) => (
+          <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ theme: k })}
+            aria-pressed={settings.theme === k} style={{ ...styles.segBtn, ...(settings.theme === k ? styles.segBtnOn : {}) }}>{l}</button>
+        ))}
+      </div>
+    ) },
+    { key: "lang", icon: "🌐", title: T.language, value: settings.lang === "en" ? "English" : "Bahasa Melayu", body: (
+      <div style={styles.segment}>
+        {[["ms", "Bahasa Melayu"], ["en", "English"]].map(([k, l]) => (
+          <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ lang: k })}
+            aria-pressed={settings.lang === k} style={{ ...styles.segBtn, ...(settings.lang === k ? styles.segBtnOn : {}) }}>{l}</button>
+        ))}
+      </div>
+    ) },
+    { key: "sound", icon: "🔊", title: T.sound, value: settings.sound ? T.soundOn : T.soundOff, body: (
+      <>
+        <div style={styles.hint}>{T.soundHint}</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={styles.segment}>
+            {[[true, T.soundOn], [false, T.soundOff]].map(([v, l]) => (
+              <button key={l} className="qt-btn" type="button" onClick={() => persistSettings({ sound: v })}
+                aria-pressed={settings.sound === v} style={{ ...styles.segBtn, ...(settings.sound === v ? styles.segBtnOn : {}) }}>{l}</button>
+            ))}
+          </div>
+          <button className="qt-btn" type="button" onClick={previewSound} style={styles.cancelBtn}>{T.soundPreview}</button>
+        </div>
+        {IS_IOS && <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>{T.soundIOS}</div>}
+      </>
+    ) },
+    { key: "notif", icon: "🔔", title: T.notif, value: notifValue, body: !serverMode ? (
+      <div style={{ ...styles.hint, marginBottom: 0 }}>{T.notifServerOnly}</div>
+    ) : (
+      <>
+        <div style={styles.hint}>{T.notifHint}</div>
+        {role !== "owner" ? (
+          <div style={{ ...styles.hint, marginBottom: 0 }}>{T.notifOwnerOnly}</div>
+        ) : notif === "unsupported" ? (
+          <div style={styles.hint}>{IS_IOS && !isStandalone ? T.notifIOS : T.notifUnsupported}</div>
+        ) : notif === "denied" ? (
+          <div style={{ ...styles.hint, color: "var(--danger)", opacity: 1 }}>{T.notifDenied}</div>
+        ) : notif === "on" ? (
+          <>
+            <div style={{ fontSize: 13, color: "var(--title)", fontWeight: 600, marginBottom: 8 }}>{T.notifStateOn}</div>
+            <div style={styles.btnRow}>
+              <button className="qt-btn" type="button" onClick={testNotif} style={styles.smallPrimary}>{T.notifTest}</button>
+              <button className="qt-btn" type="button" onClick={disableNotif} style={styles.cancelBtn}>{T.notifOff}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <button className="qt-btn" type="button" disabled={notif === "busy" || notif === "unknown"} onClick={enableNotif}
+              style={{ ...styles.smallPrimary, opacity: notif === "busy" ? 0.6 : 1 }}>{T.notifOn}</button>
+            {IS_IOS && !isStandalone && <div style={{ ...styles.hint, marginTop: 8 }}>{T.notifIOS}</div>}
+          </>
+        )}
+        {notifMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--title)" }}>{notifMsg}</div>}
+        {role === "owner" && (
+          <div style={{ marginTop: 12 }}>
+            <div style={styles.segment}>
+              {[["smart", T.remindSmart], ["fixed", T.remindFixed]].map(([k, l]) => (
+                <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ reminderMode: k })}
+                  aria-pressed={settings.reminderMode === k} style={{ ...styles.segBtn, ...(settings.reminderMode === k ? styles.segBtnOn : {}) }}>{l}</button>
+              ))}
+            </div>
+            <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>
+              {settings.reminderMode === "fixed" ? T.remindFixedAt : smartHour ? T.remindSmartAt(fmtHour(smartHour, T.locale)) : T.remindSmartNoData}
+            </div>
+          </div>
+        )}
+      </>
+    ) },
+    role === "owner" && { key: "account", icon: "👤", title: T.account, value: "✓", body: (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 13, flex: 1 }}>{T.ownerOn}</span>
+        <button className="qt-btn" type="button" onClick={signOut} style={styles.cancelBtn}>{T.logout}</button>
+      </div>
+    ) },
+    role === "viewer" && { key: "account", icon: "👤", title: T.account, value: "", body: (
+      <button className="qt-btn" type="button" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
+    ) },
+    { key: "backup", icon: "💾", title: T.backup, value: "", body: (
+      <>
+        <div style={styles.hint}>{T.backupHint}</div>
+        <div style={styles.btnRow}>
+          <button className="qt-btn" type="button" onClick={exportBackup} style={styles.smallPrimary}>{T.exportBtn}</button>
+          <button className="qt-btn" type="button" onClick={copyBackup} style={styles.cancelBtn}>{T.copyBtn}</button>
+          {canEdit && <button className="qt-btn" type="button" onClick={() => fileRef.current && fileRef.current.click()} style={styles.cancelBtn}>{T.importBtn}</button>}
+        </div>
+        {pendingImport && (
+          <div style={{ ...styles.confirmRow, marginTop: 10 }}>
+            <span style={{ fontSize: 12.5 }}>{T.importQ(pendingImport.entries.length, pendingImport.khatams.length)}</span>
+            <button className="qt-btn" type="button" onClick={confirmImport} style={styles.confirmBtn}>{T.save}</button>
+            <button className="qt-btn" type="button" onClick={() => setPendingImport(null)} style={styles.cancelBtn}>{T.cancel}</button>
+          </div>
+        )}
+        {backupMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: backupMsg === T.importBad || backupMsg === T.copyFail ? "var(--danger)" : "var(--title)" }}>{backupMsg}</div>}
+      </>
+    ) },
+    { key: "install", icon: "📲", title: T.install, value: isStandalone ? "✓" : "", body: isStandalone ? (
+      <div style={{ ...styles.hint, marginBottom: 0 }}>{T.installed}</div>
+    ) : (
+      <>
+        {installEvt && <button className="qt-btn" type="button" onClick={doInstall} style={{ ...styles.smallPrimary, marginBottom: 8 }}>{T.installBtn}</button>}
+        <div style={styles.hint}>{T.installAndroid}</div>
+        <div style={{ ...styles.hint, marginBottom: 0 }}>{T.installIOS}</div>
+      </>
+    ) },
+  ];
+
   return (
     <div style={styles.page}>
       <div style={styles.bgPattern} />
@@ -1747,123 +1863,31 @@ function QuranTracker() {
           </>
         )}
 
-        <section style={{ ...styles.form, marginTop: 8 }}>
-          <h2 style={styles.formTitle}>{T.settings}</h2>
-
-          <div style={styles.settingBlock}>
-            <div style={styles.settingTitle}>{T.theme}</div>
-            <div style={styles.segment}>
-              {[["auto", T.themeAuto], ["light", T.themeLight], ["dark", T.themeDark]].map(([k, l]) => (
-                <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ theme: k })}
-                  aria-pressed={settings.theme === k} style={{ ...styles.segBtn, ...(settings.theme === k ? styles.segBtnOn : {}) }}>{l}</button>
-              ))}
-            </div>
-          </div>
-
-          <div style={styles.settingBlock}>
-            <div style={styles.settingTitle}>{T.sound}</div>
-            <div style={styles.hint}>{T.soundHint}</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <div style={styles.segment}>
-                {[[true, T.soundOn], [false, T.soundOff]].map(([v, l]) => (
-                  <button key={l} className="qt-btn" type="button" onClick={() => persistSettings({ sound: v })}
-                    aria-pressed={settings.sound === v} style={{ ...styles.segBtn, ...(settings.sound === v ? styles.segBtnOn : {}) }}>{l}</button>
-                ))}
-              </div>
-              <button className="qt-btn" type="button" onClick={previewSound} style={styles.cancelBtn}>{T.soundPreview}</button>
-            </div>
-            {IS_IOS && <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>{T.soundIOS}</div>}
-          </div>
-
-          {serverMode && (
-            <div style={styles.settingBlock}>
-              <div style={styles.settingTitle}>{T.notif}</div>
-              <div style={styles.hint}>{T.notifHint}</div>
-              {role !== "owner" ? (
-                <div style={styles.hint}>{T.notifOwnerOnly}</div>
-              ) : notif === "unsupported" ? (
-                <div style={styles.hint}>{IS_IOS && !isStandalone ? T.notifIOS : T.notifUnsupported}</div>
-              ) : notif === "denied" ? (
-                <div style={{ ...styles.hint, color: "var(--danger)", opacity: 1 }}>{T.notifDenied}</div>
-              ) : notif === "on" ? (
-                <>
-                  <div style={{ fontSize: 13, color: "var(--title)", fontWeight: 600, marginBottom: 8 }}>{T.notifStateOn}</div>
-                  <div style={styles.btnRow}>
-                    <button className="qt-btn" type="button" onClick={testNotif} style={styles.smallPrimary}>{T.notifTest}</button>
-                    <button className="qt-btn" type="button" onClick={disableNotif} style={styles.cancelBtn}>{T.notifOff}</button>
+        <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
+        {/* ----- Settings (collapsible, one row open at a time) ----- */}
+        <section style={styles.collapseCard}>
+          <button className="qt-btn" type="button" onClick={() => setSettingsOpen(!settingsOpen)} aria-expanded={settingsOpen} style={styles.collapseHead}>
+            <span style={styles.collapseTitle}>⚙️ {T.settings}</span>
+            <span style={{ ...styles.chev, transform: settingsOpen ? "rotate(90deg)" : "none" }}>›</span>
+          </button>
+          {settingsOpen && (
+            <div className="qt-fade" style={{ padding: "0 10px 10px" }}>
+              {settingRows.filter(Boolean).map((row) => {
+                const open = openSetting === row.key;
+                return (
+                  <div key={row.key} style={styles.setRowWrap}>
+                    <button className="qt-btn" type="button" onClick={() => setOpenSetting(open ? null : row.key)} aria-expanded={open} style={styles.setRow}>
+                      <span style={styles.setIcon} aria-hidden="true">{row.icon}</span>
+                      <span style={{ flex: 1, textAlign: "left" }}>{row.title}</span>
+                      {row.value && <span style={styles.setValue}>{row.value}</span>}
+                      <span style={{ ...styles.chev, fontSize: 18, transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                    </button>
+                    {open && <div className="qt-fade" style={styles.setBody}>{row.body}</div>}
                   </div>
-                </>
-              ) : (
-                <>
-                  <button className="qt-btn" type="button" disabled={notif === "busy" || notif === "unknown"} onClick={enableNotif}
-                    style={{ ...styles.smallPrimary, opacity: notif === "busy" ? 0.6 : 1 }}>{T.notifOn}</button>
-                  {IS_IOS && !isStandalone && <div style={{ ...styles.hint, marginTop: 8 }}>{T.notifIOS}</div>}
-                </>
-              )}
-              {notifMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--title)" }}>{notifMsg}</div>}
-              {role === "owner" && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={styles.segment}>
-                    {[["smart", T.remindSmart], ["fixed", T.remindFixed]].map(([k, l]) => (
-                      <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ reminderMode: k })}
-                        aria-pressed={settings.reminderMode === k} style={{ ...styles.segBtn, ...(settings.reminderMode === k ? styles.segBtnOn : {}) }}>{l}</button>
-                    ))}
-                  </div>
-                  <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>
-                    {settings.reminderMode === "fixed" ? T.remindFixedAt : smartHour ? T.remindSmartAt(fmtHour(smartHour, T.locale)) : T.remindSmartNoData}
-                  </div>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
-          {role === "local" && (
-            <div style={styles.settingBlock}>
-              <div style={styles.settingTitle}>{T.notif}</div>
-              <div style={styles.hint}>{T.notifServerOnly}</div>
-            </div>
-          )}
-
-          {role === "owner" && (
-            <div style={styles.settingBlock}>
-              <div style={styles.settingTitle}>{T.account}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 13, flex: 1 }}>{T.ownerOn}</span>
-                <button className="qt-btn" type="button" onClick={signOut} style={styles.cancelBtn}>{T.logout}</button>
-              </div>
-            </div>
-          )}
-
-          <div style={styles.settingBlock}>
-            <div style={styles.settingTitle}>{T.backup}</div>
-            <div style={styles.hint}>{T.backupHint}</div>
-            <div style={styles.btnRow}>
-              <button className="qt-btn" type="button" onClick={exportBackup} style={styles.smallPrimary}>{T.exportBtn}</button>
-              <button className="qt-btn" type="button" onClick={copyBackup} style={styles.cancelBtn}>{T.copyBtn}</button>
-              {canEdit && <button className="qt-btn" type="button" onClick={() => fileRef.current && fileRef.current.click()} style={styles.cancelBtn}>{T.importBtn}</button>}
-              <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
-            </div>
-            {pendingImport && (
-              <div style={{ ...styles.confirmRow, marginTop: 10 }}>
-                <span style={{ fontSize: 12.5 }}>{T.importQ(pendingImport.entries.length, pendingImport.khatams.length)}</span>
-                <button className="qt-btn" type="button" onClick={confirmImport} style={styles.confirmBtn}>{T.save}</button>
-                <button className="qt-btn" type="button" onClick={() => setPendingImport(null)} style={styles.cancelBtn}>{T.cancel}</button>
-              </div>
-            )}
-            {backupMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: backupMsg === T.importBad || backupMsg === T.copyFail ? "var(--danger)" : "var(--title)" }}>{backupMsg}</div>}
-          </div>
-
-          <div style={{ ...styles.settingBlock, borderBottom: "none", paddingBottom: 0, marginBottom: 0 }}>
-            <div style={styles.settingTitle}>{T.install}</div>
-            {isStandalone ? (
-              <div style={styles.hint}>{T.installed}</div>
-            ) : (
-              <>
-                {installEvt && <button className="qt-btn" type="button" onClick={doInstall} style={{ ...styles.smallPrimary, marginBottom: 8 }}>{T.installBtn}</button>}
-                <div style={styles.hint}>{T.installAndroid}</div>
-                <div style={styles.hint}>{T.installIOS}</div>
-              </>
-            )}
-          </div>
         </section>
 
         <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
@@ -2452,6 +2476,11 @@ const styles = {
   modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
   modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+  setRowWrap: { borderTop: "1px solid var(--line)" },
+  setRow: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: "12px 8px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 14 },
+  setIcon: { width: 22, textAlign: "center", fontSize: 15 },
+  setValue: { fontSize: 12.5, opacity: 0.6, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  setBody: { padding: "2px 8px 14px 40px" },
   todayLine: { fontSize: 12.5, opacity: 0.8, marginTop: 8 },
   solatNext: { fontSize: 15, fontWeight: 600, color: "var(--title)", marginBottom: 10 },
   solatGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 },
