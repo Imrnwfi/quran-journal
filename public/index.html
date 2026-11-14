@@ -287,9 +287,11 @@ function upcomingEvents(today, offset, limit = 3) {
 
 /* ---------- Smart reminder hour (same rule as the server) ---------- */
 function deviceTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kuala_Lumpur"; } catch (e) { return "Asia/Kuala_Lumpur"; } }
+// Imported entries (from the original video) carry made-up times, so leave them out of time-of-day analysis.
+function realTime(e) { return !String(e.id || "").startsWith("seed-"); }
 function smartHourOf(entries) {
   const samples = entries
-    .filter((e) => typeof e.ts === "number" && isoOf(new Date(e.ts)) === e.date)
+    .filter((e) => typeof e.ts === "number" && realTime(e) && isoOf(new Date(e.ts)) === e.date)
     .sort((a, b) => b.ts - a.ts).slice(0, 30)
     .map((e) => { const d = new Date(e.ts); return d.getHours() + d.getMinutes() / 60; })
     .sort((a, b) => a - b);
@@ -512,6 +514,13 @@ const TEXT = {
     },
     // stats
     statTotal: "Jumlah muka surat", statBest: "Streak terbaik", statDays: "Hari membaca", statAvg: "Purata / hari membaca",
+    rtTitle: "Waktu bacaan", rtEmpty: "Belum cukup data. Corak waktu bacaan akan muncul selepas 3 catatan yang disimpan pada hari bacaan itu sendiri.",
+    rtNames: { subuh: "Selepas Subuh", pagi: "Pagi (Dhuha)", zohor: "Zohor – Asar", maghrib: "Maghrib – Isyak", malam: "Malam", qiam: "Sebelum Subuh" },
+    rtTip: (w, n, p, a) => `${w}: ${n} kali · ${p} muka surat · purata ${a} sekali baca`,
+    rtTap: (n) => `Berdasarkan ${n} catatan. Ketik satu baris untuk butiran.`,
+    rtTop: (w, pct) => `Paling kerap: ${w} (${pct}%).`,
+    rtLongest: (w, a) => `Bacaan paling panjang: ${w} (purata ${a} muka surat).`,
+    rtRemind: (h) => `Peringatan pintar dihantar sekitar ${h} jika belum membaca.`,
     statDaysUnit: "hari", statChart: "Muka surat sebulan (12 bulan)", statBestMonth: (m, n) => `Bulan terbaik: ${m} (${n} muka surat)`,
     statTip: (m, n, d) => `${m}: ${n} muka surat · ${d} hari membaca`, statTapHint: "Ketik bar untuk butiran.",
     doaTitle: "Doa Khatam Al-Quran", doaBtn: "📿 Doa khatam", doaMeaning: "Maksudnya", close: "Tutup",
@@ -648,6 +657,13 @@ const TEXT = {
       k1: ["First khatam", "Alhamdulillah"], k3: ["3 khatams", "Again and again"], n10: ["10 reflections", "Notes of tadabbur"],
     },
     statTotal: "Total pages", statBest: "Best streak", statDays: "Reading days", statAvg: "Avg / reading day",
+    rtTitle: "Reading times", rtEmpty: "Not enough data yet. Your reading-time pattern appears after 3 entries saved on the day you read.",
+    rtNames: { subuh: "After Fajr", pagi: "Morning (Duha)", zohor: "Dhuhr – Asr", maghrib: "Maghrib – Isha", malam: "Night", qiam: "Before Fajr" },
+    rtTip: (w, n, p, a) => `${w}: ${n} time${n === 1 ? "" : "s"} · ${p} pages · avg ${a} per sitting`,
+    rtTap: (n) => `Based on ${n} entries. Tap a row for details.`,
+    rtTop: (w, pct) => `Most often: ${w} (${pct}%).`,
+    rtLongest: (w, a) => `Longest sittings: ${w} (avg ${a} pages).`,
+    rtRemind: (h) => `Smart reminder goes out around ${h} if you haven't read.`,
     statDaysUnit: "days", statChart: "Pages per month (12 months)", statBestMonth: (m, n) => `Best month: ${m} (${n} pages)`,
     statTip: (m, n, d) => `${m}: ${n} pages · ${d} reading days`, statTapHint: "Tap a bar for details.",
     doaTitle: "Doa for Completing the Quran", doaBtn: "📿 Khatam doa", doaMeaning: "Meaning", close: "Close",
@@ -1509,7 +1525,7 @@ function QuranTracker() {
     const subuh = new Set(), maghrib = new Set(), qiam = new Set(), fridays = new Set();
     let kahf = 0;
     for (const en of entries) {
-      if (en.ts) {
+      if (en.ts && realTime(en)) {
         const dt = new Date(en.ts);
         if (isoOf(dt) === en.date) {
           const t = dt.getHours() * 60 + dt.getMinutes();
@@ -2394,6 +2410,7 @@ function QuranTracker() {
 
             <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
               totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} ayahsTotal={ayahsTotal} khatamCount={khatamCount} />
+            <ReadingTimes entries={entries} spans={spans} today={today} T={T} smartHour={smartHour} reminderMode={settings.reminderMode} />
           </div>
         )}
 
@@ -3026,6 +3043,73 @@ function YearSummary({ entries, spans, khatams, today, T, fmtMonth, fmtLong }) {
 }
 
 /* ---------- Statistics: tiles + pages-per-month bars ---------- */
+// When does the user usually read? Buckets follow the prayer times of their zone when cached.
+const TIME_BUCKETS = ["subuh", "pagi", "zohor", "maghrib", "malam", "qiam"];
+function ReadingTimes({ entries, spans, today, T, smartHour, reminderMode }) {
+  const [sel, setSel] = useState(null);
+  const data = useMemo(() => {
+    const sol = readJson("quran-journal-solat", null);
+    const d0 = sol && Array.isArray(sol.days) && (sol.days.find((d) => d.date === today) || sol.days[0]);
+    const mins = (hm, fb) => { const m = /^(\d{1,2}):(\d{2})/.exec((d0 && hm) || ""); return m ? +m[1] * 60 + +m[2] : fb; };
+    const fajr = mins(d0 && d0.fajr, 340), syuruk = mins(d0 && d0.syuruk, 425), dhuhr = mins(d0 && d0.dhuhr, 790);
+    const magh = mins(d0 && d0.maghrib, 1155), isha = mins(d0 && d0.isha, 1225);
+    const bucketOf = (t) => t < fajr ? "qiam" : t <= syuruk + 90 ? "subuh" : t < dhuhr ? "pagi" : t < magh ? "zohor" : t <= isha + 20 ? "maghrib" : "malam";
+    const out = Object.fromEntries(TIME_BUCKETS.map((k) => [k, { k, n: 0, pages: 0 }]));
+    for (const en of entries) {
+      if (typeof en.ts !== "number" || !realTime(en)) continue;
+      const dt = new Date(en.ts);
+      if (isoOf(dt) !== en.date) continue;
+      const b = out[bucketOf(dt.getHours() * 60 + dt.getMinutes())];
+      const [a, z] = spans[en.id] || [en.page, en.page];
+      b.n++; b.pages += z - a + 1;
+    }
+    return TIME_BUCKETS.map((k) => out[k]);
+  }, [entries, spans, today]);
+  const total = data.reduce((a, b) => a + b.n, 0);
+  if (total < 3) return (
+    <div style={{ ...styles.chartCard, marginTop: 14 }}>
+      <div style={styles.chartTitle}>{T.rtTitle}</div>
+      <div style={{ ...styles.hint, margin: 0 }}>{T.rtEmpty}</div>
+    </div>
+  );
+  const max = Math.max(...data.map((d) => d.n));
+  const top = data.reduce((a, b) => (b.n > a.n ? b : a), data[0]);
+  const withEnough = data.filter((d) => d.n >= 2);
+  const longest = withEnough.length ? withEnough.reduce((a, b) => (b.pages / b.n > a.pages / a.n ? b : a), withEnough[0]) : null;
+  const detail = sel != null ? data[sel] : null;
+  const avg = (d) => (d.n ? d.pages / d.n : 0).toFixed(1);
+  return (
+    <div style={{ ...styles.chartCard, marginTop: 14 }}>
+      <div style={styles.chartTitle}>{T.rtTitle}</div>
+      <div role="list" style={{ display: "grid", gap: 2, marginTop: 4 }}>
+        {data.map((d, i) => {
+          const pct = Math.round((d.n / total) * 100);
+          const on = sel === i, isTop = d === top;
+          return (
+            <button key={d.k} role="listitem" className="qt-btn" type="button" onClick={() => setSel(on ? null : i)}
+              aria-label={T.rtTip(T.rtNames[d.k], d.n, d.pages, avg(d))}
+              style={{ ...styles.rtRow, background: on ? "var(--muted)" : "transparent" }}>
+              <span style={{ ...styles.rtLabel, fontWeight: isTop ? 700 : 400 }}>{T.rtNames[d.k]}</span>
+              <span style={styles.rtTrack}>
+                {d.n > 0 && <span style={{ ...styles.rtBar, width: `${Math.max(3, (d.n / max) * 100)}%` }} />}
+              </span>
+              <span style={styles.rtVal}>{pct}%</span>
+            </button>
+          );
+        })}
+      </div>
+      <div style={styles.heatInfo} aria-live="polite">
+        {detail ? T.rtTip(T.rtNames[detail.k], detail.n, detail.pages, avg(detail)) : T.rtTap(total)}
+      </div>
+      <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>
+        {T.rtTop(T.rtNames[top.k], Math.round((top.n / total) * 100))}
+        {longest && longest.k !== top.k ? ` ${T.rtLongest(T.rtNames[longest.k], avg(longest))}` : ""}
+        {reminderMode !== "fixed" && smartHour ? ` ${T.rtRemind(fmtHour(smartHour, T.locale))}` : ""}
+      </div>
+    </div>
+  );
+}
+
 function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readingDays, ayahsTotal, khatamCount }) {
   const thisMonth = today.slice(0, 7);
   const keys = [];
@@ -3211,6 +3295,11 @@ const styles = {
   statLabel: { fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 },
   statValue: { fontSize: 24, fontWeight: 600, color: "var(--ink)", marginTop: 4 },
   statUnit: { fontSize: 12, opacity: 0.6, fontWeight: 400 },
+  rtRow: { display: "grid", gridTemplateColumns: "112px 1fr 38px", alignItems: "center", gap: 8, width: "100%", border: "none", borderRadius: 8, padding: "7px 6px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", textAlign: "left" },
+  rtLabel: { fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  rtTrack: { position: "relative", height: 12, borderLeft: "1px solid var(--grid)" },
+  rtBar: { position: "absolute", left: 0, top: 1, bottom: 1, background: "var(--bar)", borderRadius: "0 4px 4px 0" },
+  rtVal: { fontSize: 11.5, textAlign: "right", fontFamily: "'IBM Plex Mono', monospace", color: "var(--ink)" },
   chartCard: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "14px 14px 12px", boxShadow: "var(--shadow)" },
   chartTitle: { fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--ink)" },
   settingBlock: { borderBottom: "1px solid var(--line)", paddingBottom: 14, marginBottom: 14 },

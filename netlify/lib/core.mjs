@@ -202,7 +202,7 @@ export function localHour(date, tz) {
 // Needs at least 5 such logs; otherwise null. Clamped to 8:00–22:00.
 export function smartHour(entries, tz) {
   const samples = entries
-    .filter((e) => typeof e.ts === "number" && localDate(new Date(e.ts), tz) === e.date)
+    .filter((e) => typeof e.ts === "number" && !String(e.id || "").startsWith("seed-") && localDate(new Date(e.ts), tz) === e.date)
     .sort((a, b) => b.ts - a.ts).slice(0, 30)
     .map((e) => localHour(new Date(e.ts), tz))
     .sort((a, b) => a - b);
