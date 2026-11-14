@@ -445,15 +445,10 @@ const TEXT = {
     passkeyCount: (n) => (n ? `${n} passkey berdaftar` : "Belum ada passkey"), passkeyAdd: "Daftar passkey peranti ini", passkeyRemove: "Buang semua passkey",
     passkeyAdded: "Passkey didaftarkan ✓", passkeyFail: "Tak berjaya. Cuba lagi.", passkeyUnsupported: "Pelayar ini tak menyokong passkey.",
     passkeyLogin: "🔑 Masuk dengan passkey", passkeyOr: "atau guna PIN",
-    mosqueNear: "🕌 Masjid & surau dalam 3 km", mosqueFinding: "Mencari masjid berdekatan…", mosqueNone: "Tiada masjid atau surau dijumpai dalam 3 km.",
-    mosqueErr: "Tak dapat ambil senarai masjid. Cuba lagi.", mosqueLocErr: "Lokasi tak dapat dikesan. Hidupkan lokasi (GPS) telefon dan benarkan untuk app ini, kemudian cuba lagi.",
-    mosqueBusy: "Pelayan peta sedang sibuk. Cuba lagi sebentar, atau guna Google Maps:", mosqueAll: "Semua", mosqueMasjid: "Masjid", mosqueSurau: "Surau",
-    mosqueRoute: "Arah ↗", mosqueMaps: "Lihat di Google Maps ↗", mosqueSource: "Data © penyumbang OpenStreetMap", mosqueUnnamed: "(tiada nama)",
     holyTitle: "Hari kebesaran Islam", holyToday: "Hari ini", holyIn: (n) => `${n} hari lagi`,
     holyNote: "Anggaran ikut kalendar Hijrah; tarikh rasmi ikut pengumuman.",
     holyNames: { maalHijrah: "Awal Muharam (Maal Hijrah)", asyura: "Hari Asyura", maulid: "Maulidur Rasul", israk: "Israk dan Mikraj",
       nisfu: "Nisfu Syaaban", ramadan: "Awal Ramadan", nuzul: "Nuzul Al-Quran", fitri: "Hari Raya Aidilfitri", arafah: "Hari Arafah", adha: "Hari Raya Aidiladha" },
-    mosque: "🕌 Masjid berdekatan", mosqueQuery: "masjid",
     juzShow: "lihat juz' ▾", juzHide: "tutup juz' ▴", savedToast: (r) => `Disimpan ✓ ${r}`,
     solatPickShort: "pilih zon", solatTap: "Ketik untuk lihat semua waktu",
     notifOn: "Hidupkan peringatan", notifOff: "Matikan", notifTest: "Hantar notifikasi ujian",
@@ -568,15 +563,10 @@ const TEXT = {
     passkeyCount: (n) => (n ? `${n} passkey${n === 1 ? "" : "s"} registered` : "No passkey yet"), passkeyAdd: "Register this device", passkeyRemove: "Remove all passkeys",
     passkeyAdded: "Passkey registered ✓", passkeyFail: "That didn't work. Try again.", passkeyUnsupported: "This browser doesn't support passkeys.",
     passkeyLogin: "🔑 Sign in with passkey", passkeyOr: "or use the PIN",
-    mosqueNear: "🕌 Mosques & surau within 3 km", mosqueFinding: "Finding mosques nearby…", mosqueNone: "No mosque or surau found within 3 km.",
-    mosqueErr: "Couldn't load mosques. Try again.", mosqueLocErr: "Couldn't get your location. Turn on location (GPS) and allow it for this app, then try again.",
-    mosqueBusy: "The map server is busy. Try again shortly, or use Google Maps:", mosqueAll: "All", mosqueMasjid: "Mosque", mosqueSurau: "Surau",
-    mosqueRoute: "Directions ↗", mosqueMaps: "Open in Google Maps ↗", mosqueSource: "Data © OpenStreetMap contributors", mosqueUnnamed: "(unnamed)",
     holyTitle: "Islamic days", holyToday: "Today", holyIn: (n) => `in ${n} days`,
     holyNote: "Estimated from the Hijri calendar; official dates follow announcements.",
     holyNames: { maalHijrah: "Islamic New Year (1 Muharram)", asyura: "Day of Ashura", maulid: "Mawlid an-Nabi", israk: "Isra' and Mi'raj",
       nisfu: "Nisf Sha'ban", ramadan: "Start of Ramadan", nuzul: "Nuzul al-Quran", fitri: "Eid al-Fitr", arafah: "Day of Arafah", adha: "Eid al-Adha" },
-    mosque: "🕌 Mosques nearby", mosqueQuery: "mosque",
     juzShow: "show juz' ▾", juzHide: "hide juz' ▴", savedToast: (r) => `Saved ✓ ${r}`,
     solatPickShort: "choose zone", solatTap: "Tap to see all times",
     notifOn: "Turn on reminder", notifOff: "Turn off", notifTest: "Send a test notification",
@@ -817,7 +807,7 @@ function QuranTracker() {
   const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, PERSONAL ? [] : SEED_ENTRIES));
   const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
   const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
-  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", sound: true, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...readJson(SETTINGS_KEY, {}) }));
+  const [settings, setSettings] = useState(() => (() => { const { near, ...saved } = readJson(SETTINGS_KEY, {}); return { lang: "ms", targetDate: "", theme: "auto", sound: true, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...saved }; })());
   const previewRef = useRef(null);
   function previewSound() {
     try {
@@ -2336,62 +2326,11 @@ function Confetti() {
   return <canvas ref={ref} aria-hidden="true" style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: 79 }} />;
 }
 
-/* ---------- Mosques within 3 km (OpenStreetMap / Overpass) ---------- */
-const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
-function distKm(a, b, c, d) {
-  const R = 6371, toR = (x) => (x * Math.PI) / 180;
-  const h = Math.sin(toR(c - a) / 2) ** 2 + Math.cos(toR(a)) * Math.cos(toR(c)) * Math.sin(toR(d - b) / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-// Prefer the app's own server (cached, proper User-Agent, several Overpass servers); direct Overpass only without a server.
-async function fetchMosques(lat, lon, viaServer) {
-  if (viaServer) {
-    const r = await api(`masjid?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
-    if (!r.ok || !r.body || !Array.isArray(r.body.places)) { const e = new Error("busy"); e.kind = "busy"; throw e; }
-    return r.body.places.map((m) => ({ ...m, km: distKm(lat, lon, m.lat, m.lon) })).filter((m) => m.km <= 3.05).sort((a, b) => a.km - b.km);
-  }
-  const q = `[out:json][timeout:20];nwr["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});out center tags 80;`;
-  let lastErr;
-  for (const url of OVERPASS) {
-    try {
-      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
-      const res = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "content-type": "application/x-www-form-urlencoded" }, signal: ctrl.signal });
-      clearTimeout(t);
-      if (!res.ok) throw new Error("http " + res.status);
-      const data = await res.json();
-      return (data.elements || []).map((e) => {
-        const la = e.lat ?? (e.center && e.center.lat), lo = e.lon ?? (e.center && e.center.lon);
-        const tags = e.tags || {};
-        const name = tags["name:ms"] || tags.name || tags["name:en"] || "";
-        const surau = /surau|musolla|musalla|musholla/i.test(name) || tags.building === "musalla";
-        return la == null ? null : { id: e.type + e.id, name, surau, lat: la, lon: lo, km: distKm(lat, lon, la, lo) };
-      }).filter(Boolean).sort((a, b) => a.km - b.km);
-    } catch (e) { lastErr = e; }
-  }
-  throw lastErr || new Error("overpass");
-}
-
 /* ---------- Prayer times card (JAKIM e-Solat via /api/solat) ---------- */
 function PrayerCard({ T, lang, settings, persistSettings, today, available, openSignal }) {
   const [data, setData] = useState(() => readJson("quran-journal-solat", null));
   const [open, setOpen] = useState(false);
   useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
-  const [mq, setMq] = useState({ status: "idle", list: [], filter: "all" }); // idle | finding | ok | error
-  function findMosques() {
-    setMq({ ...mq, status: "finding", err: "" });
-    const run = async (lat, lon) => {
-      try { const list = await fetchMosques(lat, lon, available); setMq({ status: "ok", list, filter: "all", err: "" }); }
-      catch (e) { setMq((m) => ({ ...m, status: "error", err: "busy" })); }
-    };
-    const fallback = () => {
-      const near = Array.isArray(settings.near) ? settings.near : null;
-      if (near) run(near[0], near[1]); else setMq((m) => ({ ...m, status: "error", err: "location" }));
-    };
-    if (!navigator.geolocation) { fallback(); return; }
-    // Network/Wi-Fi location is fast and plenty for a 3 km radius; fall back to the last known area if it fails.
-    navigator.geolocation.getCurrentPosition((pos) => run(pos.coords.latitude, pos.coords.longitude), fallback,
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 10 * 60 * 1000 });
-  }
   const [status, setStatus] = useState("idle"); // idle | loading | locating | error | denied | outside
   const [zones, setZones] = useState(null);
   const [picking, setPicking] = useState(false);
@@ -2440,8 +2379,7 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
       try {
         const zs = zones || await loadZones(); setZones(zs);
         const z = zoneFor(pos.coords.latitude, pos.coords.longitude, zs);
-        const near = [Math.round(pos.coords.latitude * 100) / 100, Math.round(pos.coords.longitude * 100) / 100];
-        if (z) chooseZone(z, { near }); else { persistSettings({ near }); setStatus("outside"); setPicking(true); }
+        if (z) chooseZone(z); else { setStatus("outside"); setPicking(true); }
       } catch (e) { setStatus("error"); }
     }, () => { setStatus("denied"); openPicker(); }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 });
   }
@@ -2460,10 +2398,6 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
   }
   const fmtT = (t) => { if (!t) return "—"; const [h, m] = t.split(":").map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d.toLocaleTimeString(T.locale, { hour: "numeric", minute: "2-digit" }); };
   const hijriLabel = td && td.hijri ? (() => { const m = td.hijri.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? `${+m[3]} ${(HIJRI_MONTHS[lang] || HIJRI_MONTHS.ms)[+m[2] - 1]} ${m[1]}` : ""; })() : "";
-  // Google Maps search for nearby mosques (uses the rough location from "Lokasi semasa" if known, else the phone's own location).
-  const near = Array.isArray(settings.near) ? settings.near : null;
-  const mosqueUrl = "https://www.google.com/maps/search/?api=1&query=" +
-    encodeURIComponent(near ? `${T.mosqueQuery} near ${near[0]},${near[1]}` : `${T.mosqueQuery} near me`);
   const msg = { locating: T.solatLocating, loading: T.solatLoading, error: T.solatError, denied: T.solatDenied, outside: T.solatOutside }[status];
 
   const summary = !available ? T.solatServerOnly : !zone ? T.solatPickShort
@@ -2517,45 +2451,6 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
         <div style={{ ...styles.btnRow, marginTop: 12 }}>
           <button className="qt-btn" type="button" onClick={locate} disabled={status === "locating"} style={styles.smallPrimary}>{T.solatLocate}</button>
           <button className="qt-btn" type="button" onClick={() => (picking ? setPicking(false) : openPicker())} style={styles.cancelBtn}>{zone ? T.solatChange : T.solatPick}</button>
-        </div>
-      )}
-      <button className="qt-btn" type="button" onClick={() => (mq.status === "ok" ? setMq({ ...mq, status: "idle" }) : findMosques())}
-        disabled={mq.status === "finding"} style={{ ...styles.mosqueBtn, width: "100%", background: "transparent", cursor: "pointer", fontFamily: "'Lora', serif" }}>
-        {mq.status === "finding" ? T.mosqueFinding : T.mosqueNear} {mq.status === "ok" ? "▴" : "▾"}
-      </button>
-      {mq.status === "error" && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--danger)" }}>{mq.err === "location" ? T.mosqueLocErr : T.mosqueBusy}</div>}
-      {mq.status === "error" && <a href={mosqueUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 12.5, color: "var(--title)" }}>{T.mosqueMaps}</a>}
-      {mq.status === "ok" && (
-        <div className="qt-fade" style={{ marginTop: 10 }}>
-          {mq.list.length === 0 ? (
-            <div style={styles.estSub}>{T.mosqueNone}</div>
-          ) : (
-            <>
-              <div style={{ ...styles.segment, marginBottom: 6 }}>
-                {[["all", T.mosqueAll, mq.list.length], ["masjid", T.mosqueMasjid, mq.list.filter((m) => !m.surau).length], ["surau", T.mosqueSurau, mq.list.filter((m) => m.surau).length]].map(([k, l, n]) => (
-                  <button key={k} className="qt-btn" type="button" onClick={() => setMq({ ...mq, filter: k })}
-                    style={{ ...styles.segBtn, ...(mq.filter === k ? styles.segBtnOn : {}) }}>{l} ({n})</button>
-                ))}
-              </div>
-              {mq.list.filter((m) => mq.filter === "all" || (mq.filter === "surau") === m.surau).slice(0, 30).map((m) => (
-                <div key={m.id} style={styles.mosqueRow}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name || T.mosqueUnnamed}</div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
-                      <span style={styles.mosqueType}>{m.surau ? T.mosqueSurau : T.mosqueMasjid}</span>
-                      <span style={{ fontSize: 12, opacity: 0.7, fontFamily: "'IBM Plex Mono', monospace" }}>{m.km < 1 ? `${Math.round(m.km * 1000)} m` : `${m.km.toFixed(1)} km`}</span>
-                    </div>
-                  </div>
-                  <a href={`https://www.google.com/maps/dir/?api=1&destination=${m.lat},${m.lon}`} target="_blank" rel="noopener noreferrer"
-                    style={{ ...styles.cancelBtn, textDecoration: "none", display: "inline-block" }}>{T.mosqueRoute}</a>
-                </div>
-              ))}
-            </>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 8, fontSize: 11, opacity: 0.6 }}>
-            <span>{T.mosqueSource}</span>
-            <a href={mosqueUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>{T.mosqueMaps}</a>
-          </div>
         </div>
       )}
       {picking && (
@@ -2936,11 +2831,8 @@ const styles = {
   solatSummary: { display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--title)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   celebrate: { position: "fixed", left: "50%", top: "calc(18px + env(safe-area-inset-top))", zIndex: 80, background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8",
     border: "1px solid rgba(217,188,122,0.6)", borderRadius: 16, padding: "12px 18px", fontSize: 15, fontWeight: 600, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.3)", lineHeight: 1.6, maxWidth: "88vw" },
-  mosqueRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--line)" },
-  mosqueType: { fontSize: 10.5, fontWeight: 600, borderRadius: 999, padding: "2px 7px", border: "1px solid var(--line2)", color: "var(--gold)", whiteSpace: "nowrap" },
   holyBadge: { flex: "0 0 auto", fontSize: 11.5, fontWeight: 600, color: "var(--title)", background: "var(--input)", border: "1px solid var(--line2)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" },
   holyBadgeToday: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
-  mosqueBtn: { display: "block", textAlign: "center", marginTop: 10, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--line3)", color: "var(--title)", textDecoration: "none", fontSize: 13.5, fontWeight: 600 },
   screenTitle: { fontFamily: "'Amiri', serif", fontSize: 26, fontWeight: 700, color: "var(--title)", margin: "6px 2px 14px" },
   progressBtn: { display: "block", width: "100%", background: "transparent", border: "none", padding: "2px 0", marginBottom: 14, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
   carousel: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 2 },
