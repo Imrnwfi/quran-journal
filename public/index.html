@@ -55,7 +55,7 @@
   .qt-heat::-webkit-scrollbar { height: 6px; }
   .qt-heat::-webkit-scrollbar-thumb { background: var(--line3); border-radius: 3px; }
 
-  /* Opening scene (~2.5 s) */
+  /* Opening scene (~3.5 s) */
   #splash { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: radial-gradient(circle at 50% 40%, #166E52 0%, #0A4A37 45%, #052A1F 100%); color: #F3ECD8;
     transition: opacity 0.3s ease, transform 0.3s ease; }
@@ -95,7 +95,7 @@
   <button class="sp-tap" type="button" aria-label="Main bacaan Bismillah">🔊 Ketik untuk dengar Bismillah</button>
 </div>
 <script>
-  // Show the opening scene for 2.5 s (2.2 s + 0.3 s fade); if the app is still loading, wait for it.
+  // Show the opening scene for 3.5 s (3.2 s + 0.3 s fade); if the app is still loading, wait for it.
   (function () {
     var el = document.getElementById("splash"), minDone = false, ready = false, gone = false;
     function hide() {
@@ -103,18 +103,19 @@
       gone = true; el.classList.add("out");
       setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
     }
-    setTimeout(function () { minDone = true; hide(); }, 2200);
+    setTimeout(function () { minDone = true; hide(); }, 3200);
     window.addEventListener("app-ready", function () { ready = true; hide(); });
     setTimeout(function () { ready = true; minDone = true; hide(); }, 8000);
 
-    // Soft Bismillah (Mishary Alafasy, 1:1) when the app opens. Can be turned off in Settings.
+    // Short, brisk Bismillah (Saud Al-Shuraim, 1:1; backups: Maher Al-Muaiqly, Alafasy) when the app opens. Can be turned off in Settings.
     var settings = {};
     try { settings = JSON.parse(localStorage.getItem("quran-journal-settings") || "{}"); } catch (e) {}
     if (settings.sound === false) return;
     var SOURCES = [
-      "https://verses.quran.foundation/Alafasy/mp3/001001.mp3",
-      "https://verses.quran.com/Alafasy/mp3/001001.mp3",
-      "https://verses.quran.com/AbdulBaset/Mujawwad/mp3/001001.mp3"
+      "https://everyayah.com/data/Saood_ash-Shuraym_128kbps/001001.mp3",
+      "https://verses.quran.com/Shuraym/mp3/001001.mp3",
+      "https://everyayah.com/data/Maher_AlMuaiqly_64kbps/001001.mp3",
+      "https://verses.quran.foundation/Alafasy/mp3/001001.mp3"
     ];
     var VOLUME = 0.3, idx = 0, started = false;
     var audio = new Audio();
@@ -126,7 +127,7 @@
     });
     function fadeIn() {
       var v = 0;
-      var t = setInterval(function () { v = Math.min(VOLUME, v + 0.03); try { audio.volume = v; } catch (e) {} if (v >= VOLUME) clearInterval(t); }, 70);
+      var t = setInterval(function () { v = Math.min(VOLUME, v + 0.06); try { audio.volume = v; } catch (e) {} if (v >= VOLUME) clearInterval(t); }, 50);
     }
     function play() {
       started = true;
@@ -181,9 +182,10 @@ const SURAH_NAMES = [
 ];
 const TOTAL_PAGES = 604;
 const BISMILLAH_SOURCES = [
+  "https://everyayah.com/data/Saood_ash-Shuraym_128kbps/001001.mp3",
+  "https://verses.quran.com/Shuraym/mp3/001001.mp3",
+  "https://everyayah.com/data/Maher_AlMuaiqly_64kbps/001001.mp3",
   "https://verses.quran.foundation/Alafasy/mp3/001001.mp3",
-  "https://verses.quran.com/Alafasy/mp3/001001.mp3",
-  "https://verses.quran.com/AbdulBaset/Mujawwad/mp3/001001.mp3",
 ];
 const STORAGE_KEY = "quran-journal-entries";
 const KHATAM_KEY = "quran-journal-khatams";
@@ -252,7 +254,7 @@ const TEXT = {
     calDay: (d, n) => n ? `${d}: ${n} muka surat` : `${d}: tiada bacaan`,
     settings: "Tetapan & backup", language: "Bahasa",
     theme: "Tema", themeAuto: "Auto", themeLight: "Terang", themeDark: "Gelap", toggleTheme: "Tukar tema terang/gelap",
-    sound: "Bunyi pembukaan", soundHint: "Bacaan Bismillah perlahan (Mishary Alafasy) setiap kali app dibuka.",
+    sound: "Bunyi pembukaan", soundHint: "Bacaan Bismillah ringkas dan perlahan (Sheikh Saud Al-Shuraim) setiap kali app dibuka.",
     soundOn: "Hidup", soundOff: "Mati", soundPreview: "▶ Dengar",
     soundIOS: "Di iPhone, bunyi ikut kelantangan telefon, dan mungkin perlu ketik skrin pembukaan dulu.",
     backup: "Backup data", backupHint: "Muat turun salinan data sebagai simpanan tambahan.",
@@ -328,7 +330,7 @@ const TEXT = {
     calDay: (d, n) => n ? `${d}: ${n} page${n === 1 ? "" : "s"}` : `${d}: no reading`,
     settings: "Settings & backup", language: "Language",
     theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark", toggleTheme: "Toggle light/dark theme",
-    sound: "Opening sound", soundHint: "A soft Bismillah recitation (Mishary Alafasy) each time the app opens.",
+    sound: "Opening sound", soundHint: "A short, soft Bismillah (Sheikh Saud Al-Shuraim) each time the app opens.",
     soundOn: "On", soundOff: "Off", soundPreview: "▶ Listen",
     soundIOS: "On iPhone the sound follows the phone's volume, and you may need to tap the opening screen first.",
     backup: "Back up data", backupHint: "Download a copy of your data as an extra safeguard.",
