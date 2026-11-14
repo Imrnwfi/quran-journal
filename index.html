@@ -174,6 +174,43 @@ function saveEntries(entries) {
   }
 }
 
+const KHATAM_KEY = "quran-journal-khatams";
+
+function loadKhatams() {
+  try {
+    const raw = localStorage.getItem(KHATAM_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveKhatams(list) {
+  try {
+    localStorage.setItem(KHATAM_KEY, JSON.stringify(list));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function fmtLongDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
+// Khatams in the order they happened (oldest first).
+function sortKhatams(list) {
+  return [...list].sort((a, b) => (a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date)));
+}
+
+// An entry belongs to the current round if it was logged after the latest khatam.
+function isAfterKhatam(entry, k) {
+  if (!k) return true;
+  if (entry.date !== k.date) return entry.date > k.date;
+  return entry.ts > k.ts;
+}
+
 function QuranTracker() {
   const [entries, setEntries] = useState(() => loadEntries());
   const [saveError, setSaveError] = useState("");
@@ -181,11 +218,50 @@ function QuranTracker() {
   const [note, setNote] = useState("");
   const [date, setDate] = useState(todayStr());
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [khatams, setKhatams] = useState(() => loadKhatams());
+  const [showKhatamForm, setShowKhatamForm] = useState(false);
+  const [khatamDate, setKhatamDate] = useState(todayStr());
+  const [khatamNote, setKhatamNote] = useState("");
+  const [confirmKhatamId, setConfirmKhatamId] = useState(null);
+  const [khatamFlash, setKhatamFlash] = useState("");
 
   function persist(next) {
     setEntries(next);
     const ok = saveEntries(next);
     setSaveError(ok ? "" : "Couldn't save — your browser storage may be full or disabled.");
+  }
+
+  function persistKhatams(next) {
+    setKhatams(next);
+    const ok = saveKhatams(next);
+    setSaveError(ok ? "" : "Couldn't save — your browser storage may be full or disabled.");
+  }
+
+  function addKhatam(kDate, kNote, ts) {
+    const k = {
+      id: `k-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      date: kDate,
+      note: (kNote || "").trim(),
+      ts,
+    };
+    const next = [...khatams, k];
+    persistKhatams(next);
+    const n = sortKhatams(next).findIndex((x) => x.id === k.id) + 1;
+    setKhatamFlash(`Alhamdulillah — khatam #${n} recorded for ${fmtLongDate(kDate)}.`);
+  }
+
+  function submitKhatam(e) {
+    e.preventDefault();
+    if (!khatamDate) return;
+    addKhatam(khatamDate, khatamNote, Date.now());
+    setKhatamNote("");
+    setShowKhatamForm(false);
+  }
+
+  function deleteKhatam(id) {
+    persistKhatams(khatams.filter((k) => k.id !== id));
+    setConfirmKhatamId(null);
+    setKhatamFlash("");
   }
 
   function addEntry(e) {
@@ -200,6 +276,7 @@ function QuranTracker() {
       ts: Date.now(),
     };
     persist([entry, ...entries]);
+    if (p === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
     setPage("");
     setNote("");
   }
@@ -223,15 +300,23 @@ function QuranTracker() {
     return [...map.entries()];
   }, [sorted]);
 
-  const uniquePages = useMemo(() => new Set(entries.map((e) => e.page)).size, [entries]);
+  const khatamsAsc = useMemo(() => sortKhatams(khatams), [khatams]);
+  const khatamCount = khatamsAsc.length;
+  const lastKhatam = khatamsAsc[khatamCount - 1] || null;
+  const roundEntries = useMemo(
+    () => entries.filter((en) => isAfterKhatam(en, lastKhatam)),
+    [entries, lastKhatam]
+  );
+
+  const uniquePages = useMemo(() => new Set(roundEntries.map((e) => e.page)).size, [roundEntries]);
   const progressPct = Math.min(100, Math.round((uniquePages / TOTAL_PAGES) * 100));
   const lastEntry = sorted[0] || null;
   const currentJuz = lastEntry ? juzForPage(lastEntry.page) : 0;
   const reachedJuz = useMemo(() => {
     const s = new Set();
-    for (const en of entries) s.add(juzForPage(en.page));
+    for (const en of roundEntries) s.add(juzForPage(en.page));
     return s;
-  }, [entries]);
+  }, [roundEntries]);
 
   const streak = useMemo(() => {
     const days = new Set(entries.map((e) => e.date));
@@ -247,8 +332,6 @@ function QuranTracker() {
     }
     return count;
   }, [entries]);
-
-  const khatms = Math.floor(uniquePages / TOTAL_PAGES);
 
   return (
     <div style={styles.page}>
@@ -278,6 +361,7 @@ function QuranTracker() {
               <div style={styles.streakRow}>
                 <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> day{streak === 1 ? "" : "s"} streak</div>
                 <div style={styles.streakChip}><span style={styles.mono}>{uniquePages}</span>/{TOTAL_PAGES} pages</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>× khatam</div>
               </div>
             </div>
           </div>
@@ -288,7 +372,7 @@ function QuranTracker() {
             <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
           </div>
           <div style={styles.progressLabel}>
-            {progressPct}% through the Mushaf{khatms > 0 ? ` · ${khatms} khatm${khatms > 1 ? "s" : ""} completed` : ""}
+            {progressPct}% through the Mushaf{khatamCount > 0 ? ` · round ${khatamCount + 1}` : ""}
           </div>
         </div>
 
@@ -326,6 +410,72 @@ function QuranTracker() {
           <button className="qt-btn" type="submit" style={styles.submitBtn}>Save entry</button>
           {saveError && <div style={styles.errorText}>{saveError}</div>}
         </form>
+
+        <section style={styles.form}>
+          <div style={styles.khatamHead}>
+            <h2 style={{ ...styles.formTitle, marginBottom: 0 }}>Khatam</h2>
+            <div style={styles.khatamCount}>
+              <span style={styles.khatamNum}>{khatamCount}</span>
+              <span style={styles.khatamCountLabel}>{khatamCount === 1 ? "time" : "times"}</span>
+            </div>
+          </div>
+
+          {khatamFlash && <div className="qt-fade" style={styles.khatamFlash}>{khatamFlash}</div>}
+
+          {khatamCount === 0 ? (
+            <div style={{ ...styles.emptyState, padding: "12px 4px" }}>
+              No khatam yet. Logging page {TOTAL_PAGES} records one automatically, or add a past khatam below.
+            </div>
+          ) : (
+            <div style={{ marginTop: 12 }}>
+              {[...khatamsAsc].reverse().map((k) => {
+                const n = khatamsAsc.indexOf(k) + 1;
+                return (
+                  <div key={k.id} style={styles.khatamRow}>
+                    <div style={styles.khatamBadge}><span style={styles.mono}>{n}</span></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={styles.khatamDate}>Khatam #{n} · {fmtLongDate(k.date)}</div>
+                      {k.note && <div style={styles.entryNote}>{k.note}</div>}
+                      {confirmKhatamId === k.id && (
+                        <div style={styles.confirmRow}>
+                          <span style={{ fontSize: 12, opacity: 0.75 }}>Remove this khatam?</span>
+                          <button className="qt-btn" type="button" onClick={() => deleteKhatam(k.id)} style={styles.confirmBtn}>Yes, remove</button>
+                          <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(null)} style={styles.cancelBtn}>Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                    {confirmKhatamId !== k.id && (
+                      <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(k.id)}
+                        style={{ ...styles.deleteBtn, position: "static" }} aria-label={`Delete khatam ${n}`}>×</button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {showKhatamForm ? (
+            <form onSubmit={submitKhatam} style={{ marginTop: 14 }}>
+              <label style={styles.label}>
+                Date completed
+                <input className="qt-input" type="date" value={khatamDate} max={todayStr()} required
+                  onChange={(e) => setKhatamDate(e.target.value)} style={styles.input} />
+              </label>
+              <label style={styles.label}>
+                Note <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span>
+                <input className="qt-input" type="text" value={khatamNote} onChange={(e) => setKhatamNote(e.target.value)}
+                  placeholder="e.g. Ramadan 1447" style={{ ...styles.input, fontFamily: "'Lora', serif" }} />
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="qt-btn" type="submit" style={{ ...styles.submitBtn, flex: 1 }}>Save khatam</button>
+                <button className="qt-btn" type="button" onClick={() => setShowKhatamForm(false)} style={{ ...styles.cancelBtn, padding: "0 14px", fontSize: 13.5 }}>Cancel</button>
+              </div>
+            </form>
+          ) : (
+            <button className="qt-btn" type="button" onClick={() => { setShowKhatamForm(true); setKhatamDate(todayStr()); }}
+              style={styles.khatamAddBtn}>+ Record a khatam</button>
+          )}
+        </section>
 
         <div style={styles.historySection}>
           <h2 style={styles.formTitle}>History</h2>
@@ -408,6 +558,15 @@ const styles = {
   confirmRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" },
   confirmBtn: { background: "#8C3B2E", color: "#FBF7EA", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" },
   cancelBtn: { background: "transparent", color: "#16342B", border: "1px solid #16342B33", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" },
+  khatamHead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
+  khatamCount: { display: "flex", alignItems: "baseline", gap: 6 },
+  khatamNum: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, fontWeight: 500, color: "#A8823C", lineHeight: 1 },
+  khatamCountLabel: { fontSize: 12.5, opacity: 0.65 },
+  khatamFlash: { marginTop: 12, background: "#0F4C3A", color: "#F3ECD8", borderRadius: 8, padding: "9px 12px", fontSize: 13 },
+  khatamRow: { display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderTop: "1px solid #A8823C22" },
+  khatamBadge: { flex: "0 0 auto", width: 30, height: 30, borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 },
+  khatamDate: { fontSize: 14, fontWeight: 600, color: "#0F4C3A", paddingTop: 5 },
+  khatamAddBtn: { width: "100%", marginTop: 12, background: "transparent", color: "#0F4C3A", border: "1px dashed #A8823C88", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
   mono: { fontFamily: "'IBM Plex Mono', monospace" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
 };
