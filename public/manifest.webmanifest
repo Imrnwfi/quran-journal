@@ -1,6 +1,6 @@
 {
-  "name": "Qur'an Reading Journal",
-  "short_name": "Wirid Quran",
+  "name": "Quran Note",
+  "short_name": "Quran Note",
   "description": "Jurnal bacaan Al-Qur'an: catat muka surat, streak dan khatam.",
   "start_url": "./",
   "scope": "./",

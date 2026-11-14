@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Qur'an Reading Journal</title>
+<title>Quran Note</title>
 <meta name="theme-color" content="#0F4C3A" />
 <meta name="description" content="Jurnal bacaan Al-Qur'an: catat muka surat, streak dan khatam." />
 <link rel="manifest" href="manifest.webmanifest" />
@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="Wirid Quran" />
+<meta name="apple-mobile-web-app-title" content="Quran Note" />
 <script>
   // Apply the saved theme before anything paints (avoids a light flash in dark mode).
   (function () {
@@ -87,7 +87,7 @@
   <img class="sp-mark" src="splash-mark.png" alt="" />
   <div class="sp-ar">وِرْد القُرْآن</div>
   <div class="sp-line"></div>
-  <div class="sp-title">Qur'an Reading Journal</div>
+  <div class="sp-title">Quran Note</div>
 </div>
 <script>
   // Show the opening scene for 2.5 s (2.2 s + 0.3 s fade); if the app is still loading, wait for it.
@@ -1016,7 +1016,7 @@ function QuranTracker() {
       const blob = new Blob([JSON.stringify(backupPayload(), null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `quran-journal-backup-${today}.json`;
+      a.href = url; a.download = `quran-note-backup-${today}.json`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (e) { setBackupMsg(T.copyFail); }
@@ -1153,7 +1153,7 @@ function QuranTracker() {
 
         <header style={styles.header}>
           <div style={styles.eyebrow}>وِرْد القُرْآن</div>
-          <h1 style={styles.title}>Qur'an Reading Journal</h1>
+          <h1 style={styles.title}>Quran Note</h1>
           <p style={styles.subtitle}>{T.subtitle}</p>
         </header>
 

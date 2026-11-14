@@ -1,4 +1,4 @@
-// Shared backend logic for the Qur'an Reading Journal.
+// Shared backend logic for Quran Note.
 // Every handler takes a `store` with the Netlify Blobs API (get/setJSON/delete/list),
 // so the same code runs on Netlify and in local tests.
 import crypto from "node:crypto";
@@ -167,7 +167,7 @@ export async function handlePush(req, store, webpush) {
   try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
   if (req.method === "POST" && body.action === "test") {
     const r = await sendToAll(store, webpush, {
-      title: "Wirid Quran", body: "Notifikasi berfungsi ✓ Peringatan akan dihantar jam 7 malam jika belum membaca.", url: "/",
+      title: "Quran Note", body: "Notifikasi berfungsi ✓ Peringatan akan dihantar jam 7 malam jika belum membaca.", url: "/",
     });
     return json(r);
   }
@@ -202,7 +202,7 @@ export async function runReminder(store, webpush, now = new Date()) {
   const last = [...current.doc.entries].sort((a, b) => (a.date === b.date ? b.ts - a.ts : b.date.localeCompare(a.date)))[0];
   const next = last ? Math.min(last.page + 1, TOTAL_PAGES) : 1;
   const result = await sendToAll(store, webpush, {
-    title: "Wirid Quran 🌙",
+    title: "Quran Note 🌙",
     body: `Hari ini belum dicatat lagi. Sambung dari muka surat ${next} — sedikit pun tak apa.`,
     url: "/",
   });
