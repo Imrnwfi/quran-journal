@@ -14,6 +14,18 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Quran Note" />
 <script>
+  // App shortcut "Sambung bacaan": jump straight to the next page on Quran.com.
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search);
+      if (q.get("action") !== "read") return;
+      var e = JSON.parse(localStorage.getItem("quran-journal-entries") || "[]"), last = null;
+      for (var i = 0; i < e.length; i++) { var x = e[i]; if (!last || x.date > last.date || (x.date === last.date && x.ts > last.ts)) last = x; }
+      if (last) location.replace("https://quran.com/page/" + Math.min(last.page + 1, 604));
+    } catch (err) {}
+  })();
+</script>
+<script>
   // Apply the saved theme before anything paints (avoids a light flash in dark mode).
   (function () {
     try {
@@ -187,6 +199,87 @@ const DOA_KHATAM = {
   ms: "Ya Allah, rahmatilah aku dengan Al-Quran, dan jadikanlah ia bagiku ikutan, cahaya, petunjuk dan rahmat. Ya Allah, ingatkanlah aku apa yang aku lupa daripadanya, ajarkanlah aku apa yang aku tidak tahu daripadanya, kurniakanlah aku membacanya sepanjang malam dan siang, dan jadikanlah ia hujah bagiku, wahai Tuhan sekalian alam.",
   en: "O Allah, have mercy on me through the Quran, and make it for me a guide, a light, guidance and mercy. O Allah, remind me of what I have forgotten of it, teach me what I do not know of it, grant me its recitation through the hours of the night and the ends of the day, and make it a proof for me, O Lord of the worlds.",
 };
+// Ayahs that begin on each page of the 604-page Madani Mushaf (sum 6236; from quran-meta, Hafs).
+const AYAHS_PER_PAGE = [7,5,11,8,5,8,11,9,4,8,7,7,5,5,8,4,7,7,7,8,7,4,8,10,6,7,5,5,4,6,6,8,5,4,5,6,3,4,8,3,4,4,3,5,5,5,7,1,4,9,6,7,7,8,8,7,9,9,7,6,8,9,8,7,6,11,8,8,5,4,8,8,7,6,8,6,6,5,3,5,4,3,7,4,7,7,8,6,9,5,7,5,3,7,4,8,8,6,7,6,7,7,8,8,5,3,3,4,4,4,6,8,5,5,4,5,7,7,6,6,6,7,6,8,5,5,7,8,10,9,8,9,8,7,9,5,8,9,4,7,9,8,6,7,6,5,4,5,6,8,11,11,8,7,6,8,6,10,6,8,6,8,9,16,10,7,6,6,6,4,4,7,8,9,8,11,8,8,9,8,7,5,7,9,8,6,6,7,7,6,5,5,4,7,7,7,7,4,7,7,7,6,7,5,6,5,7,6,8,6,5,8,9,11,8,9,8,10,9,9,8,7,7,9,9,8,8,9,9,10,7,9,11,9,10,10,8,8,7,6,9,11,6,9,8,9,8,8,5,8,5,10,6,8,6,5,8,6,9,9,10,15,16,20,19,20,15,8,12,8,8,12,10,8,7,8,6,9,8,8,10,7,10,10,11,11,9,8,9,11,10,8,11,11,5,7,7,11,8,8,13,9,14,13,11,14,13,13,13,12,19,15,25,14,13,12,11,11,15,12,10,10,14,11,9,13,15,9,9,11,11,5,10,8,7,8,8,9,9,8,6,17,10,15,17,15,15,15,14,10,10,7,4,5,7,10,5,3,5,9,9,12,11,12,12,10,19,20,21,23,28,25,23,24,23,21,13,9,13,9,11,8,13,12,10,8,8,7,7,8,7,9,11,7,7,10,8,9,7,8,7,7,11,11,10,9,8,9,9,10,11,8,9,6,11,9,10,6,9,7,8,5,8,7,4,8,11,7,7,8,9,8,9,9,8,7,12,8,6,13,15,13,14,16,13,24,27,25,26,24,27,29,16,10,16,19,22,10,5,11,10,9,7,9,11,7,8,9,9,8,7,9,9,8,11,8,11,9,9,9,8,8,10,5,7,9,13,7,12,12,11,14,13,13,16,18,21,20,13,9,10,10,9,6,8,7,11,8,10,9,9,6,8,5,5,7,7,15,20,16,24,21,23,17,18,26,18,24,21,22,22,24,27,27,34,26,23,8,7,6,5,6,5,10,4,6,7,8,5,6,7,9,8,7,7,9,9,5,7,7,5,12,14,19,27,18,26,28,29,15,18,13,15,19,18,30,28,26,20,25,31,30,25,31,42,29,25,28,27,22,32,30,23,27,29,26,27,12,18,21,17,14,14,15];
+function ayahsInSpan(a, b) { let n = 0; for (let p = a; p <= b; p++) n += AYAHS_PER_PAGE[p - 1] || 0; return n; }
+
+/* ---------- Hijri dates (Umm al-Qura, calibrated to JAKIM's date when prayer times are loaded) ---------- */
+const HIJRI_MONTHS = {
+  ms: ["Muharam", "Safar", "Rabiulawal", "Rabiulakhir", "Jamadilawal", "Jamadilakhir", "Rejab", "Syaaban", "Ramadan", "Syawal", "Zulkaedah", "Zulhijah"],
+  en: ["Muharram", "Safar", "Rabi' al-Awwal", "Rabi' al-Thani", "Jumada al-Ula", "Jumada al-Akhirah", "Rajab", "Sha'ban", "Ramadan", "Shawwal", "Dhu al-Qa'dah", "Dhu al-Hijjah"],
+};
+let HIJRI_FMT = null;
+function hijriOf(iso, offset = 0) {
+  try {
+    if (!HIJRI_FMT) HIJRI_FMT = new Intl.DateTimeFormat("en-US-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "numeric", year: "numeric", timeZone: "UTC" });
+    const parts = HIJRI_FMT.formatToParts(new Date(addDays(iso, offset) + "T12:00:00Z"));
+    const get = (t) => parseInt((parts.find((x) => x.type === t) || {}).value, 10);
+    const h = { d: get("day"), m: get("month"), y: get("year") };
+    return h.d && h.m && h.y ? h : null;
+  } catch (e) { return null; }
+}
+function fmtHijri(iso, offset, lang) {
+  const h = hijriOf(iso, offset);
+  return h ? `${h.d} ${(HIJRI_MONTHS[lang] || HIJRI_MONTHS.ms)[h.m - 1]} ${h.y}` : "";
+}
+function ramadanInfo(today, offset) {
+  const h = hijriOf(today, offset);
+  if (!h) return null;
+  if (h.m === 9) {
+    let last = today;
+    for (let i = 1; i <= 31; i++) { const x = addDays(today, i); const hx = hijriOf(x, offset); if (!hx || hx.m !== 9) { last = addDays(x, -1); break; } }
+    return { inRamadan: true, day: h.d, year: h.y, lastDay: last, daysLeft: daysBetween(today, last) + 1 };
+  }
+  for (let i = 1; i <= 400; i++) {
+    const x = addDays(today, i); const hx = hijriOf(x, offset);
+    if (hx && hx.m === 9 && hx.d === 1) {
+      let len = 30;
+      for (let k = 29; k <= 30; k++) { const hk = hijriOf(addDays(x, k), offset); if (!hk || hk.m !== 9) { len = k; break; } }
+      return { inRamadan: false, start: x, year: hx.y, daysUntil: i, length: len };
+    }
+  }
+  return null;
+}
+
+/* ---------- Smart reminder hour (same rule as the server) ---------- */
+function deviceTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kuala_Lumpur"; } catch (e) { return "Asia/Kuala_Lumpur"; } }
+function smartHourOf(entries) {
+  const samples = entries
+    .filter((e) => typeof e.ts === "number" && isoOf(new Date(e.ts)) === e.date)
+    .sort((a, b) => b.ts - a.ts).slice(0, 30)
+    .map((e) => { const d = new Date(e.ts); return d.getHours() + d.getMinutes() / 60; })
+    .sort((a, b) => a - b);
+  if (samples.length < 5) return null;
+  return Math.min(22, Math.max(8, Math.floor(samples[Math.floor(samples.length / 2)]) + 1));
+}
+function fmtHour(h, locale) { const d = new Date(); d.setHours(h, 0, 0, 0); return d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" }); }
+
+/* ---------- Prayer zones (JAKIM) ---------- */
+let ZONES_CACHE = null;
+async function loadZones() {
+  if (ZONES_CACHE) return ZONES_CACHE;
+  const res = await fetch("zones.json");
+  if (!res.ok) throw new Error("zones");
+  ZONES_CACHE = (await res.json()).zones;
+  return ZONES_CACHE;
+}
+// Point-in-polygon on the JAKIM district boundaries; if the point is just off the coast, nearest zone within ~100 km.
+function zoneFor(lat, lon, zones) {
+  const inside = (x, y, rings) => {
+    let hit = false;
+    for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i], [xj, yj] = r[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+    }
+    return hit;
+  };
+  for (const z of zones) if (inside(lon, lat, z.p)) return z;
+  let best = null, bd = Infinity;
+  for (const z of zones) for (const r of z.p) for (const [x, y] of r) { const d = (x - lon) ** 2 + (y - lat) ** 2; if (d < bd) { bd = d; best = z; } }
+  return bd < 1 ? best : null;
+}
+const PRAYERS = ["fajr", "syuruk", "dhuhr", "asr", "maghrib", "isha"];
+
 const BISMILLAH_SOURCES = [
   "https://everyayah.com/data/Saood_ash-Shuraym_128kbps/001001.mp3",
   "https://verses.quran.com/Shuraym/mp3/001001.mp3",
@@ -287,7 +380,23 @@ const TEXT = {
     netErr: "Tak dapat sambung ke pelayan. Cuba lagi.", enter: "Masuk", create: "Cipta PIN",
     ownerOn: "Peranti ini: pemilik ✓", logout: "Log keluar", account: "Akaun pemilik",
     // notifications
-    notif: "Peringatan 7 malam", notifHint: "Jika belum mencatat bacaan hari ini, notifikasi dihantar jam 7 malam.",
+    notif: "Peringatan harian", notifHint: "Jika belum mencatat bacaan hari ini, notifikasi dihantar pada waktu peringatan.",
+    remindSmart: "Pintar", remindFixed: "Tetap 7 malam",
+    remindSmartAt: (t) => `Dihantar sekitar ${t} — sejam selepas waktu biasa anda mencatat.`,
+    remindSmartNoData: "Belum cukup data (perlu 5 catatan yang dibuat pada hari sama). Buat masa ini: jam 7 malam.",
+    remindFixedAt: "Dihantar jam 7 malam jika belum mencatat.",
+    ayat: "ayat", statAyat: "Ayat dibaca",
+    ramadanIn: (n, y) => `Ramadan ${y} · ${n} hari lagi`, ramadanStart: (d) => `Anggaran bermula ${d}. Tarikh rasmi ikut pengumuman rukyah.`,
+    ramadanPlan: (p, q) => `Untuk khatam dalam Ramadan: ~${p} muka surat sehari (≈${q} selepas setiap solat).`,
+    ramadanNow: (d, y) => `Ramadan ${y} · hari ke-${d}`, ramadanNeed: (p, n) => `Untuk habiskan pusingan ini sebelum Syawal: ~${p} muka surat sehari (${n} hari lagi).`,
+    ramadanLabel: "Ramadan",
+    solat: "Waktu solat", solatNames: { fajr: "Subuh", syuruk: "Syuruk", dhuhr: "Zohor", asr: "Asar", maghrib: "Maghrib", isha: "Isyak" },
+    solatNext: (n, t) => `${n} dalam ${t}`, solatHM: (h, m) => (h ? `${h} j ${m} min` : `${m} min`),
+    solatLocate: "📍 Lokasi semasa", solatLocating: "Mencari lokasi…", solatPick: "Pilih zon", solatChange: "Tukar zon",
+    solatDenied: "Lokasi tidak dibenarkan. Pilih zon secara manual.", solatOutside: "Lokasi di luar Malaysia. Pilih zon secara manual.",
+    solatError: "Tak dapat ambil waktu solat. Cuba lagi sebentar.", solatSource: (x) => `Sumber: ${x}`,
+    solatServerOnly: "Waktu solat hanya tersedia di laman Netlify.", solatEmpty: "Guna lokasi semasa atau pilih zon untuk lihat waktu solat JAKIM.",
+    solatTomorrow: "esok", solatLoading: "Memuatkan…",
     notifOn: "Hidupkan peringatan", notifOff: "Matikan", notifTest: "Hantar notifikasi ujian",
     notifStateOn: "Peringatan aktif ✓", notifDenied: "Notifikasi disekat. Benarkan dalam tetapan pelayar/telefon.",
     notifUnsupported: "Pelayar ini tak menyokong notifikasi.",
@@ -368,7 +477,23 @@ const TEXT = {
     wrongPin: (n) => `Wrong PIN. ${n} attempts left.`, tooMany: "Too many attempts. Try again in 15 minutes.",
     netErr: "Couldn't reach the server. Try again.", enter: "Sign in", create: "Create PIN",
     ownerOn: "This device: owner ✓", logout: "Sign out", account: "Owner account",
-    notif: "7 pm reminder", notifHint: "If nothing is logged today, a notification is sent at 7 pm.",
+    notif: "Daily reminder", notifHint: "If nothing is logged today, a notification is sent at your reminder time.",
+    remindSmart: "Smart", remindFixed: "Fixed 7 pm",
+    remindSmartAt: (t) => `Sent around ${t} — an hour after you usually log.`,
+    remindSmartNoData: "Not enough data yet (needs 5 entries logged on the same day). For now: 7 pm.",
+    remindFixedAt: "Sent at 7 pm if nothing is logged.",
+    ayat: "ayahs", statAyat: "Ayahs read",
+    ramadanIn: (n, y) => `Ramadan ${y} · in ${n} days`, ramadanStart: (d) => `Expected to start ${d}. The official date follows the moon sighting announcement.`,
+    ramadanPlan: (p, q) => `To complete the Quran in Ramadan: ~${p} pages a day (≈${q} after each prayer).`,
+    ramadanNow: (d, y) => `Ramadan ${y} · day ${d}`, ramadanNeed: (p, n) => `To finish this round before Eid: ~${p} pages a day (${n} days left).`,
+    ramadanLabel: "Ramadan",
+    solat: "Prayer times", solatNames: { fajr: "Fajr", syuruk: "Sunrise", dhuhr: "Dhuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" },
+    solatNext: (n, t) => `${n} in ${t}`, solatHM: (h, m) => (h ? `${h} h ${m} min` : `${m} min`),
+    solatLocate: "📍 Current location", solatLocating: "Finding your location…", solatPick: "Choose zone", solatChange: "Change zone",
+    solatDenied: "Location not allowed. Choose your zone manually.", solatOutside: "Location is outside Malaysia. Choose a zone manually.",
+    solatError: "Couldn't load prayer times. Try again shortly.", solatSource: (x) => `Source: ${x}`,
+    solatServerOnly: "Prayer times are only available on the Netlify site.", solatEmpty: "Use your current location or choose a zone to see JAKIM prayer times.",
+    solatTomorrow: "tomorrow", solatLoading: "Loading…",
     notifOn: "Turn on reminder", notifOff: "Turn off", notifTest: "Send a test notification",
     notifStateOn: "Reminder on ✓", notifDenied: "Notifications are blocked. Allow them in your browser/phone settings.",
     notifUnsupported: "This browser doesn't support notifications.",
@@ -564,12 +689,13 @@ function docToState(doc) {
     khatams: Array.isArray(doc?.khatams) ? doc.khatams : [],
     deleted: { entries: doc?.deleted?.entries || [], khatams: doc?.deleted?.khatams || [] },
     targetDate: doc?.settings?.targetDate || "",
+    reminderMode: doc?.settings?.reminderMode === "fixed" ? "fixed" : "smart",
   };
 }
 function stateToDoc(s) {
   let tz = "Asia/Kuala_Lumpur";
   try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) {}
-  return { entries: s.entries, khatams: s.khatams, deleted: s.deleted, settings: { targetDate: s.targetDate || "", tz } };
+  return { entries: s.entries, khatams: s.khatams, deleted: s.deleted, settings: { targetDate: s.targetDate || "", tz, reminderMode: s.reminderMode || "smart" } };
 }
 // Union by id (this device wins on the same id), minus anything deleted on either side.
 function mergeStates(local, remote) {
@@ -588,6 +714,7 @@ function mergeStates(local, remote) {
     khatams: byId(local.khatams, remote.khatams, new Set(deleted.khatams)),
     deleted,
     targetDate: local.targetDate || remote.targetDate || "",
+    reminderMode: local.reminderMode || remote.reminderMode || "smart",
   };
 }
 function urlB64ToUint8Array(b64) {
@@ -603,7 +730,7 @@ function QuranTracker() {
   const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, SEED_ENTRIES));
   const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
   const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
-  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", sound: true, ...readJson(SETTINGS_KEY, {}) }));
+  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", sound: true, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...readJson(SETTINGS_KEY, {}) }));
   const previewRef = useRef(null);
   function previewSound() {
     try {
@@ -629,7 +756,7 @@ function QuranTracker() {
   const syncTimer = useRef(null);
   const syncing = useRef(false);
   const stateRef = useRef(null);
-  stateRef.current = { entries, khatams, deleted, targetDate: settings.targetDate };
+  stateRef.current = { entries, khatams, deleted, targetDate: settings.targetDate, reminderMode: settings.reminderMode };
   const canEdit = role === "local" || role === "owner";
   const serverMode = role === "viewer" || role === "owner";
   function setRole(r) { roleRef.current = r; setRoleState(r); }
@@ -685,6 +812,33 @@ function QuranTracker() {
   useEffect(() => { document.documentElement.lang = settings.lang; }, [settings.lang]);
   useEffect(() => { window.dispatchEvent(new Event("app-ready")); }, []);
 
+  // App shortcuts (long-press the icon): ?action=log | read | solat
+  const actionDone = useRef(false);
+  useEffect(() => {
+    if (actionDone.current || role === "checking") return;
+    let action = null;
+    try { action = new URLSearchParams(location.search).get("action"); } catch (e) {}
+    if (!action) return;
+    actionDone.current = true;
+    try { history.replaceState(null, "", location.pathname); } catch (e) {}
+    if (action === "read") {
+      const last = [...entries].sort((a, b) => -cmpEntryAsc(a, b))[0];
+      location.href = "https://quran.com/page/" + (last ? Math.min(last.page + 1, TOTAL_PAGES) : 1);
+      return;
+    }
+    const go = () => {
+      if (action === "log") {
+        if (roleRef.current === "viewer") { setLoginOpen(true); return; }
+        const el = document.getElementById("log-to");
+        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => el.focus(), 400); }
+      } else if (action === "solat") {
+        const el = document.getElementById("solat");
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    };
+    setTimeout(go, document.getElementById("splash") ? 3600 : 300);
+  }, [role]);
+
   // theme
   const [systemDark, setSystemDark] = useState(() => { try { return matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) { return false; } });
   useEffect(() => {
@@ -712,8 +866,8 @@ function QuranTracker() {
   function applyState(s) {
     setEntries(s.entries); setKhatams(s.khatams); setDeleted(s.deleted);
     writeJson(STORAGE_KEY, s.entries); writeJson(KHATAM_KEY, s.khatams); writeJson(DELETED_KEY, s.deleted);
-    setSettings((prev) => { const next = { ...prev, targetDate: s.targetDate || "" }; writeJson(SETTINGS_KEY, next); return next; });
-    stateRef.current = { entries: s.entries, khatams: s.khatams, deleted: s.deleted, targetDate: s.targetDate || "" };
+    setSettings((prev) => { const next = { ...prev, targetDate: s.targetDate || "", reminderMode: s.reminderMode || prev.reminderMode || "smart" }; writeJson(SETTINGS_KEY, next); return next; });
+    stateRef.current = { entries: s.entries, khatams: s.khatams, deleted: s.deleted, targetDate: s.targetDate || "", reminderMode: s.reminderMode || "smart" };
   }
   function persist(next) { setEntries(next); stateRef.current = { ...stateRef.current, entries: next }; flagSave(writeJson(STORAGE_KEY, next)); queueSync(); }
   function persistKhatams(next) { setKhatams(next); stateRef.current = { ...stateRef.current, khatams: next }; flagSave(writeJson(KHATAM_KEY, next)); queueSync(); }
@@ -722,7 +876,10 @@ function QuranTracker() {
     const next = { ...settings, ...patch };
     setSettings(next);
     flagSave(writeJson(SETTINGS_KEY, next));
-    if ("targetDate" in patch) { stateRef.current = { ...stateRef.current, targetDate: next.targetDate }; queueSync(); }
+    if ("targetDate" in patch || "reminderMode" in patch) {
+      stateRef.current = { ...stateRef.current, targetDate: next.targetDate, reminderMode: next.reminderMode };
+      queueSync();
+    }
   }
 
   /* ----- sync ----- */
@@ -1009,6 +1166,11 @@ function QuranTracker() {
   const targetNeed = target && targetDaysLeft > 0 ? Math.ceil(remaining / targetDaysLeft) : null;
 
   const notesList = useMemo(() => sorted.filter((e) => e.note), [sorted]);
+  const ayahsTotal = useMemo(() => entries.reduce((n, en) => { const [a, b] = spans[en.id] || [en.page, en.page]; return n + ayahsInSpan(a, b); }, 0), [entries, spans]);
+  const hOff = settings.hijriOffset || 0;
+  const ramadan = useMemo(() => ramadanInfo(today, hOff), [today, hOff]);
+  const smartHour = useMemo(() => smartHourOf(entries), [entries]);
+  const fmtHijriShort = (iso) => { const h = hijriOf(iso, hOff); return h ? `${h.d} ${(HIJRI_MONTHS[settings.lang] || HIJRI_MONTHS.ms)[h.m - 1]}` : ""; };
 
   const badges = useMemo(() => {
     const k = khatamCount;
@@ -1241,6 +1403,10 @@ function QuranTracker() {
           <div style={styles.eyebrow}>وِرْد القُرْآن</div>
           <h1 style={styles.title}>Quran Note</h1>
           <p style={styles.subtitle}>{T.subtitle}</p>
+          <div style={styles.todayLine}>
+            {parseIso(today).toLocaleDateString(T.locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {fmtHijri(today, hOff, settings.lang) && <> · <span style={{ color: "var(--gold)" }}>{fmtHijri(today, hOff, settings.lang)}</span></>}
+          </div>
         </header>
 
         <div style={styles.mihrabWrap}>
@@ -1295,6 +1461,9 @@ function QuranTracker() {
           })}
         </div>
 
+        <PrayerCard T={T} lang={settings.lang} settings={settings} persistSettings={persistSettings} today={today}
+          available={role !== "local" && role !== "checking"} />
+
         <section style={styles.estCard}>
           <div style={styles.estRow}>
             <div style={{ flex: 1 }}>
@@ -1344,6 +1513,24 @@ function QuranTracker() {
               )}
             </div>
           )}
+          {ramadan && (
+            <>
+              <div style={styles.estDivider} />
+              <div style={styles.estLabel}>🌙 {T.ramadanLabel}</div>
+              {ramadan.inRamadan ? (
+                <>
+                  <div style={styles.estValueSm}>{T.ramadanNow(ramadan.day, ramadan.year)}</div>
+                  <div style={styles.estSub}>{T.ramadanNeed(Math.ceil(remaining / Math.max(1, ramadan.daysLeft)), ramadan.daysLeft)}</div>
+                </>
+              ) : (
+                <>
+                  <div style={styles.estValueSm}>{T.ramadanIn(ramadan.daysUntil, ramadan.year)}</div>
+                  <div style={styles.estSub}>{T.ramadanStart(fmtLong(ramadan.start))}</div>
+                  <div style={styles.estSub}>{T.ramadanPlan(Math.ceil(TOTAL_PAGES / ramadan.length), Math.ceil(TOTAL_PAGES / ramadan.length / 5))}</div>
+                </>
+              )}
+            </>
+          )}
         </section>
 
         {canEdit && (
@@ -1357,7 +1544,7 @@ function QuranTracker() {
               </label>
               <label style={styles.label}>
                 {T.to}
-                <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
+                <input id="log-to" className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
                   onChange={(e) => setPage(e.target.value)} placeholder="1–604" style={styles.input} required />
               </label>
               <label style={{ ...styles.label, flex: 1.6 }}>
@@ -1527,7 +1714,7 @@ function QuranTracker() {
                       <div className="qt-fade" style={styles.monthBody}>
                         {m.days.map(([d, list]) => (
                           <div key={d} style={styles.dayGroup}>
-                            <div style={styles.dayHeader}>{fmtDate(d)}</div>
+                            <div style={styles.dayHeader}>{fmtDate(d)} <span style={{ opacity: 0.7, fontWeight: 400 }}>· {fmtHijriShort(d)}</span></div>
                             {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
                           </div>
                         ))}
@@ -1556,7 +1743,7 @@ function QuranTracker() {
           <>
             <YearSummary entries={entries} spans={spans} khatams={khatamsAsc} today={today} T={T} fmtMonth={fmtMonth} fmtLong={fmtLong} />
             <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
-              totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} />
+              totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} ayahsTotal={ayahsTotal} khatamCount={khatamCount} />
           </>
         )}
 
@@ -1614,6 +1801,19 @@ function QuranTracker() {
                 </>
               )}
               {notifMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--title)" }}>{notifMsg}</div>}
+              {role === "owner" && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={styles.segment}>
+                    {[["smart", T.remindSmart], ["fixed", T.remindFixed]].map(([k, l]) => (
+                      <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ reminderMode: k })}
+                        aria-pressed={settings.reminderMode === k} style={{ ...styles.segBtn, ...(settings.reminderMode === k ? styles.segBtnOn : {}) }}>{l}</button>
+                    ))}
+                  </div>
+                  <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>
+                    {settings.reminderMode === "fixed" ? T.remindFixedAt : smartHour ? T.remindSmartAt(fmtHour(smartHour, T.locale)) : T.remindSmartNoData}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {role === "local" && (
@@ -1764,10 +1964,141 @@ function Heatmap({ pagesByDate, today, T, fmtLong }) {
   );
 }
 
+/* ---------- Prayer times card (JAKIM e-Solat via /api/solat) ---------- */
+function PrayerCard({ T, lang, settings, persistSettings, today, available }) {
+  const [data, setData] = useState(() => readJson("quran-journal-solat", null));
+  const [status, setStatus] = useState("idle"); // idle | loading | locating | error | denied | outside
+  const [zones, setZones] = useState(null);
+  const [picking, setPicking] = useState(false);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const id = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(id); }, []);
+
+  const zone = settings.zone || "";
+  useEffect(() => {
+    if (!available || !zone) return;
+    let cancelled = false;
+    const fresh = data && data.zone === zone && data.days && data.days[0] && data.days[0].date === today;
+    if (fresh) return;
+    setStatus("loading");
+    api("solat?zone=" + encodeURIComponent(zone)).then((r) => {
+      if (cancelled) return;
+      if (r.ok && r.body && Array.isArray(r.body.days)) { setData(r.body); writeJson("quran-journal-solat", r.body); setStatus("idle"); }
+      else setStatus("error");
+    }).catch(() => { if (!cancelled) setStatus("error"); });
+    return () => { cancelled = true; };
+  }, [zone, today, available]);
+
+  // Line our Hijri dates up with JAKIM's (Malaysia can differ from Umm al-Qura by a day).
+  useEffect(() => {
+    const d0 = data && data.days && data.days.find((d) => d.date === today);
+    if (!d0 || !d0.hijri) return;
+    const m = d0.hijri.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!m) return;
+    for (const off of [0, -1, 1, -2, 2]) {
+      const h = hijriOf(today, off);
+      if (h && h.y === +m[1] && h.m === +m[2] && h.d === +m[3]) { if ((settings.hijriOffset || 0) !== off) persistSettings({ hijriOffset: off }); break; }
+    }
+  }, [data, today]);
+
+  async function openPicker() {
+    setPicking(true);
+    if (!zones) { try { setZones(await loadZones()); } catch (e) { setStatus("error"); } }
+  }
+  function chooseZone(z) {
+    persistSettings({ zone: z.c, zoneLabel: `${z.s} · ${z.d.join(", ")}` });
+    setPicking(false); setStatus("idle");
+  }
+  function locate() {
+    if (!navigator.geolocation) { setStatus("denied"); openPicker(); return; }
+    setStatus("locating");
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const zs = zones || await loadZones(); setZones(zs);
+        const z = zoneFor(pos.coords.latitude, pos.coords.longitude, zs);
+        if (z) chooseZone(z); else { setStatus("outside"); setPicking(true); }
+      } catch (e) { setStatus("error"); }
+    }, () => { setStatus("denied"); openPicker(); }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 });
+  }
+
+  const days = data && data.zone === zone ? data.days || [] : [];
+  const td = days.find((d) => d.date === today);
+  const tm = days.find((d) => d.date === addDays(today, 1));
+  let next = null;
+  if (td) {
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    for (const k of PRAYERS) {
+      const [h, m] = (td[k] || "").split(":").map(Number);
+      if (Number.isFinite(h) && h * 60 + m > nowMin) { next = { k, mins: h * 60 + m - nowMin, tomorrow: false }; break; }
+    }
+    if (!next && tm && tm.fajr) { const [h, m] = tm.fajr.split(":").map(Number); next = { k: "fajr", mins: 24 * 60 - nowMin + h * 60 + m, tomorrow: true }; }
+  }
+  const fmtT = (t) => { if (!t) return "—"; const [h, m] = t.split(":").map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d.toLocaleTimeString(T.locale, { hour: "numeric", minute: "2-digit" }); };
+  const hijriLabel = td && td.hijri ? (() => { const m = td.hijri.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? `${+m[3]} ${(HIJRI_MONTHS[lang] || HIJRI_MONTHS.ms)[+m[2] - 1]} ${m[1]}` : ""; })() : "";
+  const msg = { locating: T.solatLocating, loading: T.solatLoading, error: T.solatError, denied: T.solatDenied, outside: T.solatOutside }[status];
+
+  return (
+    <section id="solat" style={styles.estCard}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
+        <div style={{ ...styles.estLabel, flex: 1 }}>{T.solat}{zone ? ` · ${zone}` : ""}</div>
+        {hijriLabel && <div style={{ fontSize: 12, opacity: 0.75 }}>{hijriLabel}</div>}
+      </div>
+      {!available ? (
+        <div style={styles.estSub}>{T.solatServerOnly}</div>
+      ) : !zone ? (
+        <div style={styles.estSub}>{T.solatEmpty}</div>
+      ) : (
+        <>
+          {settings.zoneLabel && <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 10 }}>{settings.zoneLabel}</div>}
+          {td ? (
+            <>
+              {next && (
+                <div style={styles.solatNext}>
+                  {T.solatNext(T.solatNames[next.k] + (next.tomorrow ? ` (${T.solatTomorrow})` : ""), T.solatHM(Math.floor(next.mins / 60), next.mins % 60))}
+                </div>
+              )}
+              <div style={styles.solatGrid}>
+                {PRAYERS.map((k) => {
+                  const on = next && !next.tomorrow && next.k === k;
+                  return (
+                    <div key={k} style={{ ...styles.solatCell, ...(on ? styles.solatCellOn : {}) }}>
+                      <div style={styles.solatName}>{T.solatNames[k]}</div>
+                      <div style={styles.solatTime}>{fmtT(td[k])}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.55, marginTop: 8 }}>{T.solatSource(data.source || "JAKIM e-Solat")}</div>
+            </>
+          ) : (status !== "loading" && status !== "error") ? <div style={styles.estSub}>{T.solatLoading}</div> : null}
+        </>
+      )}
+      {msg && <div style={{ fontSize: 12.5, marginTop: 8, color: status === "loading" || status === "locating" ? "inherit" : "var(--danger)" }}>{msg}</div>}
+      {available && (
+        <div style={{ ...styles.btnRow, marginTop: 12 }}>
+          <button className="qt-btn" type="button" onClick={locate} disabled={status === "locating"} style={styles.smallPrimary}>{T.solatLocate}</button>
+          <button className="qt-btn" type="button" onClick={() => (picking ? setPicking(false) : openPicker())} style={styles.cancelBtn}>{zone ? T.solatChange : T.solatPick}</button>
+        </div>
+      )}
+      {picking && (
+        <select className="qt-input" value={zone} onChange={(e) => { const z = (zones || []).find((x) => x.c === e.target.value); if (z) chooseZone(z); }}
+          style={{ ...styles.input, marginTop: 10, fontFamily: "'Lora', serif", fontSize: 13 }} aria-label={T.solatPick}>
+          <option value="">{zones ? T.solatPick + "…" : T.solatLoading}</option>
+          {zones && [...new Set(zones.map((z) => z.s))].sort().map((st) => (
+            <optgroup key={st} label={st}>
+              {zones.filter((z) => z.s === st).map((z) => <option key={z.c} value={z.c}>{z.c} · {z.d.join(", ")}</option>)}
+            </optgroup>
+          ))}
+        </select>
+      )}
+    </section>
+  );
+}
+
 /* ---------- Yearly summary (+ shareable image) ---------- */
 function computeYear(entries, spans, khatams, year) {
   const list = entries.filter((e) => e.date.slice(0, 4) === year);
   const byDate = {}, byMonth = {}, bySurah = {};
+  let ayahs = 0;
   for (const en of list) {
     const [a, b] = spans[en.id] || [en.page, en.page];
     const n = b - a + 1;
@@ -1775,6 +2106,7 @@ function computeYear(entries, spans, khatams, year) {
     const m = en.date.slice(0, 7);
     byMonth[m] = (byMonth[m] || 0) + n;
     for (let p = a; p <= b; p++) { const s = surahForPage(p); bySurah[s] = (bySurah[s] || 0) + 1; }
+    ayahs += ayahsInSpan(a, b);
   }
   const days = Object.keys(byDate).sort();
   let best = 0, run = 0, prev = null;
@@ -1789,6 +2121,7 @@ function computeYear(entries, spans, khatams, year) {
     bestMonth: top(byMonth),
     topSurah: top(bySurah),
     notes: list.filter((e) => e.note).length,
+    ayahs,
     first: days[0] || null,
   };
 }
@@ -1823,7 +2156,7 @@ async function drawYearCard(sum, tiles, T, fmtLong) {
   ctx.fillStyle = "#E6C068"; ctx.font = "400 46px Amiri, serif"; ctx.fillText("وِرْد القُرْآن", W / 2, 400);
   ctx.fillStyle = "#F3ECD8"; ctx.font = "700 72px Amiri, serif"; ctx.fillText(T.yearTitle(sum.year), W / 2, 485);
   ctx.fillStyle = "#D9BC7A"; ctx.font = "500 150px 'IBM Plex Mono', monospace"; ctx.fillText(String(sum.pages), W / 2, 650);
-  ctx.fillStyle = "rgba(243,236,216,0.8)"; ctx.font = "400 34px Lora, serif"; ctx.fillText(T.yearPages, W / 2, 705);
+  ctx.fillStyle = "rgba(243,236,216,0.8)"; ctx.font = "400 34px Lora, serif"; ctx.fillText(`${T.yearPages} · ${sum.ayahs.toLocaleString(T.locale)} ${T.ayat}`, W / 2, 705);
   const cols = 2, tw = 440, th = 128, gx = 40, gy = 24, x0 = (W - (cols * tw + gx)) / 2, y0 = 752;
   tiles.forEach(([label, value], i) => {
     const x = x0 + (i % cols) * (tw + gx), y = y0 + Math.floor(i / cols) * (th + gy);
@@ -1898,7 +2231,7 @@ function YearSummary({ entries, spans, khatams, today, T, fmtMonth, fmtLong }) {
           <>
             <div style={styles.yearBig}>
               <div style={styles.yearBigNum}>{sum.pages}</div>
-              <div style={{ fontSize: 13, opacity: 0.8 }}>{T.yearPages}</div>
+              <div style={{ fontSize: 13, opacity: 0.8 }}>{T.yearPages} · {sum.ayahs.toLocaleString(T.locale)} {T.ayat}</div>
             </div>
             <div style={styles.yearGrid}>
               {tiles.map(([l, v]) => (
@@ -1924,7 +2257,7 @@ function YearSummary({ entries, spans, khatams, today, T, fmtMonth, fmtLong }) {
 }
 
 /* ---------- Statistics: tiles + pages-per-month bars ---------- */
-function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readingDays }) {
+function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readingDays, ayahsTotal, khatamCount }) {
   const thisMonth = today.slice(0, 7);
   const keys = [];
   for (let i = 11; i >= 0; i--) keys.push(addMonths(thisMonth, -i));
@@ -1954,8 +2287,9 @@ function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readin
   };
   const avg = readingDays ? (totalPages / readingDays).toFixed(1) : "0";
   const tiles = [
-    [T.statTotal, totalPages, ""], [T.statBest, bestStreak, T.statDaysUnit],
-    [T.statDays, readingDays, ""], [T.statAvg, avg, ""],
+    [T.statTotal, totalPages, ""], [T.statAyat, ayahsTotal.toLocaleString(T.locale), ""],
+    [T.statBest, bestStreak, T.statDaysUnit], [T.statDays, readingDays, ""],
+    [T.statAvg, avg, ""], [T.khatam, khatamCount, "×"],
   ];
   const s = data[sel];
   return (
@@ -2118,6 +2452,13 @@ const styles = {
   modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
   modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+  todayLine: { fontSize: 12.5, opacity: 0.8, marginTop: 8 },
+  solatNext: { fontSize: 15, fontWeight: 600, color: "var(--title)", marginBottom: 10 },
+  solatGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 },
+  solatCell: { textAlign: "center", padding: "8px 2px", borderRadius: 8, background: "var(--input)", border: "1px solid var(--line)" },
+  solatCellOn: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  solatName: { fontSize: 11.5, opacity: 0.75, whiteSpace: "nowrap" },
+  solatTime: { fontSize: 14, fontWeight: 600, marginTop: 2, fontFamily: "'IBM Plex Mono', monospace", whiteSpace: "nowrap" },
   doaCongrats: { textAlign: "center", background: "#0F4C3A", color: "#F3ECD8", borderRadius: 10, padding: "10px 12px", fontSize: 14, marginBottom: 14 },
   doaAr: { fontFamily: "'Amiri', serif", fontSize: 24, lineHeight: 2, textAlign: "center", color: "var(--ink)", margin: "4px 0 16px" },
   doaTr: { fontSize: 14, lineHeight: 1.6, opacity: 0.9, margin: "6px 0 18px" },

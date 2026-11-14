@@ -27,5 +27,46 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Catat bacaan",
+      "short_name": "Catat",
+      "description": "Terus ke borang catat bacaan",
+      "url": "./?action=log",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Sambung bacaan di Quran.com",
+      "short_name": "Sambung baca",
+      "description": "Buka muka surat seterusnya",
+      "url": "./?action=read",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Waktu solat",
+      "short_name": "Waktu solat",
+      "description": "Lihat waktu solat JAKIM",
+      "url": "./?action=solat",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

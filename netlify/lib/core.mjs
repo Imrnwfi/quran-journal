@@ -44,6 +44,7 @@ export function cleanDoc(doc) {
     settings: {
       targetDate: isIso(s.targetDate) ? s.targetDate : "",
       tz: typeof s.tz === "string" && s.tz.length < 64 ? s.tz : DEFAULT_TZ,
+      reminderMode: s.reminderMode === "fixed" ? "fixed" : "smart",
     },
   };
 }
@@ -191,12 +192,37 @@ export function localDate(date, tz) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
 }
 
+export function localHour(date, tz) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(date);
+  const h = Number(parts.find((p) => p.type === "hour").value), m = Number(parts.find((p) => p.type === "minute").value);
+  return h + m / 60;
+}
+// "Smart" reminder hour: one hour after the owner's usual logging time (median of the last 30 same-day logs).
+// Needs at least 5 such logs; otherwise null. Clamped to 8:00–22:00.
+export function smartHour(entries, tz) {
+  const samples = entries
+    .filter((e) => typeof e.ts === "number" && localDate(new Date(e.ts), tz) === e.date)
+    .sort((a, b) => b.ts - a.ts).slice(0, 30)
+    .map((e) => localHour(new Date(e.ts), tz))
+    .sort((a, b) => a - b);
+  if (samples.length < 5) return null;
+  const median = samples[Math.floor(samples.length / 2)];
+  return Math.min(22, Math.max(8, Math.floor(median) + 1));
+}
+export function reminderHour(doc) {
+  const tz = doc.settings?.tz || DEFAULT_TZ;
+  if (doc.settings?.reminderMode === "fixed") return 19;
+  return smartHour(doc.entries, tz) ?? 19;
+}
+
 export async function runReminder(store, webpush, now = new Date()) {
   const current = await store.get("journal", { type: "json" });
   if (!current || !current.doc) return { skipped: "no_data" };
   const tz = current.doc.settings?.tz || DEFAULT_TZ;
   const today = localDate(now, tz);
   if (current.doc.entries.some((e) => e.date === today)) return { skipped: "already_read", today };
+  const hour = reminderHour(current.doc);
+  if (localHour(now, tz) < hour) return { skipped: "not_yet", today, hour };
   const log = (await store.get("reminder-log", { type: "json" })) || {};
   if (log.lastSent === today) return { skipped: "already_sent", today };
   const last = [...current.doc.entries].sort((a, b) => (a.date === b.date ? b.ts - a.ts : b.date.localeCompare(a.date)))[0];
@@ -208,4 +234,70 @@ export async function runReminder(store, webpush, now = new Date()) {
   });
   await store.setJSON("reminder-log", { lastSent: today, at: now.toISOString(), ...result });
   return { today, ...result };
+}
+
+/* ---------------- prayer times (JAKIM e-Solat) ---------------- */
+const MONTHS = { jan: 1, feb: 2, mar: 3, mac: 3, apr: 4, may: 5, mei: 5, jun: 6, jul: 7, aug: 8, ogo: 8, ogos: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12, dis: 12 };
+const pad = (n) => String(n).padStart(2, "0");
+function esolatDate(s) {
+  // "14-Nov-2026" (or Malay month abbreviations) -> "2026-11-14"; already-ISO passes through
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = String(s).match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})$/);
+  if (!m) return null;
+  const mon = MONTHS[m[2].toLowerCase()] || MONTHS[m[2].toLowerCase().slice(0, 3)];
+  return mon ? `${m[3]}-${pad(mon)}-${pad(m[1])}` : null;
+}
+const hm = (t) => { const m = String(t || "").match(/^(\d{1,2}):(\d{2})/); return m ? `${pad(m[1])}:${m[2]}` : null; };
+
+export function parseEsolat(json) {
+  const list = json && Array.isArray(json.prayerTime) ? json.prayerTime : null;
+  if (!list || !list.length) return null;
+  const days = list.map((d) => ({
+    date: esolatDate(d.date), hijri: typeof d.hijri === "string" ? d.hijri : null,
+    imsak: hm(d.imsak), fajr: hm(d.fajr), syuruk: hm(d.syuruk), dhuhr: hm(d.dhuhr), asr: hm(d.asr), maghrib: hm(d.maghrib), isha: hm(d.isha),
+  })).filter((d) => d.date && d.fajr && d.maghrib && d.isha);
+  return days.length ? days : null;
+}
+export function parseWaktuSolatApp(json) {
+  // api.waktusolat.app v2 (mirror of JAKIM e-Solat data): unix timestamps per day
+  if (!json || !Array.isArray(json.prayers) || !json.year) return null;
+  const month = json.month_number || null;
+  const t = (u) => (typeof u === "number" ? new Intl.DateTimeFormat("en-GB", { timeZone: DEFAULT_TZ, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(u * 1000)) : null);
+  const days = json.prayers.map((p) => {
+    const date = month && p.day ? `${json.year}-${pad(month)}-${pad(p.day)}` : (typeof p.fajr === "number" ? localDate(new Date(p.fajr * 1000), DEFAULT_TZ) : null);
+    return { date, hijri: typeof p.hijri === "string" ? p.hijri : null, imsak: p.imsak ? t(p.imsak) : null, fajr: t(p.fajr), syuruk: t(p.syuruk), dhuhr: t(p.dhuhr), asr: t(p.asr), maghrib: t(p.maghrib), isha: t(p.isha) };
+  }).filter((d) => d.date && d.fajr && d.maghrib && d.isha);
+  return days.length ? days : null;
+}
+
+export async function handleSolat(req, store, fetchImpl = fetch, now = new Date()) {
+  const url = new URL(req.url);
+  const zone = (url.searchParams.get("zone") || "").toUpperCase();
+  if (!/^[A-Z]{3}\d{2}$/.test(zone)) return json({ error: "invalid_zone" }, 400);
+  const today = localDate(now, DEFAULT_TZ);
+  const key = `solat/${zone}/${today}`;
+  const cached = await store.get(key, { type: "json" });
+  if (cached) return json(cached, 200, { "cache-control": "public, max-age=1800" });
+
+  const get = async (u) => {
+    const res = await fetchImpl(u, { headers: { accept: "application/json", "user-agent": "QuranNote/1.0 (+prayer times)" }, signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error("http " + res.status);
+    return res.json();
+  };
+  let days = null, source = null;
+  try {
+    days = parseEsolat(await get(`https://www.e-solat.gov.my/index.php?r=esolatApi/takwimsolat&period=week&zone=${zone}`));
+    if (days) source = "JAKIM e-Solat (e-solat.gov.my)";
+  } catch (e) {}
+  if (!days) {
+    try {
+      days = parseWaktuSolatApp(await get(`https://api.waktusolat.app/v2/solat/${zone}`));
+      if (days) source = "waktusolat.app (data JAKIM e-Solat)";
+    } catch (e) {}
+  }
+  if (!days) return json({ error: "unavailable" }, 502);
+  days = days.filter((d) => d.date >= today).slice(0, 8);
+  const body = { zone, source, days, fetchedAt: now.toISOString() };
+  await store.setJSON(key, body);
+  return json(body, 200, { "cache-control": "public, max-age=1800" });
 }
