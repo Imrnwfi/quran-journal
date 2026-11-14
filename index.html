@@ -1,18 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Qur'an Reading Journal</title>
-<link rel="icon" href="data:,">
+<meta name="theme-color" content="#0F4C3A" />
+<meta name="description" content="Jurnal bacaan Al-Qur'an: catat muka surat, streak dan khatam." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Wirid Quran" />
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
   * { box-sizing: border-box; }
-  body { margin: 0; }
+  body { margin: 0; background: #F3ECD8; }
   .qt-input:focus, .qt-textarea:focus, .qt-btn:focus-visible {
     outline: 2px solid #A8823C;
     outline-offset: 2px;
   }
+  .qt-btn { -webkit-tap-highlight-color: transparent; }
   @media (prefers-reduced-motion: reduce) {
     .qt-fade { animation: none !important; }
   }
@@ -21,6 +29,8 @@
     to { opacity: 1; transform: translateY(0); }
   }
   .qt-fade { animation: qtFadeIn 0.35s ease-out; }
+  .qt-heat::-webkit-scrollbar { height: 6px; }
+  .qt-heat::-webkit-scrollbar-thumb { background: #A8823C55; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -28,36 +38,153 @@
 
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
 <script type="text/babel" data-type="module">
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef } = React;
 
+/* ---------- Mushaf reference data (604-page Madani mushaf, verified) ---------- */
 const JUZ_START_PAGES = [
   1, 22, 42, 62, 82, 102, 121, 142, 162, 182,
   201, 222, 242, 262, 282, 302, 322, 342, 362, 382,
   402, 422, 442, 462, 482, 502, 522, 542, 562, 582,
 ];
+const SURAH_START_PAGES = [
+  1, 2, 50, 77, 106, 128, 151, 177, 187, 208, 221, 235, 249, 255, 262, 267, 282, 293, 305, 312,
+  322, 332, 342, 350, 359, 367, 377, 385, 396, 404, 411, 415, 418, 428, 434, 440, 446, 453, 458, 467,
+  477, 483, 489, 496, 499, 502, 507, 511, 515, 518, 520, 523, 526, 528, 531, 534, 537, 542, 545, 549,
+  551, 553, 554, 556, 558, 560, 562, 564, 566, 568, 570, 572, 574, 575, 577, 578, 580, 582, 583, 585,
+  586, 587, 587, 589, 590, 591, 591, 592, 593, 594, 595, 595, 596, 596, 597, 597, 598, 598, 599, 599,
+  600, 600, 601, 601, 601, 602, 602, 602, 603, 603, 603, 604, 604, 604,
+];
+const SURAH_NAMES = [
+  "Al-Fatihah", "Al-Baqarah", "Ali 'Imran", "An-Nisa'", "Al-Ma'idah", "Al-An'am", "Al-A'raf", "Al-Anfal", "At-Taubah", "Yunus",
+  "Hud", "Yusuf", "Ar-Ra'd", "Ibrahim", "Al-Hijr", "An-Nahl", "Al-Isra'", "Al-Kahf", "Maryam", "Taha",
+  "Al-Anbiya'", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan", "Asy-Syu'ara'", "An-Naml", "Al-Qasas", "Al-'Ankabut", "Ar-Rum",
+  "Luqman", "As-Sajdah", "Al-Ahzab", "Saba'", "Fatir", "Yasin", "As-Saffat", "Sad", "Az-Zumar", "Ghafir",
+  "Fussilat", "Asy-Syura", "Az-Zukhruf", "Ad-Dukhan", "Al-Jathiyah", "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf",
+  "Adz-Dzariyat", "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman", "Al-Waqi'ah", "Al-Hadid", "Al-Mujadalah", "Al-Hasyr", "Al-Mumtahanah",
+  "As-Saff", "Al-Jumu'ah", "Al-Munafiqun", "At-Taghabun", "At-Talaq", "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij",
+  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddaththir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat", "An-Naba'", "An-Nazi'at", "'Abasa",
+  "At-Takwir", "Al-Infitar", "Al-Mutaffifin", "Al-Insyiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", "Al-Ghasyiyah", "Al-Fajr", "Al-Balad",
+  "Asy-Syams", "Al-Lail", "Ad-Duha", "Asy-Syarh", "At-Tin", "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
+  "Al-Qari'ah", "At-Takathur", "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un", "Al-Kauthar", "Al-Kafirun", "An-Nasr",
+  "Al-Masad", "Al-Ikhlas", "Al-Falaq", "An-Nas",
+];
 const TOTAL_PAGES = 604;
 const STORAGE_KEY = "quran-journal-entries";
+const KHATAM_KEY = "quran-journal-khatams";
+const SETTINGS_KEY = "quran-journal-settings";
 
 function juzForPage(page) {
   let j = 1;
-  for (let i = 0; i < JUZ_START_PAGES.length; i++) {
-    if (page >= JUZ_START_PAGES[i]) j = i + 1;
-  }
+  for (let i = 0; i < JUZ_START_PAGES.length; i++) if (page >= JUZ_START_PAGES[i]) j = i + 1;
   return j;
 }
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+function surahForPage(page) {
+  let s = 0;
+  for (let i = 0; i < SURAH_START_PAGES.length; i++) if (page >= SURAH_START_PAGES[i]) s = i;
+  return SURAH_NAMES[s];
+}
+function juzRange(j) {
+  return [JUZ_START_PAGES[j - 1], j === 30 ? TOTAL_PAGES : JUZ_START_PAGES[j] - 1];
 }
 
-function fmtDate(iso) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+/* ---------- Dates (always the device's local calendar day) ---------- */
+function isoOf(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
+function todayStr() { return isoOf(new Date()); }
+function parseIso(iso) { return new Date(iso + "T00:00:00"); }
+function addDays(iso, n) { const d = parseIso(iso); d.setDate(d.getDate() + n); return isoOf(d); }
+function daysBetween(a, b) { return Math.round((parseIso(b) - parseIso(a)) / 86400000); }
 
+/* ---------- Text ---------- */
+const TEXT = {
+  ms: {
+    locale: "ms-MY",
+    subtitle: "Tandakan muka surat, kekalkan rentak.",
+    lastRead: "Bacaan terakhir", noEntries: "Belum ada catatan", startHint: "Catat muka surat hari ini di bawah untuk mula",
+    streak: (n) => "hari streak", pages: "muka surat", khatamChip: "× khatam",
+    through: (p) => `${p}% daripada Mushaf`, round: (n) => `pusingan ${n}`,
+    estTitle: "Jangkaan khatam", estNone: "Catat bacaan beberapa hari untuk dapat anggaran.",
+    estPace: (n) => `Purata ${n} muka surat sehari (30 hari lepas)`,
+    estLeft: (n) => `${n} muka surat lagi`,
+    target: "Sasaran", targetSet: "Tetapkan sasaran", targetNone: "Tiada sasaran",
+    targetNeed: (n) => `Perlu ~${n} muka surat sehari`, targetPast: "Tarikh sasaran sudah lepas",
+    targetDays: (n) => `${n} hari lagi`, clear: "Buang", save: "Simpan", cancel: "Batal",
+    logTitle: "Catat bacaan", from: "Dari", to: "Hingga", date: "Tarikh", note: "Nota", optional: "(pilihan)",
+    fromHint: "Kosongkan 'Dari' untuk sambung dari muka surat terakhir.",
+    notePh: "Refleksi, ayat yang menyentuh hati, perasaan…", saveEntry: "Simpan catatan",
+    saveErr: "Tak dapat simpan — storan pelayar mungkin penuh atau dimatikan.",
+    khatam: "Khatam", times: (n) => "kali",
+    khatamEmpty: (n) => `Belum ada khatam. Catat muka surat ${n} untuk rekod automatik, atau tambah khatam lama di bawah.`,
+    khatamN: (n) => `Khatam #${n}`, removeKhatamQ: "Buang khatam ini?", yesRemove: "Ya, buang",
+    dateDone: "Tarikh khatam", khatamNotePh: "cth. Ramadan 1447", saveKhatam: "Simpan khatam",
+    addKhatam: "+ Rekod khatam", flash: (n, d) => `Alhamdulillah — khatam #${n} direkodkan pada ${d}.`,
+    tabHistory: "Sejarah", tabReflect: "Refleksi", tabCal: "Kalendar",
+    emptyHistory: "Belum ada catatan. Catatan pertama akan muncul di sini.",
+    emptyReflect: "Belum ada nota. Tulis nota semasa mencatat bacaan untuk mengumpulnya di sini.",
+    removeEntryQ: "Buang catatan ini?", edit: "Edit", del: "Padam",
+    calLegend: "Kurang", calMore: "Lebih", calTap: "Ketik petak untuk lihat butiran.",
+    calDay: (d, n) => n ? `${d}: ${n} muka surat` : `${d}: tiada bacaan`,
+    settings: "Tetapan & backup", language: "Bahasa",
+    backup: "Backup data", backupHint: "Data disimpan dalam pelayar ini sahaja. Muat turun backup supaya tak hilang bila tukar telefon atau padam data pelayar.",
+    exportBtn: "Muat turun backup", copyBtn: "Salin data", copied: "Data disalin ✓", copyFail: "Tak dapat salin",
+    importBtn: "Pulihkan dari backup", importQ: (e, k) => `Gantikan semua data dengan backup ini? (${e} catatan, ${k} khatam)`,
+    importOk: "Backup dipulihkan ✓", importBad: "Fail ini bukan backup jurnal yang sah.",
+    install: "Pasang di skrin utama", installBtn: "Pasang app",
+    installIOS: "iPhone: buka dalam Safari → butang Kongsi → Add to Home Screen.",
+    installAndroid: "Android: menu ⋮ pelayar → Install app / Add to Home screen.",
+    installed: "App sudah dipasang ✓",
+    footer: (n) => `Disimpan secara peribadi dalam pelayar ini · Rujukan Mushaf ${n} muka surat`,
+    invalidPage: "Muka surat mesti antara 1 dan 604.",
+  },
+  en: {
+    locale: "en-GB",
+    subtitle: "Mark your page, keep your rhythm.",
+    lastRead: "Last read", noEntries: "No entries yet", startHint: "Log today's page below to begin",
+    streak: (n) => (n === 1 ? "day streak" : "days streak"), pages: "pages", khatamChip: "× khatam",
+    through: (p) => `${p}% through the Mushaf`, round: (n) => `round ${n}`,
+    estTitle: "Projected khatam", estNone: "Log a few days of reading to get an estimate.",
+    estPace: (n) => `Averaging ${n} pages a day (last 30 days)`,
+    estLeft: (n) => `${n} pages to go`,
+    target: "Target", targetSet: "Set a target", targetNone: "No target",
+    targetNeed: (n) => `Need ~${n} pages a day`, targetPast: "Target date has passed",
+    targetDays: (n) => `${n} days left`, clear: "Clear", save: "Save", cancel: "Cancel",
+    logTitle: "Log reading", from: "From", to: "To", date: "Date", note: "Note", optional: "(optional)",
+    fromHint: "Leave 'From' empty to continue from your last page.",
+    notePh: "A reflection, a verse that struck you, how it felt…", saveEntry: "Save entry",
+    saveErr: "Couldn't save — your browser storage may be full or disabled.",
+    khatam: "Khatam", times: (n) => (n === 1 ? "time" : "times"),
+    khatamEmpty: (n) => `No khatam yet. Logging page ${n} records one automatically, or add a past khatam below.`,
+    khatamN: (n) => `Khatam #${n}`, removeKhatamQ: "Remove this khatam?", yesRemove: "Yes, remove",
+    dateDone: "Date completed", khatamNotePh: "e.g. Ramadan 1447", saveKhatam: "Save khatam",
+    addKhatam: "+ Record a khatam", flash: (n, d) => `Alhamdulillah — khatam #${n} recorded for ${d}.`,
+    tabHistory: "History", tabReflect: "Reflections", tabCal: "Calendar",
+    emptyHistory: "Nothing logged yet. Your first entry will appear here.",
+    emptyReflect: "No notes yet. Add a note when you log a reading to collect it here.",
+    removeEntryQ: "Remove this entry?", edit: "Edit", del: "Delete",
+    calLegend: "Less", calMore: "More", calTap: "Tap a square to see details.",
+    calDay: (d, n) => n ? `${d}: ${n} page${n === 1 ? "" : "s"}` : `${d}: no reading`,
+    settings: "Settings & backup", language: "Language",
+    backup: "Back up data", backupHint: "Your data lives only in this browser. Download a backup so it isn't lost when you change phones or clear browser data.",
+    exportBtn: "Download backup", copyBtn: "Copy data", copied: "Data copied ✓", copyFail: "Couldn't copy",
+    importBtn: "Restore from backup", importQ: (e, k) => `Replace all data with this backup? (${e} entries, ${k} khatams)`,
+    importOk: "Backup restored ✓", importBad: "This file isn't a valid journal backup.",
+    install: "Add to home screen", installBtn: "Install app",
+    installIOS: "iPhone: open in Safari → Share button → Add to Home Screen.",
+    installAndroid: "Android: browser menu ⋮ → Install app / Add to Home screen.",
+    installed: "App installed ✓",
+    footer: (n) => `Saved privately in this browser · ${n}-page Mushaf reference`,
+    invalidPage: "Page must be between 1 and 604.",
+  },
+};
+
+/* ---------- Storage ---------- */
 const SEED_ENTRIES = [
   {"id": "seed-001", "page": 1, "note": "", "date": "2026-06-13", "ts": 1781355600000},
   {"id": "seed-002", "page": 30, "note": "", "date": "2026-07-19", "ts": 1784466001000},
@@ -156,141 +283,141 @@ const SEED_ENTRIES = [
   {"id": "seed-095", "page": 220, "note": "", "date": "2026-11-14", "ts": 1794661234000}
 ];
 
-function loadEntries() {
+function readJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : SEED_ENTRIES;
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
   } catch (e) {
-    return SEED_ENTRIES;
+    return fallback;
   }
 }
-
-function saveEntries(entries) {
+function writeJson(key, value) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (e) {
     return false;
   }
 }
 
-const KHATAM_KEY = "quran-journal-khatams";
-
-function loadKhatams() {
-  try {
-    const raw = localStorage.getItem(KHATAM_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function saveKhatams(list) {
-  try {
-    localStorage.setItem(KHATAM_KEY, JSON.stringify(list));
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function fmtLongDate(iso) {
-  const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-}
-
-// Khatams in the order they happened (oldest first).
 function sortKhatams(list) {
   return [...list].sort((a, b) => (a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date)));
 }
-
-// An entry belongs to the current round if it was logged after the latest khatam.
 function isAfterKhatam(entry, k) {
   if (!k) return true;
   if (entry.date !== k.date) return entry.date > k.date;
   return entry.ts > k.ts;
 }
+function cmpEntryAsc(a, b) { return a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date); }
 
+// Works out which pages each entry covers. An entry with an explicit "from" covers from–to.
+// An entry without one continues from the previous entry's last page (bookmark style).
+// Each khatam starts a fresh round.
+function computeCoverage(entries, khatamsAsc) {
+  const asc = [...entries].sort(cmpEntryAsc);
+  const spans = {};
+  let kIdx = 0;
+  let prevEnd = 0;
+  for (const en of asc) {
+    while (kIdx < khatamsAsc.length && isAfterKhatam(en, khatamsAsc[kIdx])) { kIdx++; prevEnd = 0; }
+    let start, end = en.page;
+    if (en.from) start = en.from;
+    else if (prevEnd + 1 <= en.page) start = prevEnd + 1;
+    else start = en.page;
+    if (start > end) [start, end] = [end, start];
+    spans[en.id] = [start, end];
+    prevEnd = Math.max(start, end);
+  }
+  return spans;
+}
+
+function makeId(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+
+function validEntry(e) {
+  return e && typeof e.id === "string" && Number.isInteger(e.page) && e.page >= 1 && e.page <= TOTAL_PAGES &&
+    typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && typeof e.ts === "number" &&
+    (e.from == null || (Number.isInteger(e.from) && e.from >= 1 && e.from <= TOTAL_PAGES));
+}
+function validKhatam(k) {
+  return k && typeof k.id === "string" && typeof k.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(k.date) && typeof k.ts === "number";
+}
+
+/* ---------- App ---------- */
 function QuranTracker() {
-  const [entries, setEntries] = useState(() => loadEntries());
+  const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, SEED_ENTRIES));
+  const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
+  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", ...readJson(SETTINGS_KEY, {}) }));
   const [saveError, setSaveError] = useState("");
+  const T = TEXT[settings.lang] || TEXT.ms;
+
+  // log form
+  const [fromPage, setFromPage] = useState("");
   const [page, setPage] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(todayStr());
+  const [formError, setFormError] = useState("");
+
+  // list state
+  const [tab, setTab] = useState("history");
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  const [khatams, setKhatams] = useState(() => loadKhatams());
+  const [editId, setEditId] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+
+  // khatam state
   const [showKhatamForm, setShowKhatamForm] = useState(false);
   const [khatamDate, setKhatamDate] = useState(todayStr());
   const [khatamNote, setKhatamNote] = useState("");
   const [confirmKhatamId, setConfirmKhatamId] = useState(null);
+  const [editKhatamId, setEditKhatamId] = useState(null);
+  const [khatamDraft, setKhatamDraft] = useState(null);
   const [khatamFlash, setKhatamFlash] = useState("");
 
-  function persist(next) {
-    setEntries(next);
-    const ok = saveEntries(next);
-    setSaveError(ok ? "" : "Couldn't save — your browser storage may be full or disabled.");
+  // target / settings / backup
+  const [editingTarget, setEditingTarget] = useState(false);
+  const [targetDraft, setTargetDraft] = useState("");
+  const [backupMsg, setBackupMsg] = useState("");
+  const [pendingImport, setPendingImport] = useState(null);
+  const [installEvt, setInstallEvt] = useState(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const fileRef = useRef(null);
+
+  // Keep "today" right if the page stays open past midnight.
+  const [today, setToday] = useState(todayStr());
+  useEffect(() => {
+    const id = setInterval(() => setToday(todayStr()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => { document.documentElement.lang = settings.lang; }, [settings.lang]);
+
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setInstallEvt(e); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    try {
+      setIsStandalone(window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true);
+    } catch (e) {}
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
+
+  function flagSave(ok) { setSaveError(ok ? "" : T.saveErr); }
+  function persist(next) { setEntries(next); flagSave(writeJson(STORAGE_KEY, next)); }
+  function persistKhatams(next) { setKhatams(next); flagSave(writeJson(KHATAM_KEY, next)); }
+  function persistSettings(patch) {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    flagSave(writeJson(SETTINGS_KEY, next));
   }
 
-  function persistKhatams(next) {
-    setKhatams(next);
-    const ok = saveKhatams(next);
-    setSaveError(ok ? "" : "Couldn't save — your browser storage may be full or disabled.");
-  }
+  const fmtDate = (iso) => parseIso(iso).toLocaleDateString(T.locale, { weekday: "short", day: "numeric", month: "short" });
+  const fmtLong = (iso) => parseIso(iso).toLocaleDateString(T.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
-  function addKhatam(kDate, kNote, ts) {
-    const k = {
-      id: `k-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      date: kDate,
-      note: (kNote || "").trim(),
-      ts,
-    };
-    const next = [...khatams, k];
-    persistKhatams(next);
-    const n = sortKhatams(next).findIndex((x) => x.id === k.id) + 1;
-    setKhatamFlash(`Alhamdulillah — khatam #${n} recorded for ${fmtLongDate(kDate)}.`);
-  }
+  /* ----- derived ----- */
+  const khatamsAsc = useMemo(() => sortKhatams(khatams), [khatams]);
+  const khatamCount = khatamsAsc.length;
+  const lastKhatam = khatamsAsc[khatamCount - 1] || null;
+  const spans = useMemo(() => computeCoverage(entries, khatamsAsc), [entries, khatamsAsc]);
 
-  function submitKhatam(e) {
-    e.preventDefault();
-    if (!khatamDate) return;
-    addKhatam(khatamDate, khatamNote, Date.now());
-    setKhatamNote("");
-    setShowKhatamForm(false);
-  }
-
-  function deleteKhatam(id) {
-    persistKhatams(khatams.filter((k) => k.id !== id));
-    setConfirmKhatamId(null);
-    setKhatamFlash("");
-  }
-
-  function addEntry(e) {
-    e.preventDefault();
-    const p = parseInt(page, 10);
-    if (!p || p < 1 || p > TOTAL_PAGES) return;
-    const entry = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      page: p,
-      note: note.trim(),
-      date,
-      ts: Date.now(),
-    };
-    persist([entry, ...entries]);
-    if (p === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
-    setPage("");
-    setNote("");
-  }
-
-  function deleteEntry(id) {
-    persist(entries.filter((en) => en.id !== id));
-    setConfirmDeleteId(null);
-  }
-
-  const sorted = useMemo(
-    () => [...entries].sort((a, b) => (a.date === b.date ? b.ts - a.ts : b.date.localeCompare(a.date))),
-    [entries]
-  );
-
+  const sorted = useMemo(() => [...entries].sort((a, b) => -cmpEntryAsc(a, b)), [entries]);
   const grouped = useMemo(() => {
     const map = new Map();
     for (const en of sorted) {
@@ -300,47 +427,272 @@ function QuranTracker() {
     return [...map.entries()];
   }, [sorted]);
 
-  const khatamsAsc = useMemo(() => sortKhatams(khatams), [khatams]);
-  const khatamCount = khatamsAsc.length;
-  const lastKhatam = khatamsAsc[khatamCount - 1] || null;
-  const roundEntries = useMemo(
-    () => entries.filter((en) => isAfterKhatam(en, lastKhatam)),
-    [entries, lastKhatam]
-  );
-
-  const uniquePages = useMemo(() => new Set(roundEntries.map((e) => e.page)).size, [roundEntries]);
-  const progressPct = Math.min(100, Math.round((uniquePages / TOTAL_PAGES) * 100));
-  const lastEntry = sorted[0] || null;
-  const currentJuz = lastEntry ? juzForPage(lastEntry.page) : 0;
-  const reachedJuz = useMemo(() => {
+  const coveredPages = useMemo(() => {
     const s = new Set();
-    for (const en of roundEntries) s.add(juzForPage(en.page));
+    for (const en of entries) {
+      if (!isAfterKhatam(en, lastKhatam)) continue;
+      const [a, b] = spans[en.id] || [en.page, en.page];
+      for (let p = a; p <= b; p++) s.add(p);
+    }
     return s;
-  }, [roundEntries]);
+  }, [entries, spans, lastKhatam]);
+  const coveredCount = coveredPages.size;
+  const progressPct = Math.min(100, Math.round((coveredCount / TOTAL_PAGES) * 100));
+  const remaining = TOTAL_PAGES - coveredCount;
+
+  const juzFill = useMemo(() => JUZ_START_PAGES.map((_, i) => {
+    const [a, b] = juzRange(i + 1);
+    let c = 0;
+    for (let p = a; p <= b; p++) if (coveredPages.has(p)) c++;
+    return c / (b - a + 1);
+  }), [coveredPages]);
+
+  const lastEntry = sorted[0] || null;
+
+  const pagesByDate = useMemo(() => {
+    const m = {};
+    for (const en of entries) {
+      const [a, b] = spans[en.id] || [en.page, en.page];
+      m[en.date] = (m[en.date] || 0) + (b - a + 1);
+    }
+    return m;
+  }, [entries, spans]);
 
   const streak = useMemo(() => {
     const days = new Set(entries.map((e) => e.date));
     let count = 0;
-    let cursor = new Date();
-    if (!days.has(todayStr())) cursor.setDate(cursor.getDate() - 1);
-    while (true) {
-      const iso = cursor.toISOString().slice(0, 10);
-      if (days.has(iso)) {
-        count++;
-        cursor.setDate(cursor.getDate() - 1);
-      } else break;
-    }
+    let cursor = days.has(today) ? today : addDays(today, -1);
+    while (days.has(cursor)) { count++; cursor = addDays(cursor, -1); }
     return count;
-  }, [entries]);
+  }, [entries, today]);
+
+  const pace = useMemo(() => {
+    const start = addDays(today, -29);
+    let sum = 0;
+    for (const [d, n] of Object.entries(pagesByDate)) if (d >= start && d <= today) sum += n;
+    return sum / 30;
+  }, [pagesByDate, today]);
+  const etaIso = pace > 0 && remaining > 0 ? addDays(today, Math.ceil(remaining / pace)) : null;
+
+  const target = settings.targetDate;
+  const targetDaysLeft = target ? daysBetween(today, target) + 1 : null;
+  const targetNeed = target && targetDaysLeft > 0 ? Math.ceil(remaining / targetDaysLeft) : null;
+
+  const notesList = useMemo(() => sorted.filter((e) => e.note), [sorted]);
+
+  /* ----- actions ----- */
+  function addKhatam(kDate, kNote, ts) {
+    const k = { id: makeId("k"), date: kDate, note: (kNote || "").trim(), ts };
+    const next = [...khatams, k];
+    persistKhatams(next);
+    const n = sortKhatams(next).findIndex((x) => x.id === k.id) + 1;
+    setKhatamFlash(T.flash(n, fmtLong(kDate)));
+  }
+
+  function parsePageInput(v) {
+    if (v === "" || v == null) return null;
+    const n = parseInt(v, 10);
+    return Number.isInteger(n) && n >= 1 && n <= TOTAL_PAGES ? n : NaN;
+  }
+
+  function addEntry(e) {
+    e.preventDefault();
+    const to = parsePageInput(page);
+    const from = parsePageInput(fromPage);
+    if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setFormError(T.invalidPage); return; }
+    setFormError("");
+    const entry = { id: makeId("e"), page: to, from: from && from !== to ? from : null, note: note.trim(), date, ts: Date.now() };
+    persist([entry, ...entries]);
+    if (to === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
+    setPage(""); setFromPage(""); setNote("");
+  }
+
+  function deleteEntry(id) {
+    persist(entries.filter((en) => en.id !== id));
+    setConfirmDeleteId(null);
+  }
+
+  function startEdit(en) {
+    setConfirmDeleteId(null);
+    setEditId(en.id);
+    setEditDraft({ from: en.from ? String(en.from) : "", page: String(en.page), date: en.date, note: en.note || "", err: "" });
+  }
+  function saveEdit(e) {
+    e.preventDefault();
+    const to = parsePageInput(editDraft.page);
+    const from = parsePageInput(editDraft.from);
+    if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setEditDraft({ ...editDraft, err: T.invalidPage }); return; }
+    persist(entries.map((en) => en.id === editId
+      ? { ...en, page: to, from: from && from !== to ? from : null, date: editDraft.date, note: editDraft.note.trim() }
+      : en));
+    setEditId(null); setEditDraft(null);
+  }
+
+  function submitKhatam(e) {
+    e.preventDefault();
+    if (!khatamDate) return;
+    addKhatam(khatamDate, khatamNote, Date.now());
+    setKhatamNote("");
+    setShowKhatamForm(false);
+  }
+  function deleteKhatam(id) {
+    persistKhatams(khatams.filter((k) => k.id !== id));
+    setConfirmKhatamId(null);
+    setKhatamFlash("");
+  }
+  function startEditKhatam(k) {
+    setConfirmKhatamId(null);
+    setEditKhatamId(k.id);
+    setKhatamDraft({ date: k.date, note: k.note || "" });
+  }
+  function saveEditKhatam(e) {
+    e.preventDefault();
+    if (!khatamDraft.date) return;
+    persistKhatams(khatams.map((k) => k.id === editKhatamId ? { ...k, date: khatamDraft.date, note: khatamDraft.note.trim() } : k));
+    setEditKhatamId(null); setKhatamDraft(null); setKhatamFlash("");
+  }
+
+  function backupPayload() {
+    return { app: "quran-journal", version: 2, exportedAt: new Date().toISOString(), entries, khatams, settings };
+  }
+  function exportBackup() {
+    try {
+      const blob = new Blob([JSON.stringify(backupPayload(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `quran-journal-backup-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) {
+      setBackupMsg(T.copyFail);
+    }
+  }
+  async function copyBackup() {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(backupPayload()));
+      setBackupMsg(T.copied);
+    } catch (e) {
+      setBackupMsg(T.copyFail);
+    }
+  }
+  function onImportFile(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        const list = Array.isArray(data) ? data : data.entries;
+        const ks = Array.isArray(data) ? [] : (data.khatams || []);
+        if (!Array.isArray(list) || !list.every(validEntry) || !Array.isArray(ks) || !ks.every(validKhatam)) throw new Error("bad");
+        setPendingImport({ entries: list, khatams: ks, settings: data.settings || null });
+        setBackupMsg("");
+      } catch (e) {
+        setPendingImport(null);
+        setBackupMsg(T.importBad);
+      }
+    };
+    reader.readAsText(file);
+  }
+  function confirmImport() {
+    persist(pendingImport.entries);
+    persistKhatams(pendingImport.khatams);
+    if (pendingImport.settings) persistSettings({ targetDate: pendingImport.settings.targetDate || "" });
+    setPendingImport(null);
+    setBackupMsg(T.importOk);
+  }
+  async function doInstall() {
+    if (!installEvt) return;
+    try {
+      installEvt.prompt();
+      const res = await installEvt.userChoice;
+      if (res && res.outcome === "accepted") setIsStandalone(true);
+    } catch (e) {}
+    setInstallEvt(null);
+  }
+
+  /* ----- pieces ----- */
+  const rangeLabel = (en) => {
+    const [a, b] = en.from ? [Math.min(en.from, en.page), Math.max(en.from, en.page)] : [en.page, en.page];
+    return a === b ? `p.${b}` : `p.${a}–${b}`;
+  };
+
+  function EntryEditor() {
+    return (
+      <form onSubmit={saveEdit} style={{ marginTop: 2 }}>
+        <div style={styles.formRow3}>
+          <label style={styles.label}>{T.from}
+            <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={editDraft.from} placeholder="—"
+              onChange={(e) => setEditDraft({ ...editDraft, from: e.target.value })} style={styles.input} />
+          </label>
+          <label style={styles.label}>{T.to}
+            <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={editDraft.page} required
+              onChange={(e) => setEditDraft({ ...editDraft, page: e.target.value })} style={styles.input} />
+          </label>
+          <label style={{ ...styles.label, flex: 1.6 }}>{T.date}
+            <input className="qt-input" type="date" value={editDraft.date} max={today} required
+              onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} style={styles.input} />
+          </label>
+        </div>
+        <label style={styles.label}>{T.note}
+          <textarea className="qt-textarea" rows={2} value={editDraft.note}
+            onChange={(e) => setEditDraft({ ...editDraft, note: e.target.value })} style={styles.textarea} />
+        </label>
+        {editDraft.err && <div style={{ ...styles.errorText, marginTop: -6, marginBottom: 8 }}>{editDraft.err}</div>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
+          <button className="qt-btn" type="button" onClick={() => { setEditId(null); setEditDraft(null); }} style={styles.cancelBtn}>{T.cancel}</button>
+        </div>
+      </form>
+    );
+  }
+
+  function EntryCard({ en, showDate }) {
+    if (editId === en.id) return <div style={styles.entryRow}>{EntryEditor()}</div>;
+    return (
+      <div style={styles.entryRow}>
+        <div style={styles.entryPage}>
+          <span style={styles.mono}>{rangeLabel(en)}</span>
+          <span style={styles.entryJuz}>{surahForPage(en.page)} · Juz' {juzForPage(en.page)}</span>
+        </div>
+        {showDate && <div style={styles.entryDate}>{fmtLong(en.date)}</div>}
+        {en.note && <div style={styles.entryNote}>{en.note}</div>}
+        {confirmDeleteId === en.id ? (
+          <div style={styles.confirmRow}>
+            <span style={{ fontSize: 12, opacity: 0.75 }}>{T.removeEntryQ}</span>
+            <button className="qt-btn" onClick={() => deleteEntry(en.id)} style={styles.confirmBtn}>{T.yesRemove}</button>
+            <button className="qt-btn" onClick={() => setConfirmDeleteId(null)} style={styles.cancelBtn}>{T.cancel}</button>
+          </div>
+        ) : (
+          <div style={styles.rowActions}>
+            <button className="qt-btn" onClick={() => startEdit(en)} style={styles.iconBtn} aria-label={`${T.edit} ${rangeLabel(en)}`} title={T.edit}>✎</button>
+            <button className="qt-btn" onClick={() => setConfirmDeleteId(en.id)} style={{ ...styles.iconBtn, color: "#8C3B2E" }}
+              aria-label={`${T.del} ${rangeLabel(en)}`} title={T.del}>×</button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div style={styles.page}>
       <div style={styles.bgPattern} />
       <div style={styles.container}>
+        <div style={styles.langBar}>
+          {["ms", "en"].map((l) => (
+            <button key={l} className="qt-btn" onClick={() => persistSettings({ lang: l })}
+              style={{ ...styles.langBtn, ...(settings.lang === l ? styles.langBtnOn : {}) }}>{l === "ms" ? "BM" : "EN"}</button>
+          ))}
+        </div>
+
         <header style={styles.header}>
           <div style={styles.eyebrow}>وِرْد القُرْآن</div>
           <h1 style={styles.title}>Qur'an Reading Journal</h1>
-          <p style={styles.subtitle}>Mark your page, keep your rhythm.</p>
+          <p style={styles.subtitle}>{T.subtitle}</p>
         </header>
 
         <div style={styles.mihrabWrap}>
@@ -348,20 +700,21 @@ function QuranTracker() {
             <div style={styles.mihrabInner}>
               {lastEntry ? (
                 <>
-                  <div style={styles.mihrabLabel}>Last read</div>
+                  <div style={styles.mihrabLabel}>{T.lastRead}</div>
                   <div style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></div>
-                  <div style={styles.mihrabMeta}>Juz' {currentJuz} · {fmtDate(lastEntry.date)}</div>
+                  <div style={styles.mihrabSurah}>{surahForPage(lastEntry.page)}</div>
+                  <div style={styles.mihrabMeta}>Juz' {juzForPage(lastEntry.page)} · {fmtDate(lastEntry.date)}</div>
                 </>
               ) : (
                 <>
-                  <div style={styles.mihrabLabel}>No entries yet</div>
-                  <div style={styles.mihrabMeta}>Log today's page below to begin</div>
+                  <div style={styles.mihrabLabel}>{T.noEntries}</div>
+                  <div style={styles.mihrabMeta}>{T.startHint}</div>
                 </>
               )}
               <div style={styles.streakRow}>
-                <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> day{streak === 1 ? "" : "s"} streak</div>
-                <div style={styles.streakChip}><span style={styles.mono}>{uniquePages}</span>/{TOTAL_PAGES} pages</div>
-                <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>× khatam</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> {T.streak(streak)}</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{coveredCount}</span>/{TOTAL_PAGES} {T.pages}</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>{T.khatamChip}</div>
               </div>
             </div>
           </div>
@@ -372,81 +725,161 @@ function QuranTracker() {
             <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
           </div>
           <div style={styles.progressLabel}>
-            {progressPct}% through the Mushaf{khatamCount > 0 ? ` · round ${khatamCount + 1}` : ""}
+            {T.through(progressPct)}{khatamCount > 0 ? ` · ${T.round(khatamCount + 1)}` : ""}
           </div>
         </div>
 
         <div style={styles.juzGrid}>
-          {JUZ_START_PAGES.map((_, i) => {
+          {juzFill.map((f, i) => {
             const num = i + 1;
-            const reached = reachedJuz.has(num);
+            const pct = Math.round(f * 100);
+            const fillStyle = f >= 1 ? styles.juzMarkFilled
+              : f > 0 ? { background: `linear-gradient(0deg, #C9A94F ${pct}%, #E4D9B8 ${pct}%)`, color: "#16342B" } : {};
             return (
-              <div key={num} title={`Juz' ${num}`} style={{ ...styles.juzMark, ...(reached ? styles.juzMarkFilled : {}) }}>
+              <div key={num} title={`Juz' ${num} · ${pct}%`} style={{ ...styles.juzMark, ...fillStyle }}>
                 <span style={{ ...styles.mono, fontSize: 10 }}>{num}</span>
               </div>
             );
           })}
         </div>
 
+        <section style={styles.estCard}>
+          <div style={styles.estRow}>
+            <div style={{ flex: 1 }}>
+              <div style={styles.estLabel}>{T.estTitle}</div>
+              {etaIso ? (
+                <>
+                  <div style={styles.estValue}>{fmtLong(etaIso)}</div>
+                  <div style={styles.estSub}>{T.estPace(pace.toFixed(1))} · {T.estLeft(remaining)}</div>
+                </>
+              ) : (
+                <div style={styles.estSub}>{T.estNone}</div>
+              )}
+            </div>
+          </div>
+          <div style={styles.estDivider} />
+          {editingTarget ? (
+            <form onSubmit={(e) => { e.preventDefault(); persistSettings({ targetDate: targetDraft }); setEditingTarget(false); }}
+              style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+              <label style={{ ...styles.label, marginBottom: 0, minWidth: 150 }}>{T.target}
+                <input className="qt-input" type="date" value={targetDraft} min={today} required
+                  onChange={(e) => setTargetDraft(e.target.value)} style={styles.input} />
+              </label>
+              <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
+              <button className="qt-btn" type="button" onClick={() => setEditingTarget(false)} style={styles.cancelBtn}>{T.cancel}</button>
+            </form>
+          ) : (
+            <div style={styles.estRow}>
+              <div style={{ flex: 1 }}>
+                <div style={styles.estLabel}>{T.target}</div>
+                {target ? (
+                  <>
+                    <div style={styles.estValueSm}>{fmtLong(target)}</div>
+                    <div style={styles.estSub}>
+                      {targetDaysLeft > 0 ? `${T.targetNeed(targetNeed)} · ${T.targetDays(targetDaysLeft)}` : T.targetPast}
+                    </div>
+                  </>
+                ) : (
+                  <div style={styles.estSub}>{T.targetNone}</div>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <button className="qt-btn" type="button" onClick={() => { setTargetDraft(target || addDays(today, 90)); setEditingTarget(true); }}
+                  style={styles.cancelBtn}>{target ? T.edit : T.targetSet}</button>
+                {target && <button className="qt-btn" type="button" onClick={() => persistSettings({ targetDate: "" })} style={styles.cancelBtn}>{T.clear}</button>}
+              </div>
+            </div>
+          )}
+        </section>
+
         <form onSubmit={addEntry} style={styles.form}>
-          <h2 style={styles.formTitle}>Log today's reading</h2>
-          <div style={styles.formRow}>
+          <h2 style={styles.formTitle}>{T.logTitle}</h2>
+          <div style={styles.formRow3}>
             <label style={styles.label}>
-              Page
+              {T.from}
+              <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={fromPage}
+                onChange={(e) => setFromPage(e.target.value)} placeholder={lastEntry ? String(Math.min(lastEntry.page + 1, TOTAL_PAGES)) : "1"} style={styles.input} />
+            </label>
+            <label style={styles.label}>
+              {T.to}
               <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
                 onChange={(e) => setPage(e.target.value)} placeholder="1–604" style={styles.input} required />
             </label>
-            <label style={styles.label}>
-              Date
+            <label style={{ ...styles.label, flex: 1.6 }}>
+              {T.date}
               <input className="qt-input" type="date" value={date}
-                onChange={(e) => setDate(e.target.value)} style={styles.input} max={todayStr()} required />
+                onChange={(e) => setDate(e.target.value)} style={styles.input} max={today} required />
             </label>
           </div>
+          <div style={styles.hint}>{T.fromHint}</div>
           <label style={styles.label}>
-            Note <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span>
+            <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
             <textarea className="qt-textarea" value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder="A reflection, a verse that struck you, how it felt…" style={styles.textarea} rows={2} />
+              placeholder={T.notePh} style={styles.textarea} rows={2} />
           </label>
-          <button className="qt-btn" type="submit" style={styles.submitBtn}>Save entry</button>
-          {saveError && <div style={styles.errorText}>{saveError}</div>}
+          <button className="qt-btn" type="submit" style={styles.submitBtn}>{T.saveEntry}</button>
+          {(formError || saveError) && <div style={styles.errorText}>{formError || saveError}</div>}
         </form>
 
         <section style={styles.form}>
           <div style={styles.khatamHead}>
-            <h2 style={{ ...styles.formTitle, marginBottom: 0 }}>Khatam</h2>
+            <h2 style={{ ...styles.formTitle, marginBottom: 0 }}>{T.khatam}</h2>
             <div style={styles.khatamCount}>
               <span style={styles.khatamNum}>{khatamCount}</span>
-              <span style={styles.khatamCountLabel}>{khatamCount === 1 ? "time" : "times"}</span>
+              <span style={styles.khatamCountLabel}>{T.times(khatamCount)}</span>
             </div>
           </div>
 
           {khatamFlash && <div className="qt-fade" style={styles.khatamFlash}>{khatamFlash}</div>}
 
           {khatamCount === 0 ? (
-            <div style={{ ...styles.emptyState, padding: "12px 4px" }}>
-              No khatam yet. Logging page {TOTAL_PAGES} records one automatically, or add a past khatam below.
-            </div>
+            <div style={{ ...styles.emptyState, padding: "12px 4px" }}>{T.khatamEmpty(TOTAL_PAGES)}</div>
           ) : (
             <div style={{ marginTop: 12 }}>
               {[...khatamsAsc].reverse().map((k) => {
                 const n = khatamsAsc.indexOf(k) + 1;
+                if (editKhatamId === k.id) {
+                  return (
+                    <form key={k.id} onSubmit={saveEditKhatam} style={{ ...styles.khatamRow, display: "block" }}>
+                      <div style={styles.formRow}>
+                        <label style={styles.label}>{T.dateDone}
+                          <input className="qt-input" type="date" value={khatamDraft.date} max={today} required
+                            onChange={(e) => setKhatamDraft({ ...khatamDraft, date: e.target.value })} style={styles.input} />
+                        </label>
+                      </div>
+                      <label style={styles.label}>{T.note}
+                        <input className="qt-input" type="text" value={khatamDraft.note} placeholder={T.khatamNotePh}
+                          onChange={(e) => setKhatamDraft({ ...khatamDraft, note: e.target.value })}
+                          style={{ ...styles.input, fontFamily: "'Lora', serif" }} />
+                      </label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
+                        <button className="qt-btn" type="button" onClick={() => { setEditKhatamId(null); setKhatamDraft(null); }} style={styles.cancelBtn}>{T.cancel}</button>
+                      </div>
+                    </form>
+                  );
+                }
                 return (
                   <div key={k.id} style={styles.khatamRow}>
                     <div style={styles.khatamBadge}><span style={styles.mono}>{n}</span></div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={styles.khatamDate}>Khatam #{n} · {fmtLongDate(k.date)}</div>
+                      <div style={styles.khatamDate}>{T.khatamN(n)} · {fmtLong(k.date)}</div>
                       {k.note && <div style={styles.entryNote}>{k.note}</div>}
                       {confirmKhatamId === k.id && (
                         <div style={styles.confirmRow}>
-                          <span style={{ fontSize: 12, opacity: 0.75 }}>Remove this khatam?</span>
-                          <button className="qt-btn" type="button" onClick={() => deleteKhatam(k.id)} style={styles.confirmBtn}>Yes, remove</button>
-                          <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(null)} style={styles.cancelBtn}>Cancel</button>
+                          <span style={{ fontSize: 12, opacity: 0.75 }}>{T.removeKhatamQ}</span>
+                          <button className="qt-btn" type="button" onClick={() => deleteKhatam(k.id)} style={styles.confirmBtn}>{T.yesRemove}</button>
+                          <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(null)} style={styles.cancelBtn}>{T.cancel}</button>
                         </div>
                       )}
                     </div>
                     {confirmKhatamId !== k.id && (
-                      <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(k.id)}
-                        style={{ ...styles.deleteBtn, position: "static" }} aria-label={`Delete khatam ${n}`}>×</button>
+                      <div style={{ display: "flex", gap: 2 }}>
+                        <button className="qt-btn" type="button" onClick={() => startEditKhatam(k)} style={styles.iconBtn}
+                          aria-label={`${T.edit} ${T.khatamN(n)}`} title={T.edit}>✎</button>
+                        <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(k.id)} style={{ ...styles.iconBtn, color: "#8C3B2E" }}
+                          aria-label={`${T.del} ${T.khatamN(n)}`} title={T.del}>×</button>
+                      </div>
                     )}
                   </div>
                 );
@@ -457,60 +890,156 @@ function QuranTracker() {
           {showKhatamForm ? (
             <form onSubmit={submitKhatam} style={{ marginTop: 14 }}>
               <label style={styles.label}>
-                Date completed
-                <input className="qt-input" type="date" value={khatamDate} max={todayStr()} required
+                {T.dateDone}
+                <input className="qt-input" type="date" value={khatamDate} max={today} required
                   onChange={(e) => setKhatamDate(e.target.value)} style={styles.input} />
               </label>
               <label style={styles.label}>
-                Note <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span>
+                <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
                 <input className="qt-input" type="text" value={khatamNote} onChange={(e) => setKhatamNote(e.target.value)}
-                  placeholder="e.g. Ramadan 1447" style={{ ...styles.input, fontFamily: "'Lora', serif" }} />
+                  placeholder={T.khatamNotePh} style={{ ...styles.input, fontFamily: "'Lora', serif" }} />
               </label>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="qt-btn" type="submit" style={{ ...styles.submitBtn, flex: 1 }}>Save khatam</button>
-                <button className="qt-btn" type="button" onClick={() => setShowKhatamForm(false)} style={{ ...styles.cancelBtn, padding: "0 14px", fontSize: 13.5 }}>Cancel</button>
+                <button className="qt-btn" type="submit" style={{ ...styles.submitBtn, flex: 1 }}>{T.saveKhatam}</button>
+                <button className="qt-btn" type="button" onClick={() => setShowKhatamForm(false)} style={{ ...styles.cancelBtn, padding: "0 14px", fontSize: 13.5 }}>{T.cancel}</button>
               </div>
             </form>
           ) : (
-            <button className="qt-btn" type="button" onClick={() => { setShowKhatamForm(true); setKhatamDate(todayStr()); }}
-              style={styles.khatamAddBtn}>+ Record a khatam</button>
+            <button className="qt-btn" type="button" onClick={() => { setShowKhatamForm(true); setKhatamDate(today); }}
+              style={styles.khatamAddBtn}>{T.addKhatam}</button>
           )}
         </section>
 
-        <div style={styles.historySection}>
-          <h2 style={styles.formTitle}>History</h2>
-          {grouped.length === 0 ? (
-            <div style={styles.emptyState}>Nothing logged yet. Your first entry will appear here.</div>
-          ) : (
-            grouped.map(([d, list]) => (
-              <div key={d} className="qt-fade" style={styles.dayGroup}>
-                <div style={styles.dayHeader}>{fmtDate(d)}</div>
-                {list.map((en) => (
-                  <div key={en.id} style={styles.entryRow}>
-                    <div style={styles.entryPage}>
-                      <span style={styles.mono}>p.{en.page}</span>
-                      <span style={styles.entryJuz}>Juz' {juzForPage(en.page)}</span>
-                    </div>
-                    {en.note && <div style={styles.entryNote}>{en.note}</div>}
-                    {confirmDeleteId === en.id ? (
-                      <div style={styles.confirmRow}>
-                        <span style={{ fontSize: 12, opacity: 0.75 }}>Remove this entry?</span>
-                        <button className="qt-btn" onClick={() => deleteEntry(en.id)} style={styles.confirmBtn}>Yes, remove</button>
-                        <button className="qt-btn" onClick={() => setConfirmDeleteId(null)} style={styles.cancelBtn}>Cancel</button>
-                      </div>
-                    ) : (
-                      <button className="qt-btn" onClick={() => setConfirmDeleteId(en.id)} style={styles.deleteBtn}
-                        aria-label={`Delete entry for page ${en.page}`}>×</button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))
-          )}
+        <div style={styles.tabs} role="tablist">
+          {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal]].map(([key, label]) => (
+            <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => setTab(key)}
+              style={{ ...styles.tab, ...(tab === key ? styles.tabOn : {}) }}>{label}</button>
+          ))}
         </div>
 
-        <footer style={styles.footer}>Saved privately in this browser · {TOTAL_PAGES}-page Mushaf reference</footer>
+        {tab === "history" && (
+          <div style={styles.historySection}>
+            {grouped.length === 0 ? (
+              <div style={styles.emptyState}>{T.emptyHistory}</div>
+            ) : (
+              grouped.map(([d, list]) => (
+                <div key={d} className="qt-fade" style={styles.dayGroup}>
+                  <div style={styles.dayHeader}>{fmtDate(d)}</div>
+                  {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {tab === "reflect" && (
+          <div style={styles.historySection}>
+            {notesList.length === 0 ? (
+              <div style={styles.emptyState}>{T.emptyReflect}</div>
+            ) : (
+              notesList.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: true })}</React.Fragment>)
+            )}
+          </div>
+        )}
+
+        {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
+
+        <section style={{ ...styles.form, marginTop: 8 }}>
+          <h2 style={styles.formTitle}>{T.settings}</h2>
+
+          <div style={styles.settingBlock}>
+            <div style={styles.settingTitle}>{T.backup}</div>
+            <div style={styles.hint}>{T.backupHint}</div>
+            <div style={styles.btnRow}>
+              <button className="qt-btn" type="button" onClick={exportBackup} style={styles.smallPrimary}>{T.exportBtn}</button>
+              <button className="qt-btn" type="button" onClick={copyBackup} style={styles.cancelBtn}>{T.copyBtn}</button>
+              <button className="qt-btn" type="button" onClick={() => fileRef.current && fileRef.current.click()} style={styles.cancelBtn}>{T.importBtn}</button>
+              <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
+            </div>
+            {pendingImport && (
+              <div style={{ ...styles.confirmRow, marginTop: 10 }}>
+                <span style={{ fontSize: 12.5 }}>{T.importQ(pendingImport.entries.length, pendingImport.khatams.length)}</span>
+                <button className="qt-btn" type="button" onClick={confirmImport} style={styles.confirmBtn}>{T.save}</button>
+                <button className="qt-btn" type="button" onClick={() => setPendingImport(null)} style={styles.cancelBtn}>{T.cancel}</button>
+              </div>
+            )}
+            {backupMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: backupMsg === T.importBad || backupMsg === T.copyFail ? "#8C3B2E" : "#0F4C3A" }}>{backupMsg}</div>}
+          </div>
+
+          <div style={{ ...styles.settingBlock, borderBottom: "none", paddingBottom: 0 }}>
+            <div style={styles.settingTitle}>{T.install}</div>
+            {isStandalone ? (
+              <div style={styles.hint}>{T.installed}</div>
+            ) : (
+              <>
+                {installEvt && <button className="qt-btn" type="button" onClick={doInstall} style={{ ...styles.smallPrimary, marginBottom: 8 }}>{T.installBtn}</button>}
+                <div style={styles.hint}>{T.installAndroid}</div>
+                <div style={styles.hint}>{T.installIOS}</div>
+              </>
+            )}
+          </div>
+        </section>
+
+        <footer style={styles.footer}>{T.footer(TOTAL_PAGES)}</footer>
       </div>
+    </div>
+  );
+}
+
+/* ---------- Calendar heatmap ---------- */
+function Heatmap({ pagesByDate, today, T, fmtLong }) {
+  const [sel, setSel] = useState(null);
+  const scrollRef = useRef(null);
+  const WEEKS = 26;
+  // Columns are weeks starting Monday; last column holds today.
+  const todayDow = (parseIso(today).getDay() + 6) % 7; // 0 = Monday
+  const start = addDays(today, -(todayDow + (WEEKS - 1) * 7));
+  const weeks = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const col = [];
+    for (let d = 0; d < 7; d++) col.push(addDays(start, w * 7 + d));
+    weeks.push(col);
+  }
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+  }, []);
+  const level = (n) => (!n ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : n <= 10 ? 3 : 4);
+  const colors = ["#E4D9B8", "#A9CBB7", "#6FA58A", "#2E7558", "#0F4C3A"];
+  const monthLabel = (iso) => parseIso(iso).toLocaleDateString(T.locale, { month: "short" });
+  const readDays = Object.keys(pagesByDate).filter((d) => d >= start && d <= today).length;
+
+  return (
+    <div style={styles.historySection}>
+      <div ref={scrollRef} className="qt-heat" style={styles.heatScroll}>
+        <div style={{ display: "flex", gap: 3 }}>
+          {weeks.map((col, wi) => {
+            const first = col[0];
+            const showMonth = wi === 0 || parseIso(first).getMonth() !== parseIso(weeks[wi - 1][0]).getMonth();
+            return (
+              <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <div style={styles.heatMonth}>{showMonth ? monthLabel(first) : ""}</div>
+                {col.map((d) => {
+                  const future = d > today;
+                  const n = pagesByDate[d] || 0;
+                  return (
+                    <button key={d} className="qt-btn" disabled={future} onClick={() => setSel(d)}
+                      aria-label={T.calDay(fmtLong(d), n)}
+                      style={{ ...styles.heatCell, background: future ? "transparent" : colors[level(n)],
+                        outline: sel === d ? "2px solid #A8823C" : "none", cursor: future ? "default" : "pointer" }} />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={styles.heatLegend}>
+        <span>{T.calLegend}</span>
+        {colors.map((c) => <span key={c} style={{ ...styles.heatCell, width: 11, height: 11, background: c, display: "inline-block" }} />)}
+        <span>{T.calMore}</span>
+        <span style={{ marginLeft: "auto" }}><span style={styles.mono}>{readDays}</span>/{WEEKS * 7 - (6 - todayDow)}</span>
+      </div>
+      <div style={styles.heatInfo}>{sel ? T.calDay(fmtLong(sel), pagesByDate[sel] || 0) : T.calTap}</div>
     </div>
   );
 }
@@ -518,46 +1047,66 @@ function QuranTracker() {
 const styles = {
   page: { minHeight: "100vh", background: "#F3ECD8", color: "#16342B", fontFamily: "'Lora', serif", position: "relative", overflow: "hidden" },
   bgPattern: { position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05, backgroundImage: "radial-gradient(circle at 20% 20%, #0F4C3A 0, transparent 45%), radial-gradient(circle at 80% 70%, #A8823C 0, transparent 45%)" },
-  container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "40px 20px 60px" },
+  container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "16px 20px 60px" },
+  langBar: { display: "flex", justifyContent: "flex-end", gap: 4, marginBottom: 12 },
+  langBtn: { background: "transparent", border: "1px solid #A8823C55", color: "#16342B", borderRadius: 999, padding: "3px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: "'IBM Plex Mono', monospace" },
+  langBtnOn: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
   header: { textAlign: "center", marginBottom: 28 },
   eyebrow: { fontFamily: "'Amiri', serif", fontSize: 22, color: "#A8823C", marginBottom: 6 },
   title: { fontFamily: "'Amiri', serif", fontSize: 30, fontWeight: 700, margin: 0, color: "#16342B", letterSpacing: 0.2 },
   subtitle: { fontSize: 14, opacity: 0.65, marginTop: 6 },
   mihrabWrap: { display: "flex", justifyContent: "center", marginBottom: 22 },
-  mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 28px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid #A8823C55" },
+  mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 22px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid #A8823C55" },
   mihrabInner: { textAlign: "center", color: "#F3ECD8" },
   mihrabLabel: { fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.75, marginBottom: 4 },
   mihrabPage: { fontSize: 34, fontWeight: 600, color: "#D9BC7A" },
+  mihrabSurah: { fontFamily: "'Amiri', serif", fontSize: 18, color: "#F3ECD8", marginTop: 2 },
   mihrabMeta: { fontSize: 13, opacity: 0.8, marginTop: 2 },
-  streakRow: { display: "flex", justifyContent: "center", gap: 10, marginTop: 16, flexWrap: "wrap" },
-  streakChip: { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 999, padding: "6px 12px", fontSize: 12.5 },
+  streakRow: { display: "flex", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" },
+  streakChip: { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 999, padding: "6px 11px", fontSize: 12.5 },
   progressSection: { marginBottom: 18 },
   progressTrack: { height: 8, borderRadius: 999, background: "#E4D9B8", overflow: "hidden", border: "1px solid #A8823C33" },
   progressFill: { height: "100%", background: "linear-gradient(90deg, #A8823C, #C9A94F)", borderRadius: 999, transition: "width 0.4s ease" },
   progressLabel: { fontSize: 12.5, opacity: 0.65, marginTop: 6, textAlign: "center" },
-  juzGrid: { display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 6, marginBottom: 28 },
+  juzGrid: { display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 6, marginBottom: 22 },
   juzMark: { aspectRatio: "1", borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "#E4D9B8", border: "1px solid #A8823C44", display: "flex", alignItems: "center", justifyContent: "center", color: "#8A7B57" },
   juzMarkFilled: { background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", border: "1px solid #8A6A2E" },
+  estCard: { background: "#FBF7EA", border: "1px solid #A8823C33", borderRadius: 14, padding: "16px 18px", marginBottom: 22, boxShadow: "0 2px 10px rgba(22,52,43,0.06)" },
+  estRow: { display: "flex", alignItems: "center", gap: 10 },
+  estLabel: { fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: "#A8823C", fontWeight: 600 },
+  estValue: { fontFamily: "'Amiri', serif", fontSize: 22, fontWeight: 700, color: "#0F4C3A", marginTop: 2 },
+  estValueSm: { fontSize: 15, fontWeight: 600, color: "#0F4C3A", marginTop: 2 },
+  estSub: { fontSize: 12.5, opacity: 0.7, marginTop: 2 },
+  estDivider: { height: 1, background: "#A8823C22", margin: "12px 0" },
   form: { background: "#FBF7EA", border: "1px solid #A8823C33", borderRadius: 14, padding: 20, marginBottom: 28, boxShadow: "0 2px 10px rgba(22,52,43,0.06)" },
   formTitle: { fontFamily: "'Amiri', serif", fontSize: 19, fontWeight: 700, marginTop: 0, marginBottom: 14, color: "#0F4C3A" },
-  formRow: { display: "flex", gap: 12, marginBottom: 12 },
-  label: { display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 500, color: "#16342B", flex: 1, marginBottom: 12 },
-  input: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, padding: "9px 10px", borderRadius: 8, border: "1px solid #A8823C55", background: "#FFFDF6", color: "#16342B" },
+  formRow: { display: "flex", gap: 12, marginBottom: 0 },
+  formRow3: { display: "flex", gap: 8 },
+  label: { display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 500, color: "#16342B", flex: 1, marginBottom: 12, minWidth: 0 },
+  input: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, padding: "9px 8px", borderRadius: 8, border: "1px solid #A8823C55", background: "#FFFDF6", color: "#16342B", width: "100%", minWidth: 0 },
   textarea: { fontFamily: "'Lora', serif", fontSize: 14, padding: "9px 10px", borderRadius: 8, border: "1px solid #A8823C55", background: "#FFFDF6", color: "#16342B", resize: "vertical" },
+  hint: { fontSize: 12, opacity: 0.6, marginTop: -6, marginBottom: 12, lineHeight: 1.4 },
   submitBtn: { width: "100%", background: "#0F4C3A", color: "#F3ECD8", border: "none", borderRadius: 8, padding: "11px 16px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
+  smallPrimary: { background: "#0F4C3A", color: "#F3ECD8", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
   errorText: { color: "#8C3B2E", fontSize: 12.5, marginTop: 8 },
+  tabs: { display: "flex", gap: 4, background: "#E4D9B8", borderRadius: 10, padding: 4, marginBottom: 16 },
+  tab: { flex: 1, background: "transparent", border: "none", borderRadius: 7, padding: "8px 4px", fontSize: 13, fontWeight: 600, color: "#16342B99", cursor: "pointer", fontFamily: "'Lora', serif" },
+  tabOn: { background: "#FBF7EA", color: "#0F4C3A", boxShadow: "0 1px 3px rgba(22,52,43,0.12)" },
   historySection: { marginBottom: 20 },
   emptyState: { fontSize: 13.5, opacity: 0.6, padding: "18px 4px", textAlign: "center", fontStyle: "italic" },
   dayGroup: { marginBottom: 16 },
   dayHeader: { fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "#A8823C", fontWeight: 600, marginBottom: 6, borderBottom: "1px solid #A8823C33", paddingBottom: 4 },
-  entryRow: { position: "relative", background: "#FBF7EA", border: "1px solid #A8823C22", borderRadius: 10, padding: "10px 36px 10px 12px", marginBottom: 8 },
-  entryPage: { display: "flex", alignItems: "baseline", gap: 8, fontSize: 14, fontWeight: 600, color: "#0F4C3A" },
+  entryRow: { position: "relative", background: "#FBF7EA", border: "1px solid #A8823C22", borderRadius: 10, padding: "10px 64px 10px 12px", marginBottom: 8 },
+  entryPage: { display: "flex", alignItems: "baseline", gap: 8, fontSize: 14, fontWeight: 600, color: "#0F4C3A", flexWrap: "wrap" },
   entryJuz: { fontSize: 11.5, fontWeight: 400, opacity: 0.6 },
+  entryDate: { fontSize: 11.5, color: "#A8823C", fontWeight: 600, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.6 },
   entryNote: { fontSize: 13, marginTop: 4, opacity: 0.85, lineHeight: 1.4 },
-  deleteBtn: { position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%", border: "none", background: "transparent", color: "#8C3B2E", fontSize: 16, lineHeight: 1, cursor: "pointer" },
+  rowActions: { position: "absolute", top: 6, right: 6, display: "flex", gap: 2 },
+  iconBtn: { width: 28, height: 28, borderRadius: "50%", border: "none", background: "transparent", color: "#0F4C3A", fontSize: 15, lineHeight: 1, cursor: "pointer" },
   confirmRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" },
-  confirmBtn: { background: "#8C3B2E", color: "#FBF7EA", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" },
-  cancelBtn: { background: "transparent", color: "#16342B", border: "1px solid #16342B33", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" },
+  confirmBtn: { background: "#8C3B2E", color: "#FBF7EA", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer" },
+  cancelBtn: { background: "transparent", color: "#16342B", border: "1px solid #16342B33", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "'Lora', serif" },
+  mono: { fontFamily: "'IBM Plex Mono', monospace" },
   khatamHead: { display: "flex", alignItems: "center", justifyContent: "space-between" },
   khatamCount: { display: "flex", alignItems: "baseline", gap: 6 },
   khatamNum: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, fontWeight: 500, color: "#A8823C", lineHeight: 1 },
@@ -567,12 +1116,23 @@ const styles = {
   khatamBadge: { flex: "0 0 auto", width: 30, height: 30, borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 },
   khatamDate: { fontSize: 14, fontWeight: 600, color: "#0F4C3A", paddingTop: 5 },
   khatamAddBtn: { width: "100%", marginTop: 12, background: "transparent", color: "#0F4C3A", border: "1px dashed #A8823C88", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
-  mono: { fontFamily: "'IBM Plex Mono', monospace" },
+  heatScroll: { overflowX: "auto", paddingBottom: 6, WebkitOverflowScrolling: "touch" },
+  heatMonth: { height: 14, fontSize: 10, color: "#8A7B57", whiteSpace: "nowrap", overflow: "visible" },
+  heatCell: { width: 15, height: 15, borderRadius: 3, border: "none", padding: 0, outlineOffset: 1 },
+  heatLegend: { display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, opacity: 0.75, marginTop: 8 },
+  heatInfo: { fontSize: 13, marginTop: 10, padding: "8px 12px", background: "#FBF7EA", border: "1px solid #A8823C22", borderRadius: 8, minHeight: 36 },
+  settingBlock: { borderBottom: "1px solid #A8823C22", paddingBottom: 14, marginBottom: 14 },
+  settingTitle: { fontSize: 14, fontWeight: 600, color: "#0F4C3A", marginBottom: 10 },
+  btnRow: { display: "flex", gap: 8, flexWrap: "wrap" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
 };
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<QuranTracker />);
+
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
 </script>
 </body>
 </html>
