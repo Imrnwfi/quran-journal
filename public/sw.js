@@ -1,7 +1,7 @@
 // Offline support + push notifications.
 // The page itself is network-first (so updates show straight away); CDN libraries and fonts are cache-first.
 // /api/ requests always go to the network and are never cached.
-const CACHE = "quran-journal-v5";
+const CACHE = "quran-journal-v6";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "splash-mark.png"];
 
 self.addEventListener("install", (event) => {
@@ -20,6 +20,7 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  if (req.destination === "audio" || /\.mp3$/i.test(url.pathname)) return; // audio streams straight from the network
 
   if (url.origin === self.location.origin) {
     if (url.pathname.startsWith("/api/")) return;

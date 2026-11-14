@@ -71,6 +71,10 @@
     transform-origin: center; animation: spLine 0.55s ease-out 0.55s both; }
   #splash .sp-title { font-family: 'Lora', serif; font-size: 13px; letter-spacing: 2.5px; text-transform: uppercase; opacity: 0.8;
     animation: spFade 0.5s ease-out 0.65s both; }
+  #splash .sp-tap { position: absolute; bottom: 64px; left: 0; right: 0; margin: 0 auto; width: max-content; white-space: nowrap; background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(217,188,122,0.45); color: #E6C068; border-radius: 999px; padding: 8px 16px; font-family: 'Lora', serif;
+    font-size: 13px; cursor: pointer; display: none; animation: spFade 0.4s ease-out both; }
+  #splash.needs-tap .sp-tap { display: block; }
   @keyframes spRise { from { opacity: 0; transform: translateY(18px) scale(0.86); } to { opacity: 1; transform: none; } }
   @keyframes spFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes spLine { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
@@ -88,6 +92,7 @@
   <div class="sp-ar">وِرْد القُرْآن</div>
   <div class="sp-line"></div>
   <div class="sp-title">Quran Note</div>
+  <button class="sp-tap" type="button" aria-label="Main bacaan Bismillah">🔊 Ketik untuk dengar Bismillah</button>
 </div>
 <script>
   // Show the opening scene for 2.5 s (2.2 s + 0.3 s fade); if the app is still loading, wait for it.
@@ -101,6 +106,40 @@
     setTimeout(function () { minDone = true; hide(); }, 2200);
     window.addEventListener("app-ready", function () { ready = true; hide(); });
     setTimeout(function () { ready = true; minDone = true; hide(); }, 8000);
+
+    // Soft Bismillah (Mishary Alafasy, 1:1) when the app opens. Can be turned off in Settings.
+    var settings = {};
+    try { settings = JSON.parse(localStorage.getItem("quran-journal-settings") || "{}"); } catch (e) {}
+    if (settings.sound === false) return;
+    var SOURCES = [
+      "https://verses.quran.foundation/Alafasy/mp3/001001.mp3",
+      "https://verses.quran.com/Alafasy/mp3/001001.mp3",
+      "https://verses.quran.com/AbdulBaset/Mujawwad/mp3/001001.mp3"
+    ];
+    var VOLUME = 0.3, idx = 0, started = false;
+    var audio = new Audio();
+    audio.preload = "auto";
+    audio.volume = 0;
+    audio.src = SOURCES[0];
+    audio.addEventListener("error", function () {
+      if (++idx < SOURCES.length) { audio.src = SOURCES[idx]; if (started) play(); }
+    });
+    function fadeIn() {
+      var v = 0;
+      var t = setInterval(function () { v = Math.min(VOLUME, v + 0.03); try { audio.volume = v; } catch (e) {} if (v >= VOLUME) clearInterval(t); }, 70);
+    }
+    function play() {
+      started = true;
+      var p = audio.play();
+      if (p && p.then) {
+        p.then(function () { el.classList.remove("needs-tap"); fadeIn(); })
+         .catch(function (err) { if (err && err.name === "NotAllowedError" && !gone) el.classList.add("needs-tap"); });
+      }
+    }
+    el.querySelector(".sp-tap").addEventListener("click", function (e) { e.stopPropagation(); play(); });
+    el.addEventListener("click", function () { if (el.classList.contains("needs-tap")) play(); });
+    window.__bismillah = audio;
+    play();
   })();
 </script>
 <div id="root"></div>
@@ -141,6 +180,11 @@ const SURAH_NAMES = [
   "Al-Masad", "Al-Ikhlas", "Al-Falaq", "An-Nas",
 ];
 const TOTAL_PAGES = 604;
+const BISMILLAH_SOURCES = [
+  "https://verses.quran.foundation/Alafasy/mp3/001001.mp3",
+  "https://verses.quran.com/Alafasy/mp3/001001.mp3",
+  "https://verses.quran.com/AbdulBaset/Mujawwad/mp3/001001.mp3",
+];
 const STORAGE_KEY = "quran-journal-entries";
 const KHATAM_KEY = "quran-journal-khatams";
 const SETTINGS_KEY = "quran-journal-settings";
@@ -208,6 +252,9 @@ const TEXT = {
     calDay: (d, n) => n ? `${d}: ${n} muka surat` : `${d}: tiada bacaan`,
     settings: "Tetapan & backup", language: "Bahasa",
     theme: "Tema", themeAuto: "Auto", themeLight: "Terang", themeDark: "Gelap", toggleTheme: "Tukar tema terang/gelap",
+    sound: "Bunyi pembukaan", soundHint: "Bacaan Bismillah perlahan (Mishary Alafasy) setiap kali app dibuka.",
+    soundOn: "Hidup", soundOff: "Mati", soundPreview: "▶ Dengar",
+    soundIOS: "Di iPhone, bunyi ikut kelantangan telefon, dan mungkin perlu ketik skrin pembukaan dulu.",
     backup: "Backup data", backupHint: "Muat turun salinan data sebagai simpanan tambahan.",
     exportBtn: "Muat turun backup", copyBtn: "Salin data", copied: "Data disalin ✓", copyFail: "Tak dapat salin",
     importBtn: "Pulihkan dari backup", importQ: (e, k) => `Gantikan semua data dengan backup ini? (${e} catatan, ${k} khatam)`,
@@ -281,6 +328,9 @@ const TEXT = {
     calDay: (d, n) => n ? `${d}: ${n} page${n === 1 ? "" : "s"}` : `${d}: no reading`,
     settings: "Settings & backup", language: "Language",
     theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark", toggleTheme: "Toggle light/dark theme",
+    sound: "Opening sound", soundHint: "A soft Bismillah recitation (Mishary Alafasy) each time the app opens.",
+    soundOn: "On", soundOff: "Off", soundPreview: "▶ Listen",
+    soundIOS: "On iPhone the sound follows the phone's volume, and you may need to tap the opening screen first.",
     backup: "Back up data", backupHint: "Download a copy of your data as an extra safeguard.",
     exportBtn: "Download backup", copyBtn: "Copy data", copied: "Data copied ✓", copyFail: "Couldn't copy",
     importBtn: "Restore from backup", importQ: (e, k) => `Replace all data with this backup? (${e} entries, ${k} khatams)`,
@@ -531,7 +581,19 @@ function QuranTracker() {
   const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, SEED_ENTRIES));
   const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
   const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
-  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", ...readJson(SETTINGS_KEY, {}) }));
+  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", sound: true, ...readJson(SETTINGS_KEY, {}) }));
+  const previewRef = useRef(null);
+  function previewSound() {
+    try {
+      if (previewRef.current) { previewRef.current.pause(); }
+      const a = new Audio(BISMILLAH_SOURCES[0]);
+      let i = 0;
+      a.addEventListener("error", () => { if (++i < BISMILLAH_SOURCES.length) { a.src = BISMILLAH_SOURCES[i]; a.play().catch(() => {}); } });
+      a.volume = 0.3;
+      previewRef.current = a;
+      a.play().catch(() => {});
+    } catch (e) {}
+  }
   const [saveError, setSaveError] = useState("");
   const T = TEXT[settings.lang] || TEXT.ms;
 
@@ -1480,6 +1542,21 @@ function QuranTracker() {
                   aria-pressed={settings.theme === k} style={{ ...styles.segBtn, ...(settings.theme === k ? styles.segBtnOn : {}) }}>{l}</button>
               ))}
             </div>
+          </div>
+
+          <div style={styles.settingBlock}>
+            <div style={styles.settingTitle}>{T.sound}</div>
+            <div style={styles.hint}>{T.soundHint}</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={styles.segment}>
+                {[[true, T.soundOn], [false, T.soundOff]].map(([v, l]) => (
+                  <button key={l} className="qt-btn" type="button" onClick={() => persistSettings({ sound: v })}
+                    aria-pressed={settings.sound === v} style={{ ...styles.segBtn, ...(settings.sound === v ? styles.segBtnOn : {}) }}>{l}</button>
+                ))}
+              </div>
+              <button className="qt-btn" type="button" onClick={previewSound} style={styles.cancelBtn}>{T.soundPreview}</button>
+            </div>
+            {IS_IOS && <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>{T.soundIOS}</div>}
           </div>
 
           {serverMode && (
