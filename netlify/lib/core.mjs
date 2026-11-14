@@ -45,6 +45,7 @@ export function cleanDoc(doc) {
       targetDate: isIso(s.targetDate) ? s.targetDate : "",
       tz: typeof s.tz === "string" && s.tz.length < 64 ? s.tz : DEFAULT_TZ,
       reminderMode: s.reminderMode === "fixed" ? "fixed" : "smart",
+      weeklyReport: s.weeklyReport !== false,
     },
   };
 }
@@ -300,4 +301,137 @@ export async function handleSolat(req, store, fetchImpl = fetch, now = new Date(
   const body = { zone, source, days, fetchedAt: now.toISOString() };
   await store.setJSON(key, body);
   return json(body, 200, { "cache-control": "public, max-age=1800" });
+}
+
+/* ---------------- weekly report (Sunday 9 pm) ---------------- */
+// Pages each entry covers (same rule as the app): explicit from–to, otherwise continue from the previous entry; khatam starts a new round.
+export function computeSpans(entries, khatams) {
+  const ks = [...(khatams || [])].sort((a, b) => (a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date)));
+  const after = (e, k) => (e.date !== k.date ? e.date > k.date : e.ts > k.ts);
+  const asc = [...entries].sort((a, b) => (a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date)));
+  const spans = {}; let ki = 0, prev = 0;
+  for (const e of asc) {
+    while (ki < ks.length && after(e, ks[ki])) { ki++; prev = 0; }
+    let start = e.from ? e.from : prev + 1 <= e.page ? prev + 1 : e.page, end = e.page;
+    if (start > end) [start, end] = [end, start];
+    spans[e.id] = [start, end]; prev = Math.max(start, end);
+  }
+  return spans;
+}
+const isoAdd = (iso, n) => { const d = new Date(iso + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+export function weeklySummary(doc, today) {
+  const spans = computeSpans(doc.entries, doc.khatams);
+  const start = isoAdd(today, -6);
+  let pages = 0; const days = new Set();
+  for (const e of doc.entries) if (e.date >= start && e.date <= today) { const [a, b] = spans[e.id]; pages += b - a + 1; days.add(e.date); }
+  const all = new Set(doc.entries.map((e) => e.date));
+  let streak = 0, cur = all.has(today) ? today : isoAdd(today, -1);
+  while (all.has(cur)) { streak++; cur = isoAdd(cur, -1); }
+  return { pages, days: days.size, streak };
+}
+export async function runWeekly(store, webpush, now = new Date()) {
+  const current = await store.get("journal", { type: "json" });
+  if (!current || !current.doc) return { skipped: "no_data" };
+  if (current.doc.settings?.weeklyReport === false) return { skipped: "off" };
+  const tz = current.doc.settings?.tz || DEFAULT_TZ;
+  const today = localDate(now, tz);
+  const weekday = new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(now);
+  if (weekday !== "Sun" || localHour(now, tz) < 21) return { skipped: "not_time" };
+  const log = (await store.get("weekly-log", { type: "json" })) || {};
+  if (log.lastSent === today) return { skipped: "already_sent" };
+  const w = weeklySummary(current.doc, today);
+  const body = w.pages > 0
+    ? `Minggu ini: ${w.pages} muka surat · ${w.days}/7 hari membaca${w.streak > 1 ? ` · streak ${w.streak} hari 🔥` : ""}. Teruskan minggu depan, insya-Allah.`
+    : "Minggu ini belum ada bacaan direkodkan. Jom mulakan semula — satu muka surat pun memadai 🤍";
+  const result = await sendToAll(store, webpush, { title: "Laporan mingguan · Quran Note", body, url: "/#stats" });
+  await store.setJSON("weekly-log", { lastSent: today, ...w, ...result });
+  return { today, ...w, ...result };
+}
+
+/* ---------------- passkeys (WebAuthn) for the owner ---------------- */
+const b64u = (buf) => Buffer.from(buf).toString("base64url");
+const unb64u = (s) => new Uint8Array(Buffer.from(s, "base64url"));
+function rpFrom(req) {
+  const origin = req.headers.get("origin") || "";
+  let u; try { u = new URL(origin); } catch { return null; }
+  const host = (req.headers.get("x-forwarded-host") || req.headers.get("host") || new URL(req.url).host || "").split(",")[0].trim();
+  if (u.host !== host) return null; // only accept requests made from this site
+  return { origin: u.origin, rpID: u.hostname };
+}
+async function putChallenge(store, data) {
+  const cid = crypto.randomBytes(12).toString("hex");
+  await store.setJSON(`pk-chal/${cid}`, { ...data, exp: Date.now() + 5 * 60 * 1000 });
+  return cid;
+}
+async function takeChallenge(store, cid, type) {
+  if (typeof cid !== "string" || !/^[a-f0-9]{24}$/.test(cid)) return null;
+  const c = await store.get(`pk-chal/${cid}`, { type: "json" });
+  await store.delete(`pk-chal/${cid}`);
+  return c && c.type === type && c.exp > Date.now() ? c : null;
+}
+
+export async function handlePasskey(req, store, wa) {
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  const rp = rpFrom(req);
+  if (!rp) return json({ error: "bad_origin" }, 400);
+  let body; try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
+  const creds = (await store.get("passkeys", { type: "json" })) || [];
+  const auth = await store.get("auth", { type: "json" });
+
+  if (body.action === "status") return json({ count: creds.length });
+
+  if (body.action === "register-options" || body.action === "register-verify" || body.action === "remove-all") {
+    if (!(await isOwner(req, store))) return json({ error: "unauthorized" }, 401);
+  }
+  if (body.action === "register-options") {
+    const options = await wa.generateRegistrationOptions({
+      rpName: "Quran Note", rpID: rp.rpID, userName: "pemilik", userDisplayName: "Pemilik Quran Note",
+      userID: new TextEncoder().encode("quran-note-owner"), attestationType: "none",
+      authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" },
+      excludeCredentials: creds.map((c) => ({ id: c.id, transports: c.transports })),
+    });
+    const cid = await putChallenge(store, { type: "reg", challenge: options.challenge });
+    return json({ options, cid });
+  }
+  if (body.action === "register-verify") {
+    const ch = await takeChallenge(store, body.cid, "reg");
+    if (!ch) return json({ error: "expired" }, 400);
+    let v;
+    try { v = await wa.verifyRegistrationResponse({ response: body.response, expectedChallenge: ch.challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: false }); }
+    catch (e) { return json({ error: "verify_failed" }, 400); }
+    if (!v.verified || !v.registrationInfo) return json({ error: "verify_failed" }, 400);
+    const c = v.registrationInfo.credential;
+    const entry = { id: c.id, publicKey: b64u(c.publicKey), counter: c.counter, transports: c.transports || [], createdAt: Date.now(), rpID: rp.rpID };
+    await store.setJSON("passkeys", [...creds.filter((x) => x.id !== c.id), entry].slice(-10));
+    return json({ ok: true, count: Math.min(creds.length + 1, 10) });
+  }
+  if (body.action === "remove-all") {
+    await store.setJSON("passkeys", []);
+    return json({ ok: true, count: 0 });
+  }
+  if (body.action === "login-options") {
+    if (!auth) return json({ error: "no_owner" }, 404);
+    const mine = creds.filter((c) => c.rpID === rp.rpID);
+    if (!mine.length) return json({ error: "no_passkey" }, 404);
+    const options = await wa.generateAuthenticationOptions({ rpID: rp.rpID, userVerification: "preferred", allowCredentials: mine.map((c) => ({ id: c.id, transports: c.transports })) });
+    const cid = await putChallenge(store, { type: "auth", challenge: options.challenge });
+    return json({ options, cid });
+  }
+  if (body.action === "login-verify") {
+    if (!auth) return json({ error: "no_owner" }, 404);
+    const ch = await takeChallenge(store, body.cid, "auth");
+    if (!ch) return json({ error: "expired" }, 400);
+    const cred = creds.find((c) => body.response && c.id === body.response.id);
+    if (!cred) return json({ error: "unknown_passkey" }, 401);
+    let v;
+    try {
+      v = await wa.verifyAuthenticationResponse({ response: body.response, expectedChallenge: ch.challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: false,
+        credential: { id: cred.id, publicKey: unb64u(cred.publicKey), counter: cred.counter, transports: cred.transports } });
+    } catch (e) { return json({ error: "verify_failed" }, 401); }
+    if (!v.verified) return json({ error: "verify_failed" }, 401);
+    cred.counter = v.authenticationInfo.newCounter;
+    await store.setJSON("passkeys", creds);
+    return json({ token: tokenFor(auth) });
+  }
+  return json({ error: "unknown_action" }, 400);
 }

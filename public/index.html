@@ -69,6 +69,8 @@
   @keyframes qtSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .qt-sheet { animation: qtSheetUp 0.28s cubic-bezier(.2,.8,.2,1); }
   @media (prefers-reduced-motion: reduce) { .qt-sheet { animation: none; } }
+  @keyframes qtPop { 0% { transform: translate(-50%, 20px) scale(0.9); opacity: 0; } 15% { transform: translate(-50%, 0) scale(1); opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+  .qt-celebrate { animation: qtPop 3.2s ease-out forwards; }
   .qt-heat::-webkit-scrollbar { height: 6px; }
   .qt-heat::-webkit-scrollbar-thumb { background: var(--line3); border-radius: 3px; }
 
@@ -165,6 +167,7 @@
 <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://unpkg.com/@simplewebauthn/browser@13.3.0/dist/bundle/index.umd.min.js"></script>
 
 <script type="text/babel" data-type="module">
 const { useState, useEffect, useMemo, useRef } = React;
@@ -424,6 +427,16 @@ const TEXT = {
     solatServerOnly: "Waktu solat hanya tersedia di laman Netlify.", solatEmpty: "Guna lokasi semasa atau pilih zon untuk lihat waktu solat JAKIM.",
     solatTomorrow: "esok", solatLoading: "Memuatkan…",
     navHome: "Utama", navHistory: "Sejarah", navStats: "Statistik", navSettings: "Tetapan",
+    weekly: "Laporan mingguan", weeklyHint: "Ringkasan bacaan minggu ini setiap Ahad jam 9 malam.",
+    celebrateJuz: (n) => `🎉 Juz' ${n} selesai!`, celebrateStreak: (n) => `🔥 Streak ${n} hari! MasyaAllah`, celebrateBest: (n) => `🏆 Rekod streak baru: ${n} hari`,
+    celebrateBadge: (b) => `🏅 Pencapaian baru: ${b}`, celebrateKhatam: "🌙 Alhamdulillah, khatam!",
+    passkey: "Passkey (cap jari / Face ID)", passkeyHint: "Masuk sebagai pemilik tanpa taip PIN. Daftar sekali di setiap telefon.",
+    passkeyCount: (n) => (n ? `${n} passkey berdaftar` : "Belum ada passkey"), passkeyAdd: "Daftar passkey peranti ini", passkeyRemove: "Buang semua passkey",
+    passkeyAdded: "Passkey didaftarkan ✓", passkeyFail: "Tak berjaya. Cuba lagi.", passkeyUnsupported: "Pelayar ini tak menyokong passkey.",
+    passkeyLogin: "🔑 Masuk dengan passkey", passkeyOr: "atau guna PIN",
+    mosqueNear: "🕌 Masjid & surau dalam 3 km", mosqueFinding: "Mencari masjid berdekatan…", mosqueNone: "Tiada masjid atau surau dijumpai dalam 3 km.",
+    mosqueErr: "Tak dapat ambil senarai masjid. Cuba lagi.", mosqueAll: "Semua", mosqueMasjid: "Masjid", mosqueSurau: "Surau",
+    mosqueRoute: "Arah ↗", mosqueMaps: "Lihat di Google Maps ↗", mosqueSource: "Data © penyumbang OpenStreetMap", mosqueUnnamed: "(tiada nama)",
     holyTitle: "Hari kebesaran Islam", holyToday: "Hari ini", holyIn: (n) => `${n} hari lagi`,
     holyNote: "Anggaran ikut kalendar Hijrah; tarikh rasmi ikut pengumuman.",
     holyNames: { maalHijrah: "Awal Muharam (Maal Hijrah)", asyura: "Hari Asyura", maulid: "Maulidur Rasul", israk: "Israk dan Mikraj",
@@ -529,6 +542,16 @@ const TEXT = {
     solatServerOnly: "Prayer times are only available on the Netlify site.", solatEmpty: "Use your current location or choose a zone to see JAKIM prayer times.",
     solatTomorrow: "tomorrow", solatLoading: "Loading…",
     navHome: "Home", navHistory: "History", navStats: "Stats", navSettings: "Settings",
+    weekly: "Weekly report", weeklyHint: "A summary of the week's reading every Sunday at 9 pm.",
+    celebrateJuz: (n) => `🎉 Juz' ${n} complete!`, celebrateStreak: (n) => `🔥 ${n}-day streak! MashaAllah`, celebrateBest: (n) => `🏆 New best streak: ${n} days`,
+    celebrateBadge: (b) => `🏅 New achievement: ${b}`, celebrateKhatam: "🌙 Alhamdulillah, khatam!",
+    passkey: "Passkey (fingerprint / Face ID)", passkeyHint: "Sign in as owner without typing the PIN. Register once on each phone.",
+    passkeyCount: (n) => (n ? `${n} passkey${n === 1 ? "" : "s"} registered` : "No passkey yet"), passkeyAdd: "Register this device", passkeyRemove: "Remove all passkeys",
+    passkeyAdded: "Passkey registered ✓", passkeyFail: "That didn't work. Try again.", passkeyUnsupported: "This browser doesn't support passkeys.",
+    passkeyLogin: "🔑 Sign in with passkey", passkeyOr: "or use the PIN",
+    mosqueNear: "🕌 Mosques & surau within 3 km", mosqueFinding: "Finding mosques nearby…", mosqueNone: "No mosque or surau found within 3 km.",
+    mosqueErr: "Couldn't load mosques. Try again.", mosqueAll: "All", mosqueMasjid: "Mosque", mosqueSurau: "Surau",
+    mosqueRoute: "Directions ↗", mosqueMaps: "Open in Google Maps ↗", mosqueSource: "Data © OpenStreetMap contributors", mosqueUnnamed: "(unnamed)",
     holyTitle: "Islamic days", holyToday: "Today", holyIn: (n) => `in ${n} days`,
     holyNote: "Estimated from the Hijri calendar; official dates follow announcements.",
     holyNames: { maalHijrah: "Islamic New Year (1 Muharram)", asyura: "Day of Ashura", maulid: "Mawlid an-Nabi", israk: "Isra' and Mi'raj",
@@ -732,12 +755,13 @@ function docToState(doc) {
     deleted: { entries: doc?.deleted?.entries || [], khatams: doc?.deleted?.khatams || [] },
     targetDate: doc?.settings?.targetDate || "",
     reminderMode: doc?.settings?.reminderMode === "fixed" ? "fixed" : "smart",
+    weeklyReport: doc?.settings?.weeklyReport !== false,
   };
 }
 function stateToDoc(s) {
   let tz = "Asia/Kuala_Lumpur";
   try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) {}
-  return { entries: s.entries, khatams: s.khatams, deleted: s.deleted, settings: { targetDate: s.targetDate || "", tz, reminderMode: s.reminderMode || "smart" } };
+  return { entries: s.entries, khatams: s.khatams, deleted: s.deleted, settings: { targetDate: s.targetDate || "", tz, reminderMode: s.reminderMode || "smart", weeklyReport: s.weeklyReport !== false } };
 }
 // Union by id (this device wins on the same id), minus anything deleted on either side.
 function mergeStates(local, remote) {
@@ -757,6 +781,7 @@ function mergeStates(local, remote) {
     deleted,
     targetDate: local.targetDate || remote.targetDate || "",
     reminderMode: local.reminderMode || remote.reminderMode || "smart",
+    weeklyReport: local.weeklyReport !== undefined ? local.weeklyReport : remote.weeklyReport !== false,
   };
 }
 function urlB64ToUint8Array(b64) {
@@ -798,7 +823,7 @@ function QuranTracker() {
   const syncTimer = useRef(null);
   const syncing = useRef(false);
   const stateRef = useRef(null);
-  stateRef.current = { entries, khatams, deleted, targetDate: settings.targetDate, reminderMode: settings.reminderMode };
+  stateRef.current = { entries, khatams, deleted, targetDate: settings.targetDate, reminderMode: settings.reminderMode, weeklyReport: settings.weeklyReport !== false };
   const canEdit = role === "local" || role === "owner";
   const serverMode = role === "viewer" || role === "owner";
   function setRole(r) { roleRef.current = r; setRoleState(r); }
@@ -944,8 +969,8 @@ function QuranTracker() {
   function applyState(s) {
     setEntries(s.entries); setKhatams(s.khatams); setDeleted(s.deleted);
     writeJson(STORAGE_KEY, s.entries); writeJson(KHATAM_KEY, s.khatams); writeJson(DELETED_KEY, s.deleted);
-    setSettings((prev) => { const next = { ...prev, targetDate: s.targetDate || "", reminderMode: s.reminderMode || prev.reminderMode || "smart" }; writeJson(SETTINGS_KEY, next); return next; });
-    stateRef.current = { entries: s.entries, khatams: s.khatams, deleted: s.deleted, targetDate: s.targetDate || "", reminderMode: s.reminderMode || "smart" };
+    setSettings((prev) => { const next = { ...prev, targetDate: s.targetDate || "", reminderMode: s.reminderMode || prev.reminderMode || "smart", weeklyReport: s.weeklyReport !== false }; writeJson(SETTINGS_KEY, next); return next; });
+    stateRef.current = { entries: s.entries, khatams: s.khatams, deleted: s.deleted, targetDate: s.targetDate || "", reminderMode: s.reminderMode || "smart", weeklyReport: s.weeklyReport !== false };
   }
   function persist(next) { setEntries(next); stateRef.current = { ...stateRef.current, entries: next }; flagSave(writeJson(STORAGE_KEY, next)); queueSync(); }
   function persistKhatams(next) { setKhatams(next); stateRef.current = { ...stateRef.current, khatams: next }; flagSave(writeJson(KHATAM_KEY, next)); queueSync(); }
@@ -954,8 +979,8 @@ function QuranTracker() {
     const next = { ...settings, ...patch };
     setSettings(next);
     flagSave(writeJson(SETTINGS_KEY, next));
-    if ("targetDate" in patch || "reminderMode" in patch) {
-      stateRef.current = { ...stateRef.current, targetDate: next.targetDate, reminderMode: next.reminderMode };
+    if ("targetDate" in patch || "reminderMode" in patch || "weeklyReport" in patch) {
+      stateRef.current = { ...stateRef.current, targetDate: next.targetDate, reminderMode: next.reminderMode, weeklyReport: next.weeklyReport !== false };
       queueSync();
     }
   }
@@ -1072,15 +1097,7 @@ function QuranTracker() {
     try {
       const r = await api("auth", { method: "POST", body: JSON.stringify({ mode: claim ? "claim" : "login", pin }) });
       if (r.ok && r.body && r.body.token) {
-        tokenRef.current = r.body.token; writeStr(TOKEN_KEY, r.body.token);
-        setHasOwner(true);
-        setLoginOpen(false); setPin(""); setPin2("");
-        const j = await api("journal");
-        if (j.ok && j.body && j.body.doc) {
-          applyState(docToState(j.body.doc)); setVersion(j.body.version); setRole("owner"); setSyncState("saved");
-        } else {
-          setVersion(j.body ? j.body.version : 0); setRole("owner"); queueSync();
-        }
+        await finishLogin(r.body.token);
       } else if (r.status === 401) setLoginErr(T.wrongPin(r.body ? r.body.left : 0));
       else if (r.status === 429) setLoginErr(T.tooMany);
       else if (r.status === 409) { setHasOwner(true); setLoginErr(""); }
@@ -1089,6 +1106,60 @@ function QuranTracker() {
     } catch (err) { setLoginErr(T.netErr); }
     setLoginBusy(false);
   }
+  // Passkeys (WebAuthn) for the owner
+  const [pkCount, setPkCount] = useState(null);
+  const [pkMsg, setPkMsg] = useState("");
+  const [pkBusy, setPkBusy] = useState(false);
+  const WA = () => (typeof window !== "undefined" && window.SimpleWebAuthnBrowser && window.SimpleWebAuthnBrowser.browserSupportsWebAuthn() ? window.SimpleWebAuthnBrowser : null);
+  async function refreshPasskeys() {
+    try { const r = await api("passkey", { method: "POST", body: JSON.stringify({ action: "status" }) }); if (r.ok && r.body) setPkCount(r.body.count); } catch (e) {}
+  }
+  async function addPasskey() {
+    const W = WA(); setPkMsg("");
+    if (!W) { setPkMsg(T.passkeyUnsupported); return; }
+    setPkBusy(true);
+    try {
+      const o = await api("passkey", { method: "POST", body: JSON.stringify({ action: "register-options" }) }, tokenRef.current);
+      if (!o.ok || !o.body) throw new Error("opts");
+      const att = await W.startRegistration({ optionsJSON: o.body.options });
+      const v = await api("passkey", { method: "POST", body: JSON.stringify({ action: "register-verify", cid: o.body.cid, response: att }) }, tokenRef.current);
+      if (!v.ok || !v.body) throw new Error("verify");
+      setPkCount(v.body.count); setPkMsg(T.passkeyAdded);
+    } catch (e) { setPkMsg(T.passkeyFail); }
+    setPkBusy(false);
+  }
+  async function removePasskeys() {
+    try { const r = await api("passkey", { method: "POST", body: JSON.stringify({ action: "remove-all" }) }, tokenRef.current); if (r.ok) setPkCount(0); } catch (e) {}
+  }
+  async function passkeyLogin() {
+    const W = WA(); setLoginErr("");
+    if (!W) { setLoginErr(T.passkeyUnsupported); return; }
+    setLoginBusy(true);
+    try {
+      const o = await api("passkey", { method: "POST", body: JSON.stringify({ action: "login-options" }) });
+      if (!o.ok || !o.body) throw new Error("opts");
+      const asr = await W.startAuthentication({ optionsJSON: o.body.options });
+      const v = await api("passkey", { method: "POST", body: JSON.stringify({ action: "login-verify", cid: o.body.cid, response: asr }) });
+      if (!v.ok || !v.body || !v.body.token) throw new Error("verify");
+      await finishLogin(v.body.token);
+    } catch (e) { setLoginErr(T.passkeyFail); }
+    setLoginBusy(false);
+  }
+  useEffect(() => { if (loginOpen && hasOwner && serverMode) refreshPasskeys(); }, [loginOpen]);
+  useEffect(() => { if (openSetting === "account" && role === "owner") refreshPasskeys(); }, [openSetting]);
+
+  async function finishLogin(token) {
+    tokenRef.current = token; writeStr(TOKEN_KEY, token);
+    setHasOwner(true);
+    setLoginOpen(false); setPin(""); setPin2("");
+    const j = await api("journal");
+    if (j.ok && j.body && j.body.doc) {
+      applyState(docToState(j.body.doc)); setVersion(j.body.version); setRole("owner"); setSyncState("saved");
+    } else {
+      setVersion(j.body ? j.body.version : 0); setRole("owner"); queueSync();
+    }
+  }
+
   function signOut() {
     tokenRef.current = null; writeStr(TOKEN_KEY, null); writeStr(DIRTY_KEY, null);
     setRole("viewer"); setSyncState("saved");
@@ -1264,6 +1335,31 @@ function QuranTracker() {
   }, [entries.length, bestStreak, totalPages, juzDone, khatamCount, notesList.length]);
   const badgesDone = badges.filter((x) => x.done).length;
 
+  // Celebrations: only right after the owner logs or edits a reading on this device.
+  const [celebration, setCelebration] = useState(null);
+  const celebrateArmed = useRef(false);
+  const prevSnap = useRef(null);
+  function celebrate(msgs) {
+    setCelebration({ msgs, id: Date.now() });
+    try { if (navigator.vibrate) navigator.vibrate([40, 60, 40, 60, 80]); } catch (e) {}
+    setTimeout(() => setCelebration((c) => (c && Date.now() - c.id >= 3100 ? null : c)), 3300);
+  }
+  useEffect(() => {
+    const snap = { juz: juzFill.map((f) => f >= 1), streak, best: bestStreak, khatam: khatamCount, badges: badges.filter((b) => b.done).map((b) => b.id) };
+    const prev = prevSnap.current;
+    prevSnap.current = snap;
+    if (!prev || !celebrateArmed.current) return;
+    celebrateArmed.current = false;
+    const msgs = [];
+    if (snap.khatam > prev.khatam) msgs.push(T.celebrateKhatam);
+    snap.juz.forEach((done, i) => { if (done && !prev.juz[i] && snap.khatam === prev.khatam) msgs.push(T.celebrateJuz(i + 1)); });
+    const MILESTONES = [3, 7, 14, 21, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 365];
+    if (snap.streak > prev.streak && MILESTONES.includes(snap.streak)) msgs.push(T.celebrateStreak(snap.streak));
+    else if (snap.best > prev.best && prev.best >= 3 && snap.best === prev.best + 1) msgs.push(T.celebrateBest(snap.best));
+    snap.badges.filter((id) => !prev.badges.includes(id)).forEach((id) => msgs.push(T.celebrateBadge(T.badges[id][0])));
+    if (msgs.length) celebrate(msgs.slice(0, 3));
+  }, [juzFill, streak, bestStreak, khatamCount, badges]);
+
   /* ----- actions ----- */
   function addKhatam(kDate, kNote, ts) {
     const k = { id: makeId("k"), date: kDate, note: (kNote || "").trim(), ts };
@@ -1286,6 +1382,7 @@ function QuranTracker() {
     if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setFormError(T.invalidPage); return; }
     setFormError("");
     const entry = { id: makeId("e"), page: to, from: from && from !== to ? from : null, note: note.trim(), date, ts: Date.now() };
+    celebrateArmed.current = true;
     persist([entry, ...entries]);
     if (to === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
     setPage(""); setFromPage(""); setNote("");
@@ -1307,6 +1404,7 @@ function QuranTracker() {
     const to = parsePageInput(editDraft.page);
     const from = parsePageInput(editDraft.from);
     if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setEditDraft({ ...editDraft, err: T.invalidPage }); return; }
+    celebrateArmed.current = true;
     persist(entries.map((en) => en.id === editId
       ? { ...en, page: to, from: from && from !== to ? from : null, date: editDraft.date, note: editDraft.note.trim() }
       : en));
@@ -1527,15 +1625,32 @@ function QuranTracker() {
             <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>
               {settings.reminderMode === "fixed" ? T.remindFixedAt : smartHour ? T.remindSmartAt(fmtHour(smartHour, T.locale)) : T.remindSmartNoData}
             </div>
+            <div style={{ marginTop: 14, fontSize: 13.5, fontWeight: 600 }}>{T.weekly}</div>
+            <div style={{ ...styles.hint, marginTop: 2, marginBottom: 6 }}>{T.weeklyHint}</div>
+            <div style={styles.segment}>
+              {[[true, T.soundOn], [false, T.soundOff]].map(([v, l]) => (
+                <button key={l} className="qt-btn" type="button" onClick={() => persistSettings({ weeklyReport: v })}
+                  aria-pressed={(settings.weeklyReport !== false) === v} style={{ ...styles.segBtn, ...((settings.weeklyReport !== false) === v ? styles.segBtnOn : {}) }}>{l}</button>
+              ))}
+            </div>
           </div>
         )}
       </>
     ) },
     role === "owner" && { key: "account", icon: "👤", title: T.account, value: "✓", body: (
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 13, flex: 1 }}>{T.ownerOn}</span>
-        <button className="qt-btn" type="button" onClick={signOut} style={styles.cancelBtn}>{T.logout}</button>
-      </div>
+      <>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13, flex: 1 }}>{T.ownerOn}</span>
+          <button className="qt-btn" type="button" onClick={signOut} style={styles.cancelBtn}>{T.logout}</button>
+        </div>
+        <div style={{ marginTop: 14, fontSize: 13.5, fontWeight: 600 }}>🔑 {T.passkey}</div>
+        <div style={{ ...styles.hint, marginTop: 2, marginBottom: 6 }}>{T.passkeyHint} {pkCount != null && <b>{T.passkeyCount(pkCount)}</b>}</div>
+        <div style={styles.btnRow}>
+          <button className="qt-btn" type="button" disabled={pkBusy} onClick={addPasskey} style={{ ...styles.smallPrimary, opacity: pkBusy ? 0.6 : 1 }}>{T.passkeyAdd}</button>
+          {pkCount > 0 && <button className="qt-btn" type="button" onClick={removePasskeys} style={styles.cancelBtn}>{T.passkeyRemove}</button>}
+        </div>
+        {pkMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: pkMsg === T.passkeyAdded ? "var(--title)" : "var(--danger)" }}>{pkMsg}</div>}
+      </>
     ) },
     role === "viewer" && { key: "account", icon: "👤", title: T.account, value: "", body: (
       <button className="qt-btn" type="button" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
@@ -1971,6 +2086,14 @@ function QuranTracker() {
       </div>
 
       {toast && <div className="qt-fade" style={styles.toast} role="status">{toast}</div>}
+      {celebration && (
+        <>
+          <Confetti key={celebration.id} />
+          <div key={"c" + celebration.id} className="qt-celebrate" style={styles.celebrate} role="status" aria-live="polite">
+            {celebration.msgs.map((m) => <div key={m}>{m}</div>)}
+          </div>
+        </>
+      )}
 
       <nav style={styles.nav} aria-label="Navigasi">
         <div style={styles.navInner}>
@@ -2041,9 +2164,15 @@ function QuranTracker() {
           <form onSubmit={submitLogin} style={styles.modal} className="qt-fade" role="dialog" aria-modal="true" aria-labelledby="owner-title">
             <h2 id="owner-title" style={styles.formTitle}>{hasOwner ? T.ownerTitleLogin : T.ownerTitleClaim}</h2>
             <div style={{ ...styles.hint, marginTop: 0 }}>{hasOwner ? T.ownerLoginHint : T.ownerClaimHint}</div>
+            {hasOwner && pkCount > 0 && (
+              <>
+                <button className="qt-btn" type="button" disabled={loginBusy} onClick={passkeyLogin} style={{ ...styles.submitBtn, marginBottom: 8 }}>{T.passkeyLogin}</button>
+                <div style={{ textAlign: "center", fontSize: 12, opacity: 0.6, marginBottom: 8 }}>{T.passkeyOr}</div>
+              </>
+            )}
             <label style={styles.label}>{T.pin}
               <input className="qt-input" type="password" autoComplete={hasOwner ? "current-password" : "new-password"} value={pin}
-                onChange={(e) => setPin(e.target.value)} style={styles.input} autoFocus required />
+                onChange={(e) => setPin(e.target.value)} style={styles.input} autoFocus={!(hasOwner && pkCount > 0)} required />
             </label>
             {!hasOwner && (
               <label style={styles.label}>{T.pin2}
@@ -2118,11 +2247,76 @@ function Heatmap({ pagesByDate, today, T, fmtLong }) {
   );
 }
 
+/* ---------- Confetti (respects reduced motion) ---------- */
+function Confetti() {
+  const ref = useRef(null);
+  useEffect(() => {
+    try { if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (e) {}
+    const c = ref.current; if (!c) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = (c.width = innerWidth * dpr), H = (c.height = innerHeight * dpr);
+    const ctx = c.getContext("2d");
+    const colors = ["#D9BC7A", "#C9A94F", "#F3ECD8", "#13664D", "#2E9E74"];
+    const parts = Array.from({ length: 140 }, () => ({
+      x: W / 2 + (Math.random() - 0.5) * W * 0.3, y: H * 0.18, vx: (Math.random() - 0.5) * 14 * dpr, vy: (-Math.random() * 12 - 4) * dpr,
+      s: (Math.random() * 6 + 4) * dpr, r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3, c: colors[(Math.random() * colors.length) | 0],
+    }));
+    let raf, t0 = performance.now();
+    const tick = (t) => {
+      ctx.clearRect(0, 0, W, H);
+      for (const p of parts) { p.vy += 0.35 * dpr; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore(); }
+      if (t - t0 < 2800) raf = requestAnimationFrame(tick); else ctx.clearRect(0, 0, W, H);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return <canvas ref={ref} aria-hidden="true" style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", pointerEvents: "none", zIndex: 79 }} />;
+}
+
+/* ---------- Mosques within 3 km (OpenStreetMap / Overpass) ---------- */
+const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
+function distKm(a, b, c, d) {
+  const R = 6371, toR = (x) => (x * Math.PI) / 180;
+  const h = Math.sin(toR(c - a) / 2) ** 2 + Math.cos(toR(a)) * Math.cos(toR(c)) * Math.sin(toR(d - b) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+async function fetchMosques(lat, lon) {
+  const q = `[out:json][timeout:20];nwr["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});out center tags 80;`;
+  let lastErr;
+  for (const url of OVERPASS) {
+    try {
+      const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 15000);
+      const res = await fetch(url, { method: "POST", body: "data=" + encodeURIComponent(q), headers: { "content-type": "application/x-www-form-urlencoded" }, signal: ctrl.signal });
+      clearTimeout(t);
+      if (!res.ok) throw new Error("http " + res.status);
+      const data = await res.json();
+      return (data.elements || []).map((e) => {
+        const la = e.lat ?? (e.center && e.center.lat), lo = e.lon ?? (e.center && e.center.lon);
+        const tags = e.tags || {};
+        const name = tags["name:ms"] || tags.name || tags["name:en"] || "";
+        const surau = /surau|musolla|musalla|musholla/i.test(name) || tags.building === "musalla";
+        return la == null ? null : { id: e.type + e.id, name, surau, lat: la, lon: lo, km: distKm(lat, lon, la, lo) };
+      }).filter(Boolean).sort((a, b) => a.km - b.km);
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("overpass");
+}
+
 /* ---------- Prayer times card (JAKIM e-Solat via /api/solat) ---------- */
 function PrayerCard({ T, lang, settings, persistSettings, today, available, openSignal }) {
   const [data, setData] = useState(() => readJson("quran-journal-solat", null));
   const [open, setOpen] = useState(false);
   useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
+  const [mq, setMq] = useState({ status: "idle", list: [], filter: "all" }); // idle | finding | ok | error
+  function findMosques() {
+    if (!navigator.geolocation) { setMq({ ...mq, status: "error" }); return; }
+    setMq({ ...mq, status: "finding" });
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try { const list = await fetchMosques(pos.coords.latitude, pos.coords.longitude); setMq({ status: "ok", list, filter: "all" }); }
+      catch (e) { setMq((m) => ({ ...m, status: "error" })); }
+    }, () => setMq((m) => ({ ...m, status: "error" })), { enableHighAccuracy: true, timeout: 15000, maximumAge: 2 * 60 * 1000 });
+  }
   const [status, setStatus] = useState("idle"); // idle | loading | locating | error | denied | outside
   const [zones, setZones] = useState(null);
   const [picking, setPicking] = useState(false);
@@ -2250,8 +2444,43 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
           <button className="qt-btn" type="button" onClick={() => (picking ? setPicking(false) : openPicker())} style={styles.cancelBtn}>{zone ? T.solatChange : T.solatPick}</button>
         </div>
       )}
-      {open && (
-        <a href={mosqueUrl} target="_blank" rel="noopener noreferrer" style={styles.mosqueBtn}>{T.mosque} ↗</a>
+      <button className="qt-btn" type="button" onClick={() => (mq.status === "ok" ? setMq({ ...mq, status: "idle" }) : findMosques())}
+        disabled={mq.status === "finding"} style={{ ...styles.mosqueBtn, width: "100%", background: "transparent", cursor: "pointer", fontFamily: "'Lora', serif" }}>
+        {mq.status === "finding" ? T.mosqueFinding : T.mosqueNear} {mq.status === "ok" ? "▴" : "▾"}
+      </button>
+      {mq.status === "error" && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--danger)" }}>{T.mosqueErr}</div>}
+      {mq.status === "ok" && (
+        <div className="qt-fade" style={{ marginTop: 10 }}>
+          {mq.list.length === 0 ? (
+            <div style={styles.estSub}>{T.mosqueNone}</div>
+          ) : (
+            <>
+              <div style={{ ...styles.segment, marginBottom: 6 }}>
+                {[["all", T.mosqueAll, mq.list.length], ["masjid", T.mosqueMasjid, mq.list.filter((m) => !m.surau).length], ["surau", T.mosqueSurau, mq.list.filter((m) => m.surau).length]].map(([k, l, n]) => (
+                  <button key={k} className="qt-btn" type="button" onClick={() => setMq({ ...mq, filter: k })}
+                    style={{ ...styles.segBtn, ...(mq.filter === k ? styles.segBtnOn : {}) }}>{l} ({n})</button>
+                ))}
+              </div>
+              {mq.list.filter((m) => mq.filter === "all" || (mq.filter === "surau") === m.surau).slice(0, 30).map((m) => (
+                <div key={m.id} style={styles.mosqueRow}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name || T.mosqueUnnamed}</div>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 2 }}>
+                      <span style={styles.mosqueType}>{m.surau ? T.mosqueSurau : T.mosqueMasjid}</span>
+                      <span style={{ fontSize: 12, opacity: 0.7, fontFamily: "'IBM Plex Mono', monospace" }}>{m.km < 1 ? `${Math.round(m.km * 1000)} m` : `${m.km.toFixed(1)} km`}</span>
+                    </div>
+                  </div>
+                  <a href={`https://www.google.com/maps/dir/?api=1&destination=${m.lat},${m.lon}`} target="_blank" rel="noopener noreferrer"
+                    style={{ ...styles.cancelBtn, textDecoration: "none", display: "inline-block" }}>{T.mosqueRoute}</a>
+                </div>
+              ))}
+            </>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 8, fontSize: 11, opacity: 0.6 }}>
+            <span>{T.mosqueSource}</span>
+            <a href={mosqueUrl} target="_blank" rel="noopener noreferrer" style={{ color: "inherit" }}>{T.mosqueMaps}</a>
+          </div>
+        </div>
       )}
       {picking && (
         <select className="qt-input" value={zone} onChange={(e) => { const z = (zones || []).find((x) => x.c === e.target.value); if (z) chooseZone(z); }}
@@ -2629,6 +2858,10 @@ const styles = {
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
   solatHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
   solatSummary: { display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--title)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  celebrate: { position: "fixed", left: "50%", top: "calc(18px + env(safe-area-inset-top))", zIndex: 80, background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8",
+    border: "1px solid rgba(217,188,122,0.6)", borderRadius: 16, padding: "12px 18px", fontSize: 15, fontWeight: 600, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.3)", lineHeight: 1.6, maxWidth: "88vw" },
+  mosqueRow: { display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: "1px solid var(--line)" },
+  mosqueType: { fontSize: 10.5, fontWeight: 600, borderRadius: 999, padding: "2px 7px", border: "1px solid var(--line2)", color: "var(--gold)", whiteSpace: "nowrap" },
   holyBadge: { flex: "0 0 auto", fontSize: 11.5, fontWeight: 600, color: "var(--title)", background: "var(--input)", border: "1px solid var(--line2)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" },
   holyBadgeToday: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
   mosqueBtn: { display: "block", textAlign: "center", marginTop: 10, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--line3)", color: "var(--title)", textDecoration: "none", fontSize: 13.5, fontWeight: 600 },
