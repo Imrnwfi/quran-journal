@@ -246,6 +246,24 @@ function ramadanInfo(today, offset) {
   return null;
 }
 
+// Islamic days of significance by Hijri date (month, day).
+const ISLAMIC_EVENTS = [
+  { id: "maalHijrah", m: 1, d: 1 }, { id: "asyura", m: 1, d: 10 }, { id: "maulid", m: 3, d: 12 },
+  { id: "israk", m: 7, d: 27 }, { id: "nisfu", m: 8, d: 15 }, { id: "ramadan", m: 9, d: 1 },
+  { id: "nuzul", m: 9, d: 17 }, { id: "fitri", m: 10, d: 1 }, { id: "arafah", m: 12, d: 9 }, { id: "adha", m: 12, d: 10 },
+];
+function upcomingEvents(today, offset, limit = 3) {
+  const found = [], seen = new Set();
+  for (let i = 0; i <= 400 && found.length < ISLAMIC_EVENTS.length; i++) {
+    const iso = addDays(today, i), h = hijriOf(iso, offset);
+    if (!h) continue;
+    for (const ev of ISLAMIC_EVENTS) {
+      if (!seen.has(ev.id) && ev.m === h.m && ev.d === h.d) { seen.add(ev.id); found.push({ ...ev, date: iso, days: i, year: h.y }); }
+    }
+  }
+  return found.sort((a, b) => a.days - b.days).slice(0, limit);
+}
+
 /* ---------- Smart reminder hour (same rule as the server) ---------- */
 function deviceTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kuala_Lumpur"; } catch (e) { return "Asia/Kuala_Lumpur"; } }
 function smartHourOf(entries) {
@@ -406,6 +424,11 @@ const TEXT = {
     solatServerOnly: "Waktu solat hanya tersedia di laman Netlify.", solatEmpty: "Guna lokasi semasa atau pilih zon untuk lihat waktu solat JAKIM.",
     solatTomorrow: "esok", solatLoading: "Memuatkan…",
     navHome: "Utama", navHistory: "Sejarah", navStats: "Statistik", navSettings: "Tetapan",
+    holyTitle: "Hari kebesaran Islam", holyToday: "Hari ini", holyIn: (n) => `${n} hari lagi`,
+    holyNote: "Anggaran ikut kalendar Hijrah; tarikh rasmi ikut pengumuman.",
+    holyNames: { maalHijrah: "Awal Muharam (Maal Hijrah)", asyura: "Hari Asyura", maulid: "Maulidur Rasul", israk: "Israk dan Mikraj",
+      nisfu: "Nisfu Syaaban", ramadan: "Awal Ramadan", nuzul: "Nuzul Al-Quran", fitri: "Hari Raya Aidilfitri", arafah: "Hari Arafah", adha: "Hari Raya Aidiladha" },
+    mosque: "🕌 Masjid berdekatan", mosqueQuery: "masjid",
     juzShow: "lihat juz' ▾", juzHide: "tutup juz' ▴", savedToast: (r) => `Disimpan ✓ ${r}`,
     solatPickShort: "pilih zon", solatTap: "Ketik untuk lihat semua waktu",
     notifOn: "Hidupkan peringatan", notifOff: "Matikan", notifTest: "Hantar notifikasi ujian",
@@ -506,6 +529,11 @@ const TEXT = {
     solatServerOnly: "Prayer times are only available on the Netlify site.", solatEmpty: "Use your current location or choose a zone to see JAKIM prayer times.",
     solatTomorrow: "tomorrow", solatLoading: "Loading…",
     navHome: "Home", navHistory: "History", navStats: "Stats", navSettings: "Settings",
+    holyTitle: "Islamic days", holyToday: "Today", holyIn: (n) => `in ${n} days`,
+    holyNote: "Estimated from the Hijri calendar; official dates follow announcements.",
+    holyNames: { maalHijrah: "Islamic New Year (1 Muharram)", asyura: "Day of Ashura", maulid: "Mawlid an-Nabi", israk: "Isra' and Mi'raj",
+      nisfu: "Nisf Sha'ban", ramadan: "Start of Ramadan", nuzul: "Nuzul al-Quran", fitri: "Eid al-Fitr", arafah: "Day of Arafah", adha: "Eid al-Adha" },
+    mosque: "🕌 Mosques nearby", mosqueQuery: "mosque",
     juzShow: "show juz' ▾", juzHide: "hide juz' ▴", savedToast: (r) => `Saved ✓ ${r}`,
     solatPickShort: "choose zone", solatTap: "Tap to see all times",
     notifOn: "Turn on reminder", notifOff: "Turn off", notifTest: "Send a test notification",
@@ -1219,6 +1247,7 @@ function QuranTracker() {
   const ayahsTotal = useMemo(() => entries.reduce((n, en) => { const [a, b] = spans[en.id] || [en.page, en.page]; return n + ayahsInSpan(a, b); }, 0), [entries, spans]);
   const hOff = settings.hijriOffset || 0;
   const ramadan = useMemo(() => ramadanInfo(today, hOff), [today, hOff]);
+  const events = useMemo(() => upcomingEvents(today, hOff, 3), [today, hOff]);
   const smartHour = useMemo(() => smartHourOf(entries), [entries]);
   const fmtHijriShort = (iso) => { const h = hijriOf(iso, hOff); return h ? `${h.d} ${(HIJRI_MONTHS[settings.lang] || HIJRI_MONTHS.ms)[h.m - 1]}` : ""; };
 
@@ -1607,6 +1636,19 @@ function QuranTracker() {
                   <div style={styles.estSub}>{T.ramadanPlan(Math.ceil(TOTAL_PAGES / ramadan.length), Math.ceil(TOTAL_PAGES / ramadan.length / 5))}</div>
                 </>
               )}
+    </>,
+    events.length > 0 && <>
+      <div style={styles.estLabel}>📅 {T.holyTitle}</div>
+      {events.map((ev, i) => (
+        <div key={ev.id} style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: i ? 6 : 4 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={i === 0 ? styles.estValueSm : { fontSize: 13.5, fontWeight: 600 }}>{T.holyNames[ev.id]}</div>
+            <div style={{ fontSize: 11.5, opacity: 0.65 }}>{fmtLong(ev.date)} · {fmtHijri(ev.date, hOff, settings.lang)}</div>
+          </div>
+          <div style={{ ...styles.holyBadge, ...(ev.days === 0 ? styles.holyBadgeToday : {}) }}>{ev.days === 0 ? T.holyToday : T.holyIn(ev.days)}</div>
+        </div>
+      ))}
+      <div style={{ ...styles.estSub, fontSize: 11, marginTop: 8 }}>{T.holyNote}</div>
     </>,
   ].filter(Boolean);
 
@@ -2118,8 +2160,8 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
     setPicking(true);
     if (!zones) { try { setZones(await loadZones()); } catch (e) { setStatus("error"); } }
   }
-  function chooseZone(z) {
-    persistSettings({ zone: z.c, zoneLabel: zoneLabelOf(z.c) });
+  function chooseZone(z, extra = {}) {
+    persistSettings({ zone: z.c, zoneLabel: zoneLabelOf(z.c), ...extra });
     setPicking(false); setStatus("idle");
   }
   function locate() {
@@ -2129,7 +2171,8 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
       try {
         const zs = zones || await loadZones(); setZones(zs);
         const z = zoneFor(pos.coords.latitude, pos.coords.longitude, zs);
-        if (z) chooseZone(z); else { setStatus("outside"); setPicking(true); }
+        const near = [Math.round(pos.coords.latitude * 100) / 100, Math.round(pos.coords.longitude * 100) / 100];
+        if (z) chooseZone(z, { near }); else { persistSettings({ near }); setStatus("outside"); setPicking(true); }
       } catch (e) { setStatus("error"); }
     }, () => { setStatus("denied"); openPicker(); }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 });
   }
@@ -2148,6 +2191,10 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
   }
   const fmtT = (t) => { if (!t) return "—"; const [h, m] = t.split(":").map(Number); const d = new Date(); d.setHours(h, m, 0, 0); return d.toLocaleTimeString(T.locale, { hour: "numeric", minute: "2-digit" }); };
   const hijriLabel = td && td.hijri ? (() => { const m = td.hijri.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? `${+m[3]} ${(HIJRI_MONTHS[lang] || HIJRI_MONTHS.ms)[+m[2] - 1]} ${m[1]}` : ""; })() : "";
+  // Google Maps search for nearby mosques (uses the rough location from "Lokasi semasa" if known, else the phone's own location).
+  const near = Array.isArray(settings.near) ? settings.near : null;
+  const mosqueUrl = "https://www.google.com/maps/search/?api=1&query=" +
+    encodeURIComponent(near ? `${T.mosqueQuery} near ${near[0]},${near[1]}` : `${T.mosqueQuery} near me`);
   const msg = { locating: T.solatLocating, loading: T.solatLoading, error: T.solatError, denied: T.solatDenied, outside: T.solatOutside }[status];
 
   const summary = !available ? T.solatServerOnly : !zone ? T.solatPickShort
@@ -2202,6 +2249,9 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
           <button className="qt-btn" type="button" onClick={locate} disabled={status === "locating"} style={styles.smallPrimary}>{T.solatLocate}</button>
           <button className="qt-btn" type="button" onClick={() => (picking ? setPicking(false) : openPicker())} style={styles.cancelBtn}>{zone ? T.solatChange : T.solatPick}</button>
         </div>
+      )}
+      {open && (
+        <a href={mosqueUrl} target="_blank" rel="noopener noreferrer" style={styles.mosqueBtn}>{T.mosque} ↗</a>
       )}
       {picking && (
         <select className="qt-input" value={zone} onChange={(e) => { const z = (zones || []).find((x) => x.c === e.target.value); if (z) chooseZone(z); }}
@@ -2579,6 +2629,9 @@ const styles = {
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
   solatHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
   solatSummary: { display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--title)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  holyBadge: { flex: "0 0 auto", fontSize: 11.5, fontWeight: 600, color: "var(--title)", background: "var(--input)", border: "1px solid var(--line2)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" },
+  holyBadgeToday: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  mosqueBtn: { display: "block", textAlign: "center", marginTop: 10, padding: "9px 12px", borderRadius: 8, border: "1px solid var(--line3)", color: "var(--title)", textDecoration: "none", fontSize: 13.5, fontWeight: 600 },
   screenTitle: { fontFamily: "'Amiri', serif", fontSize: 26, fontWeight: 700, color: "var(--title)", margin: "6px 2px 14px" },
   progressBtn: { display: "block", width: "100%", background: "transparent", border: "none", padding: "2px 0", marginBottom: 14, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
   carousel: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 2 },
