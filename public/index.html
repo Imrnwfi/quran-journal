@@ -65,7 +65,8 @@
   @media (prefers-reduced-motion: reduce) { .qt-fade { animation: none !important; } }
   @keyframes qtFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .qt-fade { animation: qtFadeIn 0.35s ease-out; }
-  .qt-car { scrollbar-width: none; }
+  .qt-car { scrollbar-width: none; transition: height 0.25s ease; }
+  input[type="search"]::-webkit-search-cancel-button, input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
   .qt-car::-webkit-scrollbar { display: none; }
   @keyframes qtSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .qt-sheet { animation: qtSheetUp 0.28s cubic-bezier(.2,.8,.2,1); }
@@ -361,7 +362,8 @@ const TEXT = {
     locale: "ms-MY",
     subtitle: "Tandakan muka surat, kekalkan rentak.",
     lastRead: "Bacaan terakhir", noEntries: "Belum ada catatan", startHint: "Catat muka surat hari ini di bawah untuk mula",
-    streak: () => "hari streak", pages: "muka surat", khatamChip: "× khatam",
+    streak: () => "hari streak", pages: "muka surat", khatamChip: "× khatam", chipDays: "hari",
+    fontSize: "Saiz tulisan", fontNormal: "Biasa", fontLarge: "Besar", fontXL: "Sangat besar",
     through: (p) => `${p}% daripada Mushaf`, round: (n) => `pusingan ${n}`,
     estTitle: "Jangkaan khatam", estNone: "Catat bacaan beberapa hari untuk dapat anggaran.",
     estPace: (n) => `Purata ${n} muka surat sehari (30 hari lepas)`,
@@ -409,6 +411,13 @@ const TEXT = {
     personalHint: "Data jurnal anda disimpan dalam telefon ini sahaja. Muat turun backup sekali-sekala (Tetapan → Backup data) supaya tak hilang.",
     personalBack: "Lihat jurnal pemilik", personalDelete: "Padam jurnal saya", personalDeleteQ: "Padam semua catatan dan khatam dalam jurnal anda? Tak boleh diundur.",
     personalWelcome: "Jurnal anda dah sedia ✓ Tekan ＋ untuk catat bacaan pertama. Data disimpan dalam telefon ini.",
+    tour: [
+      ["Selamat datang ke Quran Note 👋", "Ini jurnal bacaan anda sendiri. Semua catatan disimpan dalam telefon ini sahaja."],
+      ["Catat dengan butang ＋", "Tekan ＋ di bawah, kemudian pilih +1, +2, +5 atau 'Habis juz''. Ketik catatan dalam Sejarah untuk edit, leret ke kiri untuk padam."],
+      ["Waktu solat & kad pintar", "Ketik kad Waktu solat untuk lihat semua waktu ikut zon JAKIM. Leret kad di bawahnya untuk jangkaan khatam, sasaran, Ramadan dan hari kebesaran."],
+      ["Simpan backup sekali-sekala", "Tetapan → Backup data → Muat turun backup, supaya jurnal anda tak hilang bila tukar telefon."],
+    ],
+    tourNext: "Seterusnya", tourSkip: "Langkau", tourDone: "Mula membaca",
     notifPersonal: "Peringatan dan laporan mingguan hanya untuk jurnal dalam talian pemilik.",
     footerPersonal: (n) => `Jurnal saya · disimpan dalam telefon ini · Rujukan Mushaf ${n} muka surat`,
     syncSaved: "Disegerakkan", syncSaving: "Menyimpan…", syncOffline: "Luar talian — akan disegerakkan", syncError: "Gagal segerak",
@@ -438,6 +447,9 @@ const TEXT = {
     solatServerOnly: "Waktu solat hanya tersedia di laman Netlify.", solatEmpty: "Guna lokasi semasa atau pilih zon untuk lihat waktu solat JAKIM.",
     solatTomorrow: "esok", solatLoading: "Memuatkan…",
     navHome: "Utama", navHistory: "Sejarah", navStats: "Statistik", navSettings: "Tetapan",
+    today: "Hari ini", yesterday: "Semalam", toJuzEnd: (j) => `Habis juz' ${j}`,
+    deletedToast: (r) => `Dipadam: ${r}`, undo: "Buat asal",
+    searchPh: "Cari surah, nota, muka surat…", searchCount: (n) => `${n} catatan dijumpai`, searchNone: "Tiada catatan yang sepadan.",
     weekly: "Laporan mingguan", weeklyHint: "Ringkasan bacaan minggu ini setiap Ahad jam 9 malam.",
     celebrateJuz: (n) => `🎉 Juz' ${n} selesai!`, celebrateStreak: (n) => `🔥 Streak ${n} hari! MasyaAllah`, celebrateBest: (n) => `🏆 Rekod streak baru: ${n} hari`,
     celebrateBadge: (b) => `🏅 Pencapaian baru: ${b}`, celebrateKhatam: "🌙 Alhamdulillah, khatam!",
@@ -481,7 +493,8 @@ const TEXT = {
     locale: "en-GB",
     subtitle: "Mark your page, keep your rhythm.",
     lastRead: "Last read", noEntries: "No entries yet", startHint: "Log today's page below to begin",
-    streak: (n) => (n === 1 ? "day streak" : "days streak"), pages: "pages", khatamChip: "× khatam",
+    streak: (n) => (n === 1 ? "day streak" : "days streak"), pages: "pages", khatamChip: "× khatam", chipDays: "days",
+    fontSize: "Text size", fontNormal: "Normal", fontLarge: "Large", fontXL: "Extra large",
     through: (p) => `${p}% through the Mushaf`, round: (n) => `round ${n}`,
     estTitle: "Projected khatam", estNone: "Log a few days of reading to get an estimate.",
     estPace: (n) => `Averaging ${n} pages a day (last 30 days)`,
@@ -528,6 +541,13 @@ const TEXT = {
     personalHint: "Your journal is stored on this phone only. Download a backup now and then (Settings → Back up data) so it isn't lost.",
     personalBack: "View the owner's journal", personalDelete: "Delete my journal", personalDeleteQ: "Delete all entries and khatams in your journal? This can't be undone.",
     personalWelcome: "Your journal is ready ✓ Tap ＋ to log your first reading. Data stays on this phone.",
+    tour: [
+      ["Welcome to Quran Note 👋", "This is your own reading journal. Everything you log stays on this phone."],
+      ["Log with the ＋ button", "Tap ＋ below, then pick +1, +2, +5 or 'End of juz''. Tap an entry in History to edit it, swipe left to delete."],
+      ["Prayer times & smart cards", "Tap the Prayer times card to see every time for your JAKIM zone. Swipe the cards below for your projected khatam, target, Ramadan and Islamic days."],
+      ["Keep a backup now and then", "Settings → Back up data → Download backup, so your journal isn't lost when you change phones."],
+    ],
+    tourNext: "Next", tourSkip: "Skip", tourDone: "Start reading",
     notifPersonal: "Reminders and the weekly report are only for the owner's online journal.",
     footerPersonal: (n) => `My journal · stored on this phone · ${n}-page Mushaf reference`,
     syncSaved: "Synced", syncSaving: "Saving…", syncOffline: "Offline — will sync", syncError: "Sync failed",
@@ -556,6 +576,9 @@ const TEXT = {
     solatServerOnly: "Prayer times are only available on the Netlify site.", solatEmpty: "Use your current location or choose a zone to see JAKIM prayer times.",
     solatTomorrow: "tomorrow", solatLoading: "Loading…",
     navHome: "Home", navHistory: "History", navStats: "Stats", navSettings: "Settings",
+    today: "Today", yesterday: "Yesterday", toJuzEnd: (j) => `End of juz' ${j}`,
+    deletedToast: (r) => `Deleted: ${r}`, undo: "Undo",
+    searchPh: "Search surah, note, page…", searchCount: (n) => `${n} entr${n === 1 ? "y" : "ies"} found`, searchNone: "No matching entries.",
     weekly: "Weekly report", weeklyHint: "A summary of the week's reading every Sunday at 9 pm.",
     celebrateJuz: (n) => `🎉 Juz' ${n} complete!`, celebrateStreak: (n) => `🔥 ${n}-day streak! MashaAllah`, celebrateBest: (n) => `🏆 New best streak: ${n} days`,
     celebrateBadge: (b) => `🏅 New achievement: ${b}`, celebrateKhatam: "🌙 Alhamdulillah, khatam!",
@@ -802,12 +825,46 @@ function urlB64ToUint8Array(b64) {
 const PUSH_OK = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
+/* ---------- Line icons (consistent on every phone) ---------- */
+const ICON_PATHS = {
+  home: <><path d="M3 11 12 4l9 7" /><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5" /></>,
+  book: <><path d="M12 6.5C10 5 7 4.5 4 5v14c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5z" /><path d="M12 6.5v14" /></>,
+  chart: <><path d="M4 20h16" /><path d="M7.5 16.5v-5" /><path d="M12 16.5V7" /><path d="M16.5 16.5v-8" /></>,
+  settings: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
+  plus: <path d="M12 5v14M5 12h14" />,
+  mosque: <><path d="M12 2.5v2.5" /><path d="M7 11a5 5 0 0 1 10 0" /><path d="M5 11h14v9H5z" /><path d="M10 20v-3.5a2 2 0 0 1 4 0V20" /><path d="M3 20h18" /></>,
+  palette: <><path d="M12 3a9 9 0 1 0 0 18c1 0 1.6-.7 1.6-1.5 0-1.1-1-1.5-1-2.5s.8-1.8 1.9-1.8H17a4 4 0 0 0 4-4c0-4.5-4-8.2-9-8.2z" /><circle cx="7.5" cy="11.5" r="1" /><circle cx="10" cy="7.5" r="1" /><circle cx="15" cy="7.5" r="1" /></>,
+  globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 3 2.6 15 0 18M12 3c-2.6 3-2.6 15 0 18" /></>,
+  volume: <><path d="M4 9.5h3.5L12.5 5.5v13l-5-4H4z" /><path d="M16 9a4.5 4.5 0 0 1 0 6" /><path d="M18.5 6.5a8 8 0 0 1 0 11" /></>,
+  bell: <><path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></>,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 20.5c1.4-3.6 4.2-5.5 7.5-5.5s6.1 1.9 7.5 5.5" /></>,
+  phone: <><rect x="7" y="2.5" width="10" height="19" rx="2.2" /><path d="M11 18.2h2" /></>,
+  download: <><path d="M12 4v11" /><path d="M7.5 10.5 12 15l4.5-4.5" /><path d="M5 20h14" /></>,
+  install: <><rect x="6" y="2.5" width="12" height="19" rx="2.2" /><path d="M12 7v7M9 11l3 3 3-3" /></>,
+  text: <><path d="M3.5 18 8 6l4.5 12M5.2 14h5.6" /><path d="M14.5 18l3-7.5 3 7.5M15.4 15.8h4.2" /></>,
+  flame: <path d="M12 21c-3.9 0-6.8-2.6-6.8-6.3 0-3.1 2-5 3.4-6.4.4 1.8 1.4 2.9 2.4 3.3C11 8.3 12.2 5.2 14 3c.6 3.2 4.8 5.4 4.8 11 0 4-2.9 7-6.8 7z" />,
+  pages: <><path d="M6 3.5h9l3 3V20.5H6z" /><path d="M15 3.5v3h3" /><path d="M9 11h6M9 14.5h6" /></>,
+  moon: <path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1z" />,
+  search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,
+  trash: <><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" /></>,
+  calendar: <><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
+};
+function Icon({ name, size = 22, stroke = 1.8, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke}
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" style={{ display: "block", flex: "0 0 auto", ...style }}>
+      {ICON_PATHS[name]}
+    </svg>
+  );
+}
+
 /* ---------- App ---------- */
 function QuranTracker() {
   const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, PERSONAL ? [] : SEED_ENTRIES));
   const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
   const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
-  const [settings, setSettings] = useState(() => (() => { const { near, ...saved } = readJson(SETTINGS_KEY, {}); return { lang: "ms", targetDate: "", theme: "auto", sound: true, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...saved }; })());
+  const [settings, setSettings] = useState(() => (() => { const { near, ...saved } = readJson(SETTINGS_KEY, {}); return { lang: "ms", targetDate: "", theme: "auto", sound: true, fontScale: 1, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...saved }; })());
   const previewRef = useRef(null);
   function previewSound() {
     try {
@@ -848,6 +905,7 @@ function QuranTracker() {
 
   // lists
   const [tab, setTab] = useState("history");
+  const [query, setQuery] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState(null);
@@ -874,9 +932,23 @@ function QuranTracker() {
   const [slide, setSlide] = useState(0);
   const [prayerSignal, setPrayerSignal] = useState(0);
   const carRef = useRef(null);
+  const [carH, setCarH] = useState(null);
   const toastTimer = useRef(null);
-  function showToast(msg, ms = 2600) { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(""), ms); }
+  // The swipeable row takes the height of the card being viewed (no empty space under short cards).
+  useEffect(() => {
+    const measure = () => {
+      const el = carRef.current; if (!el) return;
+      const card = el.children[Math.min(slide, el.children.length - 1)];
+      if (card) setCarH(card.offsetHeight + 4);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  });
+  function showToast(msg, ms = 2600, action = null) { setToast(action ? { msg, action } : msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(""), ms); }
+  function haptic(pattern = 10) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} }
   function go(next) {
+    haptic(6);
     if (next === screen) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     if (next === "home") { try { history.pushState(null, "", location.pathname + location.search); } catch (e) {} setScreen("home"); }
     else location.hash = next;
@@ -889,6 +961,7 @@ function QuranTracker() {
     return () => { window.removeEventListener("hashchange", onNav); window.removeEventListener("popstate", onNav); };
   }, []);
   function openLog() {
+    haptic(10);
     if (!canEdit) { setLoginErr(""); setLoginOpen(true); return; }
     setFormError(""); setDate(todayStr());
     try { history.pushState({ sheet: 1 }, "", location.href); } catch (e) {}
@@ -1182,10 +1255,12 @@ function QuranTracker() {
     ["qn-personal-entries", "qn-personal-khatams", "qn-personal-deleted"].forEach((k) => writeStr(k, null));
     location.replace(location.pathname);
   }
+  const [tourOpen, setTourOpen] = useState(false);
   useEffect(() => {
-    let w = null; try { w = sessionStorage.getItem("qn-welcome"); sessionStorage.removeItem("qn-welcome"); } catch (e) {}
-    if (w && PERSONAL) setTimeout(() => showToast(T.personalWelcome, 5000), 3600);
+    try { sessionStorage.removeItem("qn-welcome"); } catch (e) {}
+    if (PERSONAL && !readStr("qn-tour-done")) setTimeout(() => setTourOpen(true), document.getElementById("splash") ? 3700 : 400);
   }, []);
+  function closeTour() { writeStr("qn-tour-done", "1"); setTourOpen(false); }
 
   function signOut() {
     tokenRef.current = null; writeStr(TOKEN_KEY, null); writeStr(DIRTY_KEY, null);
@@ -1342,6 +1417,21 @@ function QuranTracker() {
   const targetNeed = target && targetDaysLeft > 0 ? Math.ceil(remaining / targetDaysLeft) : null;
 
   const notesList = useMemo(() => sorted.filter((e) => e.note), [sorted]);
+  // Search by surah name, note text, page number ("220" or "p.220") or date text
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLowerCase().replace(/^p\.?\s*/, "");
+    if (!q) return [];
+    const norm = (x) => x.toLowerCase().replace(/['’`-]/g, "");
+    const qn = norm(q);
+    return sorted.filter((en) => {
+      const [a, b] = spans[en.id] || [en.page, en.page];
+      if (/^\d+$/.test(q)) { const n = +q; return n >= a && n <= b; }
+      const surahs = new Set([surahForPage(a), surahForPage(b), surahForPage(en.page)]);
+      for (const sname of surahs) if (norm(sname).includes(qn)) return true;
+      if (en.note && norm(en.note).includes(qn)) return true;
+      return norm(fmtLong(en.date)).includes(qn);
+    });
+  }, [query, sorted, spans, settings.lang]);
   const ayahsTotal = useMemo(() => entries.reduce((n, en) => { const [a, b] = spans[en.id] || [en.page, en.page]; return n + ayahsInSpan(a, b); }, 0), [entries, spans]);
   const hOff = settings.hijriOffset || 0;
   const ramadan = useMemo(() => ramadanInfo(today, hOff), [today, hOff]);
@@ -1414,12 +1504,22 @@ function QuranTracker() {
     if (to === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
     setPage(""); setFromPage(""); setNote("");
     closeLog();
+    haptic(15);
     showToast(T.savedToast(rangeLabel(entry)));
   }
   function deleteEntry(id) {
-    persistDeleted({ ...deleted, entries: [...deleted.entries, id] });
-    persist(entries.filter((en) => en.id !== id));
-    setConfirmDeleteId(null);
+    const gone = entries.find((en) => en.id === id);
+    if (!gone) return;
+    haptic([12, 40, 12]);
+    persistDeleted({ ...stateRef.current.deleted, entries: [...stateRef.current.deleted.entries, id] });
+    persist(stateRef.current.entries.filter((en) => en.id !== id));
+    setConfirmDeleteId(null); setEditId(null); setEditDraft(null);
+    showToast(T.deletedToast(rangeLabel(gone)), 6000, { label: T.undo, fn: () => {
+      const cur = stateRef.current;
+      persistDeleted({ ...cur.deleted, entries: cur.deleted.entries.filter((x) => x !== id) });
+      persist([gone, ...cur.entries.filter((en) => en.id !== id)]);
+      haptic(10);
+    } });
   }
   function startEdit(en) {
     setConfirmDeleteId(null);
@@ -1445,10 +1545,18 @@ function QuranTracker() {
     setShowKhatamForm(false);
   }
   function deleteKhatam(id) {
-    persistDeleted({ ...deleted, khatams: [...deleted.khatams, id] });
-    persistKhatams(khatams.filter((k) => k.id !== id));
-    setConfirmKhatamId(null);
+    const gone = khatams.find((k) => k.id === id);
+    if (!gone) return;
+    haptic([12, 40, 12]);
+    persistDeleted({ ...stateRef.current.deleted, khatams: [...stateRef.current.deleted.khatams, id] });
+    persistKhatams(stateRef.current.khatams.filter((k) => k.id !== id));
+    setConfirmKhatamId(null); setEditKhatamId(null); setKhatamDraft(null);
     setKhatamFlash("");
+    showToast(T.deletedToast("khatam"), 6000, { label: T.undo, fn: () => {
+      const cur = stateRef.current;
+      persistDeleted({ ...cur.deleted, khatams: cur.deleted.khatams.filter((x) => x !== id) });
+      persistKhatams([...cur.khatams.filter((k) => k.id !== id), gone]);
+    } });
   }
   function startEditKhatam(k) {
     setConfirmKhatamId(null);
@@ -1546,6 +1654,8 @@ function QuranTracker() {
         <div style={{ display: "flex", gap: 8 }}>
           <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
           <button className="qt-btn" type="button" onClick={() => { setEditId(null); setEditDraft(null); }} style={styles.cancelBtn}>{T.cancel}</button>
+          <button className="qt-btn" type="button" onClick={() => deleteEntry(editId)} style={{ ...styles.cancelBtn, marginLeft: "auto", color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 4 }}
+            aria-label={T.del}><Icon name="trash" size={15} />{T.del}</button>
         </div>
       </form>
     );
@@ -1553,28 +1663,21 @@ function QuranTracker() {
 
   function EntryCard({ en, showDate }) {
     if (editId === en.id) return <div style={styles.entryRow}>{EntryEditor()}</div>;
-    return (
-      <div style={{ ...styles.entryRow, ...(canEdit ? {} : { paddingRight: 12 }) }}>
+    const body = (
+      <>
         <div style={styles.entryPage}>
           <span style={styles.mono}>{rangeLabel(en)}</span>
           <span style={styles.entryJuz}>{surahForPage(en.page)} · Juz' {juzForPage(en.page)}</span>
         </div>
         {showDate && <div style={styles.entryDate}>{fmtLong(en.date)}</div>}
         {en.note && <div style={styles.entryNote}>{en.note}</div>}
-        {canEdit && (confirmDeleteId === en.id ? (
-          <div style={styles.confirmRow}>
-            <span style={{ fontSize: 12, opacity: 0.75 }}>{T.removeEntryQ}</span>
-            <button className="qt-btn" onClick={() => deleteEntry(en.id)} style={styles.confirmBtn}>{T.yesRemove}</button>
-            <button className="qt-btn" onClick={() => setConfirmDeleteId(null)} style={styles.cancelBtn}>{T.cancel}</button>
-          </div>
-        ) : (
-          <div style={styles.rowActions}>
-            <button className="qt-btn" onClick={() => startEdit(en)} style={styles.iconBtn} aria-label={`${T.edit} ${rangeLabel(en)}`} title={T.edit}>✎</button>
-            <button className="qt-btn" onClick={() => setConfirmDeleteId(en.id)} style={{ ...styles.iconBtn, color: "var(--danger)" }}
-              aria-label={`${T.del} ${rangeLabel(en)}`} title={T.del}>×</button>
-          </div>
-        ))}
-      </div>
+      </>
+    );
+    if (!canEdit) return <div style={styles.entryRow}>{body}</div>;
+    return (
+      <SwipeRow onTap={() => { haptic(8); startEdit(en); }} onSwipe={() => deleteEntry(en.id)} label={`${T.edit} ${rangeLabel(en)}`} delLabel={T.del}>
+        {body}
+      </SwipeRow>
     );
   }
 
@@ -1583,7 +1686,7 @@ function QuranTracker() {
   /* ----- settings rows ----- */
   const notifValue = !serverMode ? "" : role !== "owner" ? "" : notif === "on" ? (settings.reminderMode === "fixed" ? T.remindFixed : T.remindSmart) : notif === "denied" ? "✕" : T.soundOff;
   const settingRows = [
-    { key: "theme", icon: "🎨", title: T.theme, value: { auto: T.themeAuto, light: T.themeLight, dark: T.themeDark }[settings.theme], body: (
+    { key: "theme", icon: "palette", title: T.theme, value: { auto: T.themeAuto, light: T.themeLight, dark: T.themeDark }[settings.theme], body: (
       <div style={styles.segment}>
         {[["auto", T.themeAuto], ["light", T.themeLight], ["dark", T.themeDark]].map(([k, l]) => (
           <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ theme: k })}
@@ -1591,7 +1694,7 @@ function QuranTracker() {
         ))}
       </div>
     ) },
-    { key: "lang", icon: "🌐", title: T.language, value: settings.lang === "en" ? "English" : "Bahasa Melayu", body: (
+    { key: "lang", icon: "globe", title: T.language, value: settings.lang === "en" ? "English" : "Bahasa Melayu", body: (
       <div style={styles.segment}>
         {[["ms", "Bahasa Melayu"], ["en", "English"]].map(([k, l]) => (
           <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ lang: k })}
@@ -1599,7 +1702,15 @@ function QuranTracker() {
         ))}
       </div>
     ) },
-    { key: "sound", icon: "🔊", title: T.sound, value: settings.sound ? T.soundOn : T.soundOff, body: (
+    { key: "font", icon: "text", title: T.fontSize, value: { 1: T.fontNormal, 1.12: T.fontLarge, 1.25: T.fontXL }[settings.fontScale || 1] || T.fontNormal, body: (
+      <div style={styles.segment}>
+        {[[1, T.fontNormal], [1.12, T.fontLarge], [1.25, T.fontXL]].map(([k, l]) => (
+          <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ fontScale: k })}
+            aria-pressed={(settings.fontScale || 1) === k} style={{ ...styles.segBtn, ...((settings.fontScale || 1) === k ? styles.segBtnOn : {}) }}>{l}</button>
+        ))}
+      </div>
+    ) },
+    { key: "sound", icon: "volume", title: T.sound, value: settings.sound ? T.soundOn : T.soundOff, body: (
       <>
         <div style={styles.hint}>{T.soundHint}</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -1614,7 +1725,7 @@ function QuranTracker() {
         {IS_IOS && <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>{T.soundIOS}</div>}
       </>
     ) },
-    { key: "notif", icon: "🔔", title: T.notif, value: notifValue, body: !serverMode ? (
+    { key: "notif", icon: "bell", title: T.notif, value: notifValue, body: !serverMode ? (
       <div style={{ ...styles.hint, marginBottom: 0 }}>{role === "personal" ? T.notifPersonal : T.notifServerOnly}</div>
     ) : (
       <>
@@ -1664,7 +1775,7 @@ function QuranTracker() {
         )}
       </>
     ) },
-    role === "owner" && { key: "account", icon: "👤", title: T.account, value: "✓", body: (
+    role === "owner" && { key: "account", icon: "user", title: T.account, value: "✓", body: (
       <>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 13, flex: 1 }}>{T.ownerOn}</span>
@@ -1679,7 +1790,7 @@ function QuranTracker() {
         {pkMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: pkMsg === T.passkeyAdded ? "var(--title)" : "var(--danger)" }}>{pkMsg}</div>}
       </>
     ) },
-    role === "viewer" && { key: "account", icon: "👤", title: T.account, value: "", body: (
+    role === "viewer" && { key: "account", icon: "user", title: T.account, value: "", body: (
       <>
         <div style={styles.hint}>{T.personalPitch}</div>
         <div style={styles.btnRow}>
@@ -1688,7 +1799,7 @@ function QuranTracker() {
         </div>
       </>
     ) },
-    role === "personal" && { key: "account", icon: "📱", title: T.personalMode, value: "", body: (
+    role === "personal" && { key: "account", icon: "phone", title: T.personalMode, value: "", body: (
       <>
         <div style={styles.hint}>{T.personalHint}</div>
         <div style={styles.btnRow}>
@@ -1704,7 +1815,7 @@ function QuranTracker() {
         )}
       </>
     ) },
-    { key: "backup", icon: "💾", title: T.backup, value: "", body: (
+    { key: "backup", icon: "download", title: T.backup, value: "", body: (
       <>
         <div style={styles.hint}>{T.backupHint}</div>
         <div style={styles.btnRow}>
@@ -1722,7 +1833,7 @@ function QuranTracker() {
         {backupMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: backupMsg === T.importBad || backupMsg === T.copyFail ? "var(--danger)" : "var(--title)" }}>{backupMsg}</div>}
       </>
     ) },
-    { key: "install", icon: "📲", title: T.install, value: isStandalone ? "✓" : "", body: isStandalone ? (
+    { key: "install", icon: "install", title: T.install, value: isStandalone ? "✓" : "", body: isStandalone ? (
       <div style={{ ...styles.hint, marginBottom: 0 }}>{T.installed}</div>
     ) : (
       <>
@@ -1733,7 +1844,19 @@ function QuranTracker() {
     ) },
   ];
 
-  const navItems = [["home", "🏠", T.navHome], ["history", "📖", T.navHistory], ["log", "+", T.logTitle], ["stats", "📊", T.navStats], ["settings", "⚙️", T.navSettings]];
+  // Quick "to" values for the log sheet: +1, +2, +5 pages and "to the end of this juz'".
+  const quickBase = (() => { const f = parseInt(fromPage, 10); return Number.isInteger(f) && f >= 1 && f <= TOTAL_PAGES ? f - 1 : (lastEntry ? lastEntry.page : 0); })();
+  const quickChips = (() => {
+    const out = [];
+    for (const n of [1, 2, 5]) if (quickBase + n <= TOTAL_PAGES) out.push([`+${n}`, quickBase + n]);
+    // End of the current juz'; if that is the same as +1/+2/+5, offer the end of the next juz' instead.
+    let j = juzForPage(Math.min(quickBase + 1, TOTAL_PAGES)), end = juzRange(j)[1];
+    if ([1, 2, 5].includes(end - quickBase) || end <= quickBase) { if (j < 30) { j += 1; end = juzRange(j)[1]; } else end = 0; }
+    if (end > quickBase) out.push([T.toJuzEnd(j), end]);
+    return out;
+  })();
+
+  const navItems = [["home", "home", T.navHome], ["history", "book", T.navHistory], ["log", "plus", T.logTitle], ["stats", "chart", T.navStats], ["settings", "settings", T.navSettings]];
   const slides = [
     <>
           <div style={styles.estRow}>
@@ -1817,7 +1940,7 @@ function QuranTracker() {
   ].filter(Boolean);
 
   return (
-    <div style={styles.page}>
+    <div style={{ ...styles.page, zoom: settings.fontScale && settings.fontScale !== 1 ? settings.fontScale : undefined }}>
       <div style={styles.bgPattern} />
       <div style={styles.container}>
         {role === "owner" && (
@@ -1870,9 +1993,9 @@ function QuranTracker() {
                     </>
                   )}
                   <div style={styles.streakRow}>
-                    <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> {T.streak(streak)}</div>
-                    <div style={styles.streakChip}><span style={styles.mono}>{coveredCount}</span>/{TOTAL_PAGES} {T.pages}</div>
-                    <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>{T.khatamChip}</div>
+                    <div style={styles.streakChip} title={`${streak} ${T.streak(streak)}`}><Icon name="flame" size={15} /><span style={styles.mono}>{streak}</span><span style={styles.chipUnit}>{T.chipDays}</span></div>
+                    <div style={styles.streakChip} title={`${coveredCount}/${TOTAL_PAGES} ${T.pages}`}><Icon name="pages" size={15} /><span style={styles.mono}>{coveredCount}/{TOTAL_PAGES}</span></div>
+                    <div style={styles.streakChip} title={`${khatamCount} khatam`}><Icon name="moon" size={15} /><span style={styles.mono}>{khatamCount}</span><span style={styles.chipUnit}>khatam</span></div>
                   </div>
                 </div>
               </div>
@@ -1909,7 +2032,7 @@ function QuranTracker() {
             <PrayerCard T={T} lang={settings.lang} settings={settings} persistSettings={persistSettings} today={today}
               available={role !== "local" && role !== "checking"} openSignal={prayerSignal} />
 
-            <div ref={carRef} className="qt-car" style={styles.carousel} onScroll={(e) => {
+            <div ref={carRef} className="qt-car" style={{ ...styles.carousel, height: carH || undefined }} onScroll={(e) => {
               const el = e.currentTarget, first = el.firstElementChild;
               if (first) setSlide(Math.round(el.scrollLeft / (first.offsetWidth + 10)));
             }}>
@@ -1926,9 +2049,22 @@ function QuranTracker() {
         {screen === "history" && (
           <>
             <h2 style={styles.screenTitle}>{T.navHistory}</h2>
+            <label style={styles.searchBox}>
+              <Icon name="search" size={18} style={{ opacity: 0.6 }} />
+              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={T.searchPh}
+                aria-label={T.searchPh} style={styles.searchInput} />
+              {query && <button className="qt-btn" type="button" onClick={() => setQuery("")} aria-label={T.clear} style={{ ...styles.iconBtn, width: 26, height: 26 }}><Icon name="close" size={16} /></button>}
+            </label>
+            {query.trim() ? (
+              <div style={styles.historySection}>
+                <div style={{ fontSize: 12.5, opacity: 0.7, margin: "2px 2px 10px" }}>{T.searchCount(searchResults.length)}</div>
+                {searchResults.length === 0 ? <div style={styles.emptyState}>{T.searchNone}</div>
+                  : searchResults.slice(0, 100).map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: true })}</React.Fragment>)}
+              </div>
+            ) : (<>
             <div style={styles.tabs} role="tablist">
               {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal]].map(([key, label]) => (
-                <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => setTab(key)}
+                <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => { haptic(6); setTab(key); }}
                   style={{ ...styles.tab, ...(tab === key ? styles.tabOn : {}) }}>{label}</button>
               ))}
             </div>
@@ -1979,6 +2115,7 @@ function QuranTracker() {
         )}
 
         {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
+            </>)}
 
           </>
         )}
@@ -2021,34 +2158,23 @@ function QuranTracker() {
                           <div style={{ display: "flex", gap: 8 }}>
                             <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
                             <button className="qt-btn" type="button" onClick={() => { setEditKhatamId(null); setKhatamDraft(null); }} style={styles.cancelBtn}>{T.cancel}</button>
+                            <button className="qt-btn" type="button" onClick={() => deleteKhatam(editKhatamId)} style={{ ...styles.cancelBtn, marginLeft: "auto", color: "var(--danger)", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="trash" size={15} />{T.del}</button>
                           </div>
                         </form>
                       );
                     }
-                    return (
-                      <div key={k.id} style={styles.khatamRow}>
+                    const row = (
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                         <div style={styles.khatamBadge}><span style={styles.mono}>{n}</span></div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={styles.khatamDate}>{T.khatamN(n)} · {fmtLong(k.date)}</div>
                           {k.note && <div style={styles.entryNote}>{k.note}</div>}
-                          {confirmKhatamId === k.id && (
-                            <div style={styles.confirmRow}>
-                              <span style={{ fontSize: 12, opacity: 0.75 }}>{T.removeKhatamQ}</span>
-                              <button className="qt-btn" type="button" onClick={() => deleteKhatam(k.id)} style={styles.confirmBtn}>{T.yesRemove}</button>
-                              <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(null)} style={styles.cancelBtn}>{T.cancel}</button>
-                            </div>
-                          )}
                         </div>
-                        {canEdit && confirmKhatamId !== k.id && (
-                          <div style={{ display: "flex", gap: 2 }}>
-                            <button className="qt-btn" type="button" onClick={() => startEditKhatam(k)} style={styles.iconBtn}
-                              aria-label={`${T.edit} ${T.khatamN(n)}`} title={T.edit}>✎</button>
-                            <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(k.id)} style={{ ...styles.iconBtn, color: "var(--danger)" }}
-                              aria-label={`${T.del} ${T.khatamN(n)}`} title={T.del}>×</button>
-                          </div>
-                        )}
                       </div>
                     );
+                    return canEdit ? (
+                      <SwipeRow key={k.id} flat onTap={() => { haptic(8); startEditKhatam(k); }} onSwipe={() => deleteKhatam(k.id)} label={`${T.edit} ${T.khatamN(n)}`} delLabel={T.del}>{row}</SwipeRow>
+                    ) : <div key={k.id} style={styles.khatamRow}>{row}</div>;
                   })}
                 </div>
               )}
@@ -2121,7 +2247,7 @@ function QuranTracker() {
                 return (
                   <div key={row.key} style={{ ...styles.setRowWrap, ...(idx === 0 ? { borderTop: "none" } : {}) }}>
                     <button className="qt-btn" type="button" onClick={() => setOpenSetting(open ? null : row.key)} aria-expanded={open} style={styles.setRow}>
-                      <span style={styles.setIcon} aria-hidden="true">{row.icon}</span>
+                      <span style={styles.setIcon}><Icon name={row.icon} size={20} /></span>
                       <span style={{ flex: 1, textAlign: "left" }}>{row.title}</span>
                       {row.value && <span style={styles.setValue}>{row.value}</span>}
                       <span style={{ ...styles.chev, fontSize: 18, transform: open ? "rotate(90deg)" : "none" }}>›</span>
@@ -2137,7 +2263,12 @@ function QuranTracker() {
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
       </div>
 
-      {toast && <div className="qt-fade" style={styles.toast} role="status">{toast}</div>}
+      {toast && (
+        <div className="qt-fade" style={{ ...styles.toast, ...(toast.action ? { display: "flex", alignItems: "center", gap: 14, paddingRight: 8 } : {}) }} role="status">
+          <span>{toast.action ? toast.msg : toast}</span>
+          {toast.action && <button className="qt-btn" type="button" onClick={() => { toast.action.fn(); setToast(""); }} style={styles.toastBtn}>{toast.action.label}</button>}
+        </div>
+      )}
       {celebration && (
         <>
           <Confetti key={celebration.id} />
@@ -2150,11 +2281,11 @@ function QuranTracker() {
       <nav style={styles.nav} aria-label="Navigasi">
         <div style={styles.navInner}>
           {navItems.map(([key, icon, label]) => key === "log" ? (
-            <button key={key} className="qt-btn" type="button" onClick={openLog} aria-label={label} title={label} style={styles.fab}>+</button>
+            <button key={key} className="qt-btn" type="button" onClick={openLog} aria-label={label} title={label} style={styles.fab}><Icon name="plus" size={28} stroke={2.4} /></button>
           ) : (
             <button key={key} className="qt-btn" type="button" onClick={() => go(key)} aria-current={screen === key ? "page" : undefined}
               style={{ ...styles.navBtn, ...(screen === key ? styles.navBtnOn : {}) }}>
-              <span style={{ fontSize: 19, lineHeight: 1, filter: screen === key ? "none" : "grayscale(0.6)", opacity: screen === key ? 1 : 0.75 }}>{icon}</span>
+              <Icon name={icon} size={23} stroke={screen === key ? 2.1 : 1.7} />
               <span style={styles.navLabel}>{label}</span>
             </button>
           ))}
@@ -2186,6 +2317,18 @@ function QuranTracker() {
                   onChange={(e) => setDate(e.target.value)} style={styles.input} max={today} required />
               </label>
             </div>
+            <div style={styles.quickRow}>
+              {quickChips.map(([label, to]) => (
+                <button key={label} className="qt-btn" type="button" onClick={() => { haptic(8); setPage(String(to)); }}
+                  style={{ ...styles.chip, ...(String(to) === page ? styles.chipOn : {}) }}>{label}</button>
+              ))}
+            </div>
+            <div style={styles.quickRow}>
+              {[[today, T.today], [addDays(today, -1), T.yesterday]].map(([d, l]) => (
+                <button key={d} className="qt-btn" type="button" onClick={() => { haptic(8); setDate(d); }}
+                  style={{ ...styles.chip, ...(date === d ? styles.chipOn : {}) }}><Icon name="calendar" size={14} />{l}</button>
+              ))}
+            </div>
             <div style={styles.hint}>{T.fromHint}</div>
             <label style={styles.label}>
               <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
@@ -2197,6 +2340,8 @@ function QuranTracker() {
           </form>
         </div>
       )}
+
+      {tourOpen && <Tour T={T} onDone={closeTour} />}
 
       {doa && (
         <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setDoa(null); }}>
@@ -2240,6 +2385,56 @@ function QuranTracker() {
           </form>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Row you can tap (edit) or swipe left (delete) ---------- */
+function SwipeRow({ children, onTap, onSwipe, label, delLabel, flat }) {
+  const [dx, setDx] = useState(0);
+  const st = useRef(null);
+  const moved = useRef(false);
+  const onStart = (e) => { const t = e.touches[0]; st.current = { x: t.clientX, y: t.clientY, lock: null }; moved.current = false; };
+  const onMove = (e) => {
+    if (!st.current) return;
+    const t = e.touches[0], ddx = t.clientX - st.current.x, ddy = t.clientY - st.current.y;
+    if (st.current.lock == null && (Math.abs(ddx) > 8 || Math.abs(ddy) > 8)) st.current.lock = Math.abs(ddx) > Math.abs(ddy) ? "x" : "y";
+    if (st.current.lock === "x") { moved.current = true; setDx(Math.max(-140, Math.min(0, ddx))); }
+  };
+  const onEnd = () => { if (dx < -90) onSwipe(); setDx(0); st.current = null; };
+  const inner = flat ? { padding: "10px 4px", borderTop: "1px solid var(--line)", background: "var(--card)" } : { ...styles.entryRow, marginBottom: 0 };
+  return (
+    <div style={flat ? { position: "relative", overflow: "hidden" } : styles.swipeWrap}>
+      {dx < 0 && <div style={styles.swipeBg} aria-hidden="true"><Icon name="trash" size={16} />{delLabel}</div>}
+      <div role="button" tabIndex={0} aria-label={label}
+        onClick={() => { if (!moved.current) onTap(); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTap(); } }}
+        onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onTouchCancel={() => { setDx(0); st.current = null; }}
+        style={{ ...inner, position: "relative", cursor: "pointer", transform: `translateX(${dx}px)`, transition: st.current ? "none" : "transform 0.2s ease", touchAction: "pan-y" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- First-run tips (personal journals) ---------- */
+function Tour({ T, onDone }) {
+  const [i, setI] = useState(0);
+  const last = i === T.tour.length - 1;
+  const [title, body] = T.tour[i];
+  return (
+    <div style={styles.modalWrap} role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      <div key={i} className="qt-fade" style={{ ...styles.modal, maxWidth: 360, textAlign: "center" }}>
+        <h2 id="tour-title" style={{ ...styles.formTitle, marginBottom: 8 }}>{title}</h2>
+        <p style={{ fontSize: 14, lineHeight: 1.6, margin: "0 0 18px", opacity: 0.9 }}>{body}</p>
+        <div style={{ ...styles.dots, margin: "0 0 16px" }}>
+          {T.tour.map((_, k) => <span key={k} style={{ ...styles.dotI, ...(k === i ? styles.dotOn : {}) }} />)}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {!last && <button className="qt-btn" type="button" onClick={onDone} style={{ ...styles.cancelBtn, padding: "0 14px" }}>{T.tourSkip}</button>}
+          <button className="qt-btn" type="button" autoFocus onClick={() => (last ? onDone() : setI(i + 1))} style={{ ...styles.submitBtn, flex: 1 }}>{last ? T.tourDone : T.tourNext}</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2407,7 +2602,7 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
   return (
     <section id="solat" style={{ ...styles.estCard, padding: open ? "14px 18px 16px" : "12px 16px", marginBottom: 14 }}>
       <button className="qt-btn" type="button" onClick={() => setOpen(!open)} aria-expanded={open} style={styles.solatHead}>
-        <span aria-hidden="true" style={{ fontSize: 17 }}>🕌</span>
+        <span style={{ color: "var(--gold)" }}><Icon name="mosque" size={24} /></span>
         <span style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
           <span style={{ ...styles.estLabel, display: "block" }}>{T.solat}{zone ? ` · ${zone}` : ""}</span>
           {!open && <span style={styles.solatSummary}>{summary}</span>}
@@ -2737,8 +2932,9 @@ const styles = {
   openHint: { fontSize: 11, letterSpacing: 0.6, color: "#D9BC7A", opacity: 0.85, border: "1px solid rgba(217,188,122,0.35)", borderRadius: 999, padding: "2px 9px", marginTop: 2, marginBottom: 4 },
   mihrabSurah: { fontFamily: "'Amiri', serif", fontSize: 18, color: "#F3ECD8", marginTop: 2 },
   mihrabMeta: { fontSize: 13, opacity: 0.8, marginTop: 2 },
-  streakRow: { display: "flex", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" },
-  streakChip: { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 999, padding: "6px 11px", fontSize: 12.5 },
+  streakRow: { display: "flex", justifyContent: "center", gap: 6, marginTop: 16, flexWrap: "nowrap" },
+  streakChip: { display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 999, padding: "5px 10px", fontSize: 12.5, whiteSpace: "nowrap", color: "#F3ECD8" },
+  chipUnit: { opacity: 0.75, fontSize: 11.5 },
   progressSection: { marginBottom: 18 },
   progressTrack: { height: 8, borderRadius: 999, background: "var(--muted)", overflow: "hidden", border: "1px solid var(--line)" },
   progressFill: { height: "100%", background: "linear-gradient(90deg, #A8823C, #C9A94F)", borderRadius: 999, transition: "width 0.4s ease" },
@@ -2774,7 +2970,7 @@ const styles = {
   emptyState: { fontSize: 13.5, opacity: 0.6, padding: "18px 4px", textAlign: "center", fontStyle: "italic" },
   dayGroup: { marginBottom: 16 },
   dayHeader: { fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "var(--gold)", fontWeight: 600, marginBottom: 6, borderBottom: "1px solid var(--line2)", paddingBottom: 4 },
-  entryRow: { position: "relative", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 64px 10px 12px", marginBottom: 8 },
+  entryRow: { position: "relative", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", marginBottom: 8 },
   entryPage: { display: "flex", alignItems: "baseline", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--title)", flexWrap: "wrap" },
   entryJuz: { fontSize: 11.5, fontWeight: 400, opacity: 0.65, color: "var(--ink)" },
   entryDate: { fontSize: 11.5, color: "var(--gold)", fontWeight: 600, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.6 },
@@ -2833,10 +3029,18 @@ const styles = {
     border: "1px solid rgba(217,188,122,0.6)", borderRadius: 16, padding: "12px 18px", fontSize: 15, fontWeight: 600, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.3)", lineHeight: 1.6, maxWidth: "88vw" },
   holyBadge: { flex: "0 0 auto", fontSize: 11.5, fontWeight: 600, color: "var(--title)", background: "var(--input)", border: "1px solid var(--line2)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" },
   holyBadgeToday: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  quickRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 },
+  chip: { display: "inline-flex", alignItems: "center", gap: 5, background: "var(--input)", color: "var(--ink)", border: "1px solid var(--line3)", borderRadius: 999, padding: "7px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif", minHeight: 36 },
+  chipOn: { background: "var(--btn)", color: "var(--btn-ink)", borderColor: "var(--btn)" },
+  toastBtn: { background: "transparent", border: "1px solid rgba(243,236,216,0.5)", color: "#F3ECD8", borderRadius: 999, padding: "5px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "'Lora', serif" },
+  searchBox: { display: "flex", alignItems: "center", gap: 8, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "4px 10px 4px 12px", marginBottom: 12, boxShadow: "var(--shadow)", color: "var(--ink)" },
+  searchInput: { flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 15, padding: "9px 0" },
+  swipeWrap: { position: "relative", overflow: "hidden", borderRadius: 10, marginBottom: 8 },
+  swipeBg: { position: "absolute", inset: 0, background: "var(--danger)", color: "var(--danger-ink)", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, paddingRight: 18, fontSize: 13, fontWeight: 700 },
   screenTitle: { fontFamily: "'Amiri', serif", fontSize: 26, fontWeight: 700, color: "var(--title)", margin: "6px 2px 14px" },
   progressBtn: { display: "block", width: "100%", background: "transparent", border: "none", padding: "2px 0", marginBottom: 14, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
-  carousel: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 2 },
-  slide: { flex: "0 0 86%", scrollSnapAlign: "start", background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "16px 18px", boxShadow: "var(--shadow)", minHeight: 118 },
+  carousel: { display: "flex", alignItems: "flex-start", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 2 },
+  slide: { flex: "0 0 86%", scrollSnapAlign: "start", background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "16px 18px", boxShadow: "var(--shadow)" },
   dots: { display: "flex", justifyContent: "center", gap: 6, margin: "10px 0 6px" },
   dotI: { width: 6, height: 6, borderRadius: 3, background: "var(--line3)", transition: "all 0.2s" },
   dotOn: { width: 16, background: "var(--gold)" },
@@ -2845,14 +3049,14 @@ const styles = {
   navBtn: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, height: 62, background: "transparent", border: "none", cursor: "pointer", color: "var(--muted-ink)", fontFamily: "'Lora', serif" },
   navBtnOn: { color: "var(--title)", fontWeight: 600 },
   navLabel: { fontSize: 10.5 },
-  fab: { justifySelf: "center", alignSelf: "center", width: 54, height: 54, marginTop: -26, borderRadius: "50%", border: "3px solid var(--bg)", background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8", fontSize: 30, lineHeight: 1, cursor: "pointer", boxShadow: "0 6px 16px rgba(15,76,58,0.35)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: 3 },
+  fab: { justifySelf: "center", alignSelf: "center", width: 56, height: 56, marginTop: -26, borderRadius: "50%", border: "3px solid var(--bg)", background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8", cursor: "pointer", boxShadow: "0 6px 16px rgba(15,76,58,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 },
   sheetWrap: { position: "fixed", inset: 0, zIndex: 60, background: "rgba(5,20,15,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" },
   sheet: { width: "100%", maxWidth: 560, background: "var(--card)", color: "var(--ink)", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "8px 20px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -10px 40px rgba(0,0,0,0.3)", maxHeight: "92vh", overflowY: "auto" },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, background: "var(--line3)", margin: "4px auto 12px" },
   toast: { position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(80px + env(safe-area-inset-bottom))", zIndex: 70, background: "#0F4C3A", color: "#F3ECD8", padding: "10px 16px", borderRadius: 999, fontSize: 13.5, boxShadow: "0 6px 20px rgba(0,0,0,0.25)", whiteSpace: "nowrap" },
   setRowWrap: { borderTop: "1px solid var(--line)" },
   setRow: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: "12px 8px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 14 },
-  setIcon: { width: 22, textAlign: "center", fontSize: 15 },
+  setIcon: { width: 22, display: "flex", justifyContent: "center", color: "var(--gold)" },
   setValue: { fontSize: 12.5, opacity: 0.6, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   setBody: { padding: "2px 8px 14px 40px" },
   todayLine: { fontSize: 12.5, opacity: 0.85, marginTop: 4 },
