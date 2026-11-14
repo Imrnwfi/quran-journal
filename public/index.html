@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qur'an Reading Journal</title>
+<meta name="theme-color" content="#0F4C3A" />
+<meta name="description" content="Jurnal bacaan Al-Qur'an: catat muka surat, streak dan khatam." />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<link rel="preload" as="image" href="splash-mark.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Wirid Quran" />
+<script>
+  // Apply the saved theme before anything paints (avoids a light flash in dark mode).
+  (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem("quran-journal-settings") || "{}");
+      var t = s.theme || "auto";
+      if (t === "auto") t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+  })();
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  :root {
+    --bg: #F3ECD8; --ink: #16342B; --card: #FBF7EA; --input: #FFFDF6;
+    --line: rgba(168,130,60,0.20); --line2: rgba(168,130,60,0.34); --line3: rgba(168,130,60,0.55);
+    --gold: #A8823C; --title: #0F4C3A; --btn: #0F4C3A; --btn-ink: #F3ECD8;
+    --muted: #E4D9B8; --muted-ink: #8A7B57; --danger: #8C3B2E; --danger-ink: #FBF7EA;
+    --shadow: 0 2px 10px rgba(22,52,43,0.06); --tabbg: #E4D9B8; --bar: #0E8A5F; --grid: rgba(22,52,43,0.10);
+    --h0: #E4D9B8; --h1: #A9CBB7; --h2: #6FA58A; --h3: #2E7558; --h4: #0F4C3A;
+    --banner: #F6E7C1; color-scheme: light;
+  }
+  [data-theme="dark"] {
+    --bg: #0C1915; --ink: #E7E1CF; --card: #13241E; --input: #0F1E19;
+    --line: rgba(217,188,122,0.16); --line2: rgba(217,188,122,0.26); --line3: rgba(217,188,122,0.45);
+    --gold: #D9BC7A; --title: #9AD6BA; --btn: #1D7454; --btn-ink: #F3ECD8;
+    --muted: #22362E; --muted-ink: #8FA197; --danger: #E58A75; --danger-ink: #1A0D0A;
+    --shadow: 0 2px 12px rgba(0,0,0,0.35); --tabbg: #1A2D26; --bar: #22A975; --grid: rgba(231,225,207,0.10);
+    --h0: #22362E; --h1: #1E5240; --h2: #2A7A5B; --h3: #3FA67C; --h4: #8BDDB7;
+    --banner: #2A2615; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); }
+  .qt-input:focus, .qt-textarea:focus, .qt-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .qt-btn { -webkit-tap-highlight-color: transparent; }
+  .qt-input::placeholder, .qt-textarea::placeholder { color: var(--muted-ink); opacity: 0.8; }
+  @media (prefers-reduced-motion: reduce) { .qt-fade { animation: none !important; } }
+  @keyframes qtFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .qt-fade { animation: qtFadeIn 0.35s ease-out; }
+  .qt-heat::-webkit-scrollbar { height: 6px; }
+  .qt-heat::-webkit-scrollbar-thumb { background: var(--line3); border-radius: 3px; }
+
+  /* Opening scene (~1.5 s) */
+  #splash { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 50% 40%, #166E52 0%, #0A4A37 45%, #052A1F 100%); color: #F3ECD8;
+    transition: opacity 0.3s ease, transform 0.3s ease; }
+  #splash.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+  #splash .sp-glow { position: absolute; width: 340px; height: 340px; border-radius: 50%; top: 50%; left: 50%;
+    margin: -230px 0 0 -170px; background: radial-gradient(circle, rgba(255,205,110,0.38) 0%, rgba(255,205,110,0) 70%);
+    animation: spGlow 1.2s ease-out both; }
+  #splash .sp-mark { width: 150px; height: auto; position: relative; filter: drop-shadow(0 14px 18px rgba(0,0,0,0.35));
+    animation: spRise 0.75s cubic-bezier(.2,.9,.25,1.15) both; }
+  #splash .sp-ar { font-family: 'Amiri', serif; font-size: 30px; color: #E6C068; margin-top: 18px; position: relative;
+    animation: spFade 0.5s ease-out 0.35s both; }
+  #splash .sp-line { height: 1px; width: 120px; margin: 10px 0 8px; background: linear-gradient(90deg, transparent, #D9BC7A, transparent);
+    transform-origin: center; animation: spLine 0.55s ease-out 0.55s both; }
+  #splash .sp-title { font-family: 'Lora', serif; font-size: 13px; letter-spacing: 2.5px; text-transform: uppercase; opacity: 0.8;
+    animation: spFade 0.5s ease-out 0.65s both; }
+  @keyframes spRise { from { opacity: 0; transform: translateY(18px) scale(0.86); } to { opacity: 1; transform: none; } }
+  @keyframes spFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes spLine { from { transform: scaleX(0); opacity: 0; } to { transform: scaleX(1); opacity: 1; } }
+  @keyframes spGlow { 0% { opacity: 0; transform: scale(0.6); } 60% { opacity: 1; } 100% { opacity: 0.85; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    #splash .sp-glow, #splash .sp-mark, #splash .sp-ar, #splash .sp-line, #splash .sp-title { animation: none; }
+    #splash { transition: opacity 0.3s ease; } #splash.out { transform: none; }
+  }
+</style>
+</head>
+<body>
+<div id="splash" aria-hidden="true">
+  <div class="sp-glow"></div>
+  <img class="sp-mark" src="splash-mark.png" alt="" />
+  <div class="sp-ar">وِرْد القُرْآن</div>
+  <div class="sp-line"></div>
+  <div class="sp-title">Qur'an Reading Journal</div>
+</div>
+<script>
+  // Show the opening scene for 1.5 s (1.2 s + 0.3 s fade); if the app is still loading, wait for it.
+  (function () {
+    var el = document.getElementById("splash"), minDone = false, ready = false, gone = false;
+    function hide() {
+      if (gone || !minDone || !ready) return;
+      gone = true; el.classList.add("out");
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
+    }
+    setTimeout(function () { minDone = true; hide(); }, 1200);
+    window.addEventListener("app-ready", function () { ready = true; hide(); });
+    setTimeout(function () { ready = true; minDone = true; hide(); }, 8000);
+  })();
+</script>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ---------- Mushaf reference data (604-page Madani mushaf, verified) ---------- */
+const JUZ_START_PAGES = [
+  1, 22, 42, 62, 82, 102, 121, 142, 162, 182,
+  201, 222, 242, 262, 282, 302, 322, 342, 362, 382,
+  402, 422, 442, 462, 482, 502, 522, 542, 562, 582,
+];
+const SURAH_START_PAGES = [
+  1, 2, 50, 77, 106, 128, 151, 177, 187, 208, 221, 235, 249, 255, 262, 267, 282, 293, 305, 312,
+  322, 332, 342, 350, 359, 367, 377, 385, 396, 404, 411, 415, 418, 428, 434, 440, 446, 453, 458, 467,
+  477, 483, 489, 496, 499, 502, 507, 511, 515, 518, 520, 523, 526, 528, 531, 534, 537, 542, 545, 549,
+  551, 553, 554, 556, 558, 560, 562, 564, 566, 568, 570, 572, 574, 575, 577, 578, 580, 582, 583, 585,
+  586, 587, 587, 589, 590, 591, 591, 592, 593, 594, 595, 595, 596, 596, 597, 597, 598, 598, 599, 599,
+  600, 600, 601, 601, 601, 602, 602, 602, 603, 603, 603, 604, 604, 604,
+];
+const SURAH_NAMES = [
+  "Al-Fatihah", "Al-Baqarah", "Ali 'Imran", "An-Nisa'", "Al-Ma'idah", "Al-An'am", "Al-A'raf", "Al-Anfal", "At-Taubah", "Yunus",
+  "Hud", "Yusuf", "Ar-Ra'd", "Ibrahim", "Al-Hijr", "An-Nahl", "Al-Isra'", "Al-Kahf", "Maryam", "Taha",
+  "Al-Anbiya'", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan", "Asy-Syu'ara'", "An-Naml", "Al-Qasas", "Al-'Ankabut", "Ar-Rum",
+  "Luqman", "As-Sajdah", "Al-Ahzab", "Saba'", "Fatir", "Yasin", "As-Saffat", "Sad", "Az-Zumar", "Ghafir",
+  "Fussilat", "Asy-Syura", "Az-Zukhruf", "Ad-Dukhan", "Al-Jathiyah", "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf",
+  "Adz-Dzariyat", "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman", "Al-Waqi'ah", "Al-Hadid", "Al-Mujadalah", "Al-Hasyr", "Al-Mumtahanah",
+  "As-Saff", "Al-Jumu'ah", "Al-Munafiqun", "At-Taghabun", "At-Talaq", "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij",
+  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddaththir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat", "An-Naba'", "An-Nazi'at", "'Abasa",
+  "At-Takwir", "Al-Infitar", "Al-Mutaffifin", "Al-Insyiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", "Al-Ghasyiyah", "Al-Fajr", "Al-Balad",
+  "Asy-Syams", "Al-Lail", "Ad-Duha", "Asy-Syarh", "At-Tin", "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
+  "Al-Qari'ah", "At-Takathur", "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un", "Al-Kauthar", "Al-Kafirun", "An-Nasr",
+  "Al-Masad", "Al-Ikhlas", "Al-Falaq", "An-Nas",
+];
+const TOTAL_PAGES = 604;
+const STORAGE_KEY = "quran-journal-entries";
+const KHATAM_KEY = "quran-journal-khatams";
+const SETTINGS_KEY = "quran-journal-settings";
+const DELETED_KEY = "quran-journal-deleted";
+const TOKEN_KEY = "quran-journal-token";
+const MODE_KEY = "quran-journal-mode";
+const VERSION_KEY = "quran-journal-version";
+const DIRTY_KEY = "quran-journal-dirty";
+
+function juzForPage(page) {
+  let j = 1;
+  for (let i = 0; i < JUZ_START_PAGES.length; i++) if (page >= JUZ_START_PAGES[i]) j = i + 1;
+  return j;
+}
+function surahForPage(page) {
+  let s = 0;
+  for (let i = 0; i < SURAH_START_PAGES.length; i++) if (page >= SURAH_START_PAGES[i]) s = i;
+  return SURAH_NAMES[s];
+}
+function juzRange(j) {
+  return [JUZ_START_PAGES[j - 1], j === 30 ? TOTAL_PAGES : JUZ_START_PAGES[j] - 1];
+}
+
+/* ---------- Dates (always the device's local calendar day) ---------- */
+function isoOf(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function todayStr() { return isoOf(new Date()); }
+function parseIso(iso) { return new Date(iso + "T00:00:00"); }
+function addDays(iso, n) { const d = parseIso(iso); d.setDate(d.getDate() + n); return isoOf(d); }
+function daysBetween(a, b) { return Math.round((parseIso(b) - parseIso(a)) / 86400000); }
+function addMonths(key, n) { const [y, m] = key.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); return isoOf(d).slice(0, 7); }
+
+/* ---------- Text ---------- */
+const TEXT = {
+  ms: {
+    locale: "ms-MY",
+    subtitle: "Tandakan muka surat, kekalkan rentak.",
+    lastRead: "Bacaan terakhir", noEntries: "Belum ada catatan", startHint: "Catat muka surat hari ini di bawah untuk mula",
+    streak: () => "hari streak", pages: "muka surat", khatamChip: "× khatam",
+    through: (p) => `${p}% daripada Mushaf`, round: (n) => `pusingan ${n}`,
+    estTitle: "Jangkaan khatam", estNone: "Catat bacaan beberapa hari untuk dapat anggaran.",
+    estPace: (n) => `Purata ${n} muka surat sehari (30 hari lepas)`,
+    estLeft: (n) => `${n} muka surat lagi`,
+    target: "Sasaran", targetSet: "Tetapkan sasaran", targetNone: "Tiada sasaran",
+    targetNeed: (n) => `Perlu ~${n} muka surat sehari`, targetPast: "Tarikh sasaran sudah lepas",
+    targetDays: (n) => `${n} hari lagi`, clear: "Buang", save: "Simpan", cancel: "Batal",
+    logTitle: "Catat bacaan", from: "Dari", to: "Hingga", date: "Tarikh", note: "Nota", optional: "(pilihan)",
+    fromHint: "Kosongkan 'Dari' untuk sambung dari muka surat terakhir.",
+    notePh: "Refleksi, ayat yang menyentuh hati, perasaan…", saveEntry: "Simpan catatan",
+    saveErr: "Tak dapat simpan — storan pelayar mungkin penuh atau dimatikan.",
+    khatam: "Khatam", times: () => "kali",
+    khatamEmpty: (n) => `Belum ada khatam. Catat muka surat ${n} untuk rekod automatik, atau tambah khatam lama di bawah.`,
+    khatamN: (n) => `Khatam #${n}`, removeKhatamQ: "Buang khatam ini?", yesRemove: "Ya, buang",
+    dateDone: "Tarikh khatam", khatamNotePh: "cth. Ramadan 1447", saveKhatam: "Simpan khatam",
+    addKhatam: "+ Rekod khatam", flash: (n, d) => `Alhamdulillah — khatam #${n} direkodkan pada ${d}.`,
+    tabHistory: "Sejarah", tabReflect: "Refleksi", tabCal: "Kalendar", tabStats: "Statistik",
+    emptyHistory: "Belum ada catatan. Catatan pertama akan muncul di sini.",
+    emptyReflect: "Belum ada nota. Tulis nota semasa mencatat bacaan untuk mengumpulnya di sini.",
+    removeEntryQ: "Buang catatan ini?", edit: "Edit", del: "Padam",
+    calLegend: "Kurang", calMore: "Lebih", calTap: "Ketik petak untuk lihat butiran.",
+    calDay: (d, n) => n ? `${d}: ${n} muka surat` : `${d}: tiada bacaan`,
+    settings: "Tetapan & backup", language: "Bahasa",
+    theme: "Tema", themeAuto: "Auto", themeLight: "Terang", themeDark: "Gelap", toggleTheme: "Tukar tema terang/gelap",
+    backup: "Backup data", backupHint: "Muat turun salinan data sebagai simpanan tambahan.",
+    exportBtn: "Muat turun backup", copyBtn: "Salin data", copied: "Data disalin ✓", copyFail: "Tak dapat salin",
+    importBtn: "Pulihkan dari backup", importQ: (e, k) => `Gantikan semua data dengan backup ini? (${e} catatan, ${k} khatam)`,
+    importOk: "Backup dipulihkan ✓", importBad: "Fail ini bukan backup jurnal yang sah.",
+    install: "Pasang di skrin utama", installBtn: "Pasang app",
+    installIOS: "iPhone: buka dalam Safari → butang Kongsi → Add to Home Screen.",
+    installAndroid: "Android: menu ⋮ pelayar → Install app / Add to Home screen.",
+    installed: "App sudah dipasang ✓",
+    footerLocal: (n) => `Disimpan dalam pelayar ini · Rujukan Mushaf ${n} muka surat`,
+    footerServer: (n) => `Disimpan dalam talian · Rujukan Mushaf ${n} muka surat`,
+    invalidPage: "Muka surat mesti antara 1 dan 604.",
+    monthSummary: (d, p) => `${d} hari · ${p} muka surat`,
+    openQuran: (p) => `Buka muka surat ${p} di Quran.com`, openQuranShort: "Baca di Quran.com",
+    // sync & owner
+    viewerBanner: "Mod lihat sahaja — hanya pemilik boleh mencatat.", iAmOwner: "Saya pemilik",
+    syncSaved: "Disegerakkan", syncSaving: "Menyimpan…", syncOffline: "Luar talian — akan disegerakkan", syncError: "Gagal segerak",
+    ownerTitleClaim: "Cipta PIN pemilik", ownerTitleLogin: "Masuk sebagai pemilik",
+    ownerClaimHint: "Kali pertama: cipta PIN (sekurang-kurangnya 6 aksara). Hanya pemilik boleh mencatat; orang lain hanya boleh melihat. Data dalam peranti ini akan dimuat naik.",
+    ownerLoginHint: "Masukkan PIN pemilik untuk mencatat dari peranti ini.",
+    pin: "PIN", pin2: "Ulang PIN", pinMismatch: "PIN tak sama.", pinShort: "PIN mesti sekurang-kurangnya 6 aksara.",
+    wrongPin: (n) => `PIN salah. ${n} cubaan lagi.`, tooMany: "Terlalu banyak cubaan. Cuba lagi selepas 15 minit.",
+    netErr: "Tak dapat sambung ke pelayan. Cuba lagi.", enter: "Masuk", create: "Cipta PIN",
+    ownerOn: "Peranti ini: pemilik ✓", logout: "Log keluar", account: "Akaun pemilik",
+    // notifications
+    notif: "Peringatan 7 malam", notifHint: "Jika belum mencatat bacaan hari ini, notifikasi dihantar jam 7 malam.",
+    notifOn: "Hidupkan peringatan", notifOff: "Matikan", notifTest: "Hantar notifikasi ujian",
+    notifStateOn: "Peringatan aktif ✓", notifDenied: "Notifikasi disekat. Benarkan dalam tetapan pelayar/telefon.",
+    notifUnsupported: "Pelayar ini tak menyokong notifikasi.",
+    notifIOS: "iPhone: pasang app ke skrin utama dahulu (iOS 16.4+), kemudian buka dari ikon untuk hidupkan.",
+    notifSent: (n) => `Dihantar ke ${n} peranti.`, notifOwnerOnly: "Masuk sebagai pemilik untuk hidupkan peringatan.",
+    notifServerOnly: "Peringatan hanya berfungsi di laman Netlify.",
+    // achievements
+    achievements: "Pencapaian",
+    badges: {
+      first: ["Langkah pertama", "Catatan pertama"], s7: ["Istiqamah 7 hari", "Streak 7 hari"], s30: ["Istiqamah 30 hari", "Streak 30 hari"],
+      s100: ["Istiqamah 100 hari", "Streak 100 hari"], p100: ["100 muka surat", "Jumlah dibaca"], p300: ["300 muka surat", "Jumlah dibaca"],
+      j1: ["Juz' pertama", "Habis satu juz'"], j10: ["10 juz'", "Dalam satu pusingan"], half: ["Separuh Mushaf", "15 juz' satu pusingan"],
+      k1: ["Khatam pertama", "Alhamdulillah"], k3: ["3 kali khatam", "Khatam berulang"], n10: ["10 refleksi", "Nota tadabbur"],
+    },
+    // stats
+    statTotal: "Jumlah muka surat", statBest: "Streak terbaik", statDays: "Hari membaca", statAvg: "Purata / hari membaca",
+    statDaysUnit: "hari", statChart: "Muka surat sebulan (12 bulan)", statBestMonth: (m, n) => `Bulan terbaik: ${m} (${n} muka surat)`,
+    statTip: (m, n, d) => `${m}: ${n} muka surat · ${d} hari membaca`, statTapHint: "Ketik bar untuk butiran.",
+  },
+  en: {
+    locale: "en-GB",
+    subtitle: "Mark your page, keep your rhythm.",
+    lastRead: "Last read", noEntries: "No entries yet", startHint: "Log today's page below to begin",
+    streak: (n) => (n === 1 ? "day streak" : "days streak"), pages: "pages", khatamChip: "× khatam",
+    through: (p) => `${p}% through the Mushaf`, round: (n) => `round ${n}`,
+    estTitle: "Projected khatam", estNone: "Log a few days of reading to get an estimate.",
+    estPace: (n) => `Averaging ${n} pages a day (last 30 days)`,
+    estLeft: (n) => `${n} pages to go`,
+    target: "Target", targetSet: "Set a target", targetNone: "No target",
+    targetNeed: (n) => `Need ~${n} pages a day`, targetPast: "Target date has passed",
+    targetDays: (n) => `${n} days left`, clear: "Clear", save: "Save", cancel: "Cancel",
+    logTitle: "Log reading", from: "From", to: "To", date: "Date", note: "Note", optional: "(optional)",
+    fromHint: "Leave 'From' empty to continue from your last page.",
+    notePh: "A reflection, a verse that struck you, how it felt…", saveEntry: "Save entry",
+    saveErr: "Couldn't save — your browser storage may be full or disabled.",
+    khatam: "Khatam", times: (n) => (n === 1 ? "time" : "times"),
+    khatamEmpty: (n) => `No khatam yet. Logging page ${n} records one automatically, or add a past khatam below.`,
+    khatamN: (n) => `Khatam #${n}`, removeKhatamQ: "Remove this khatam?", yesRemove: "Yes, remove",
+    dateDone: "Date completed", khatamNotePh: "e.g. Ramadan 1447", saveKhatam: "Save khatam",
+    addKhatam: "+ Record a khatam", flash: (n, d) => `Alhamdulillah — khatam #${n} recorded for ${d}.`,
+    tabHistory: "History", tabReflect: "Reflections", tabCal: "Calendar", tabStats: "Stats",
+    emptyHistory: "Nothing logged yet. Your first entry will appear here.",
+    emptyReflect: "No notes yet. Add a note when you log a reading to collect it here.",
+    removeEntryQ: "Remove this entry?", edit: "Edit", del: "Delete",
+    calLegend: "Less", calMore: "More", calTap: "Tap a square to see details.",
+    calDay: (d, n) => n ? `${d}: ${n} page${n === 1 ? "" : "s"}` : `${d}: no reading`,
+    settings: "Settings & backup", language: "Language",
+    theme: "Theme", themeAuto: "Auto", themeLight: "Light", themeDark: "Dark", toggleTheme: "Toggle light/dark theme",
+    backup: "Back up data", backupHint: "Download a copy of your data as an extra safeguard.",
+    exportBtn: "Download backup", copyBtn: "Copy data", copied: "Data copied ✓", copyFail: "Couldn't copy",
+    importBtn: "Restore from backup", importQ: (e, k) => `Replace all data with this backup? (${e} entries, ${k} khatams)`,
+    importOk: "Backup restored ✓", importBad: "This file isn't a valid journal backup.",
+    install: "Add to home screen", installBtn: "Install app",
+    installIOS: "iPhone: open in Safari → Share button → Add to Home Screen.",
+    installAndroid: "Android: browser menu ⋮ → Install app / Add to Home screen.",
+    installed: "App installed ✓",
+    footerLocal: (n) => `Saved in this browser · ${n}-page Mushaf reference`,
+    footerServer: (n) => `Saved online · ${n}-page Mushaf reference`,
+    invalidPage: "Page must be between 1 and 604.",
+    monthSummary: (d, p) => `${d} day${d === 1 ? "" : "s"} · ${p} page${p === 1 ? "" : "s"}`,
+    openQuran: (p) => `Open page ${p} on Quran.com`, openQuranShort: "Read on Quran.com",
+    viewerBanner: "View only — only the owner can log readings.", iAmOwner: "I'm the owner",
+    syncSaved: "Synced", syncSaving: "Saving…", syncOffline: "Offline — will sync", syncError: "Sync failed",
+    ownerTitleClaim: "Create owner PIN", ownerTitleLogin: "Sign in as owner",
+    ownerClaimHint: "First time: create a PIN (at least 6 characters). Only the owner can log; everyone else can only view. The data on this device will be uploaded.",
+    ownerLoginHint: "Enter the owner PIN to log from this device.",
+    pin: "PIN", pin2: "Repeat PIN", pinMismatch: "PINs don't match.", pinShort: "PIN must be at least 6 characters.",
+    wrongPin: (n) => `Wrong PIN. ${n} attempts left.`, tooMany: "Too many attempts. Try again in 15 minutes.",
+    netErr: "Couldn't reach the server. Try again.", enter: "Sign in", create: "Create PIN",
+    ownerOn: "This device: owner ✓", logout: "Sign out", account: "Owner account",
+    notif: "7 pm reminder", notifHint: "If nothing is logged today, a notification is sent at 7 pm.",
+    notifOn: "Turn on reminder", notifOff: "Turn off", notifTest: "Send a test notification",
+    notifStateOn: "Reminder on ✓", notifDenied: "Notifications are blocked. Allow them in your browser/phone settings.",
+    notifUnsupported: "This browser doesn't support notifications.",
+    notifIOS: "iPhone: add the app to your home screen first (iOS 16.4+), then open it from the icon to turn this on.",
+    notifSent: (n) => `Sent to ${n} device${n === 1 ? "" : "s"}.`, notifOwnerOnly: "Sign in as owner to turn on reminders.",
+    notifServerOnly: "Reminders only work on the Netlify site.",
+    achievements: "Achievements",
+    badges: {
+      first: ["First step", "First entry"], s7: ["7-day streak", "Best streak"], s30: ["30-day streak", "Best streak"],
+      s100: ["100-day streak", "Best streak"], p100: ["100 pages", "Total read"], p300: ["300 pages", "Total read"],
+      j1: ["First juz'", "One juz' complete"], j10: ["10 juz'", "In one round"], half: ["Half the Mushaf", "15 juz' in one round"],
+      k1: ["First khatam", "Alhamdulillah"], k3: ["3 khatams", "Again and again"], n10: ["10 reflections", "Notes of tadabbur"],
+    },
+    statTotal: "Total pages", statBest: "Best streak", statDays: "Reading days", statAvg: "Avg / reading day",
+    statDaysUnit: "days", statChart: "Pages per month (12 months)", statBestMonth: (m, n) => `Best month: ${m} (${n} pages)`,
+    statTip: (m, n, d) => `${m}: ${n} pages · ${d} reading days`, statTapHint: "Tap a bar for details.",
+  },
+};
+
+/* ---------- Storage ---------- */
+const SEED_ENTRIES = [
+  {"id": "seed-001", "page": 1, "note": "", "date": "2026-06-13", "ts": 1781355600000},
+  {"id": "seed-002", "page": 30, "note": "", "date": "2026-07-19", "ts": 1784466001000},
+  {"id": "seed-003", "page": 32, "note": "", "date": "2026-07-20", "ts": 1784552402000},
+  {"id": "seed-004", "page": 34, "note": "", "date": "2026-07-21", "ts": 1784638803000},
+  {"id": "seed-005", "page": 36, "note": "", "date": "2026-07-22", "ts": 1784725204000},
+  {"id": "seed-006", "page": 38, "note": "", "date": "2026-07-23", "ts": 1784811605000},
+  {"id": "seed-007", "page": 40, "note": "", "date": "2026-07-26", "ts": 1785070806000},
+  {"id": "seed-008", "page": 42, "note": "", "date": "2026-07-27", "ts": 1785157207000},
+  {"id": "seed-009", "page": 44, "note": "", "date": "2026-07-28", "ts": 1785243608000},
+  {"id": "seed-010", "page": 46, "note": "", "date": "2026-07-29", "ts": 1785330009000},
+  {"id": "seed-011", "page": 48, "note": "", "date": "2026-07-30", "ts": 1785416410000},
+  {"id": "seed-012", "page": 50, "note": "", "date": "2026-07-31", "ts": 1785502811000},
+  {"id": "seed-013", "page": 52, "note": "", "date": "2026-08-03", "ts": 1785762012000},
+  {"id": "seed-014", "page": 54, "note": "", "date": "2026-08-04", "ts": 1785848413000},
+  {"id": "seed-015", "page": 56, "note": "", "date": "2026-08-05", "ts": 1785934814000},
+  {"id": "seed-016", "page": 58, "note": "", "date": "2026-08-06", "ts": 1786021215000},
+  {"id": "seed-017", "page": 60, "note": "", "date": "2026-08-07", "ts": 1786107616000},
+  {"id": "seed-018", "page": 62, "note": "", "date": "2026-08-08", "ts": 1786194017000},
+  {"id": "seed-019", "page": 64, "note": "", "date": "2026-08-09", "ts": 1786280418000},
+  {"id": "seed-020", "page": 66, "note": "", "date": "2026-08-10", "ts": 1786366819000},
+  {"id": "seed-021", "page": 68, "note": "", "date": "2026-08-11", "ts": 1786453220000},
+  {"id": "seed-022", "page": 70, "note": "", "date": "2026-08-12", "ts": 1786539621000},
+  {"id": "seed-023", "page": 72, "note": "", "date": "2026-08-12", "ts": 1786539622000},
+  {"id": "seed-024", "page": 74, "note": "", "date": "2026-08-14", "ts": 1786712423000},
+  {"id": "seed-025", "page": 76, "note": "", "date": "2026-08-17", "ts": 1786971624000},
+  {"id": "seed-026", "page": 78, "note": "", "date": "2026-08-18", "ts": 1787058025000},
+  {"id": "seed-027", "page": 80, "note": "", "date": "2026-08-20", "ts": 1787230826000},
+  {"id": "seed-028", "page": 82, "note": "", "date": "2026-08-21", "ts": 1787317227000},
+  {"id": "seed-029", "page": 84, "note": "", "date": "2026-08-23", "ts": 1787490028000},
+  {"id": "seed-030", "page": 86, "note": "", "date": "2026-08-25", "ts": 1787662829000},
+  {"id": "seed-031", "page": 88, "note": "", "date": "2026-08-28", "ts": 1787922030000},
+  {"id": "seed-032", "page": 90, "note": "", "date": "2026-09-04", "ts": 1788526831000},
+  {"id": "seed-033", "page": 92, "note": "", "date": "2026-09-05", "ts": 1788613232000},
+  {"id": "seed-034", "page": 94, "note": "", "date": "2026-09-06", "ts": 1788699633000},
+  {"id": "seed-035", "page": 96, "note": "", "date": "2026-09-08", "ts": 1788872434000},
+  {"id": "seed-036", "page": 98, "note": "", "date": "2026-09-10", "ts": 1789045235000},
+  {"id": "seed-037", "page": 100, "note": "", "date": "2026-09-11", "ts": 1789131636000},
+  {"id": "seed-038", "page": 102, "note": "", "date": "2026-09-12", "ts": 1789218037000},
+  {"id": "seed-039", "page": 104, "note": "perbanyakkan zikir dan baca Al-Quran untuk abah", "date": "2026-09-13", "ts": 1789304438000},
+  {"id": "seed-040", "page": 108, "note": "abah ialah pinjaman Allah, Allah hanya ambil semula hak dia.", "date": "2026-09-14", "ts": 1789390839000},
+  {"id": "seed-041", "page": 110, "note": "semua perkara berlaku atas izin Allah", "date": "2026-09-15", "ts": 1789477240000},
+  {"id": "seed-042", "page": 112, "note": "", "date": "2026-09-16", "ts": 1789563641000},
+  {"id": "seed-043", "page": 114, "note": "", "date": "2026-09-18", "ts": 1789736442000},
+  {"id": "seed-044", "page": 116, "note": "", "date": "2026-09-19", "ts": 1789822843000},
+  {"id": "seed-045", "page": 118, "note": "sentiasa sabar dan perbanyakkan doa", "date": "2026-09-20", "ts": 1789909244000},
+  {"id": "seed-046", "page": 120, "note": "", "date": "2026-09-21", "ts": 1789995645000},
+  {"id": "seed-047", "page": 122, "note": "setiap ujian dan nikmat itu datang daripada Allah. jangan merungut", "date": "2026-09-22", "ts": 1790082046000},
+  {"id": "seed-048", "page": 124, "note": "", "date": "2026-09-26", "ts": 1790427647000},
+  {"id": "seed-049", "page": 126, "note": "", "date": "2026-09-27", "ts": 1790514048000},
+  {"id": "seed-050", "page": 128, "note": "", "date": "2026-09-28", "ts": 1790600449000},
+  {"id": "seed-051", "page": 130, "note": "", "date": "2026-10-01", "ts": 1790859650000},
+  {"id": "seed-052", "page": 132, "note": "", "date": "2026-10-02", "ts": 1790946051000},
+  {"id": "seed-053", "page": 134, "note": "", "date": "2026-10-03", "ts": 1791032452000},
+  {"id": "seed-054", "page": 136, "note": "", "date": "2026-10-04", "ts": 1791118853000},
+  {"id": "seed-055", "page": 138, "note": "", "date": "2026-10-05", "ts": 1791205254000},
+  {"id": "seed-056", "page": 140, "note": "", "date": "2026-10-06", "ts": 1791291655000},
+  {"id": "seed-057", "page": 142, "note": "", "date": "2026-10-07", "ts": 1791378056000},
+  {"id": "seed-058", "page": 144, "note": "", "date": "2026-10-08", "ts": 1791464457000},
+  {"id": "seed-059", "page": 148, "note": "", "date": "2026-10-09", "ts": 1791550858000},
+  {"id": "seed-060", "page": 150, "note": "", "date": "2026-10-10", "ts": 1791637259000},
+  {"id": "seed-061", "page": 152, "note": "banyakkan bersyukur dan istighfar", "date": "2026-10-11", "ts": 1791723600000},
+  {"id": "seed-062", "page": 154, "note": "", "date": "2026-10-12", "ts": 1791810001000},
+  {"id": "seed-063", "page": 156, "note": "", "date": "2026-10-13", "ts": 1791896402000},
+  {"id": "seed-064", "page": 158, "note": "", "date": "2026-10-14", "ts": 1791982803000},
+  {"id": "seed-065", "page": 162, "note": "", "date": "2026-10-15", "ts": 1792069204000},
+  {"id": "seed-066", "page": 164, "note": "", "date": "2026-10-16", "ts": 1792155605000},
+  {"id": "seed-067", "page": 166, "note": "", "date": "2026-10-17", "ts": 1792242006000},
+  {"id": "seed-068", "page": 168, "note": "", "date": "2026-10-18", "ts": 1792328407000},
+  {"id": "seed-069", "page": 170, "note": "", "date": "2026-10-19", "ts": 1792414808000},
+  {"id": "seed-070", "page": 172, "note": "", "date": "2026-10-20", "ts": 1792501209000},
+  {"id": "seed-071", "page": 174, "note": "", "date": "2026-10-21", "ts": 1792587610000},
+  {"id": "seed-072", "page": 176, "note": "", "date": "2026-10-22", "ts": 1792674011000},
+  {"id": "seed-073", "page": 177, "note": "", "date": "2026-10-23", "ts": 1792760412000},
+  {"id": "seed-074", "page": 178, "note": "", "date": "2026-10-24", "ts": 1792846813000},
+  {"id": "seed-075", "page": 180, "note": "", "date": "2026-10-25", "ts": 1792933214000},
+  {"id": "seed-076", "page": 182, "note": "", "date": "2026-10-26", "ts": 1793019615000},
+  {"id": "seed-077", "page": 184, "note": "", "date": "2026-10-27", "ts": 1793106016000},
+  {"id": "seed-078", "page": 186, "note": "", "date": "2026-10-28", "ts": 1793192417000},
+  {"id": "seed-079", "page": 188, "note": "", "date": "2026-10-29", "ts": 1793278818000},
+  {"id": "seed-080", "page": 190, "note": "", "date": "2026-10-30", "ts": 1793365219000},
+  {"id": "seed-081", "page": 192, "note": "", "date": "2026-10-31", "ts": 1793451620000},
+  {"id": "seed-082", "page": 194, "note": "", "date": "2026-11-01", "ts": 1793538021000},
+  {"id": "seed-083", "page": 196, "note": "", "date": "2026-11-02", "ts": 1793624422000},
+  {"id": "seed-084", "page": 198, "note": "", "date": "2026-11-03", "ts": 1793710823000},
+  {"id": "seed-085", "page": 200, "note": "", "date": "2026-11-04", "ts": 1793797224000},
+  {"id": "seed-086", "page": 201, "note": "", "date": "2026-11-05", "ts": 1793883625000},
+  {"id": "seed-087", "page": 204, "note": "", "date": "2026-11-06", "ts": 1793970026000},
+  {"id": "seed-088", "page": 206, "note": "", "date": "2026-11-07", "ts": 1794056427000},
+  {"id": "seed-089", "page": 208, "note": "", "date": "2026-11-08", "ts": 1794142828000},
+  {"id": "seed-090", "page": 210, "note": "", "date": "2026-11-09", "ts": 1794229229000},
+  {"id": "seed-091", "page": 212, "note": "", "date": "2026-11-10", "ts": 1794315630000},
+  {"id": "seed-092", "page": 214, "note": "", "date": "2026-11-11", "ts": 1794402031000},
+  {"id": "seed-093", "page": 216, "note": "", "date": "2026-11-12", "ts": 1794488432000},
+  {"id": "seed-094", "page": 218, "note": "", "date": "2026-11-13", "ts": 1794574833000},
+  {"id": "seed-095", "page": 220, "note": "", "date": "2026-11-14", "ts": 1794661234000}
+];
+
+function readJson(key, fallback) {
+  try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch (e) { return fallback; }
+}
+function writeJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
+}
+function readStr(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+function writeStr(key, v) { try { v == null ? localStorage.removeItem(key) : localStorage.setItem(key, v); } catch (e) {} }
+
+function sortKhatams(list) {
+  return [...list].sort((a, b) => (a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date)));
+}
+function isAfterKhatam(entry, k) {
+  if (!k) return true;
+  if (entry.date !== k.date) return entry.date > k.date;
+  return entry.ts > k.ts;
+}
+function cmpEntryAsc(a, b) { return a.date === b.date ? a.ts - b.ts : a.date.localeCompare(b.date); }
+
+// Pages each entry covers. With "from": from–to. Without: continues from the previous entry's last page.
+// Each khatam starts a fresh round.
+function computeCoverage(entries, khatamsAsc) {
+  const asc = [...entries].sort(cmpEntryAsc);
+  const spans = {};
+  let kIdx = 0, prevEnd = 0;
+  for (const en of asc) {
+    while (kIdx < khatamsAsc.length && isAfterKhatam(en, khatamsAsc[kIdx])) { kIdx++; prevEnd = 0; }
+    let start, end = en.page;
+    if (en.from) start = en.from;
+    else if (prevEnd + 1 <= en.page) start = prevEnd + 1;
+    else start = en.page;
+    if (start > end) [start, end] = [end, start];
+    spans[en.id] = [start, end];
+    prevEnd = Math.max(start, end);
+  }
+  return spans;
+}
+
+function makeId(prefix) { return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+
+function validEntry(e) {
+  return e && typeof e.id === "string" && Number.isInteger(e.page) && e.page >= 1 && e.page <= TOTAL_PAGES &&
+    typeof e.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && typeof e.ts === "number" &&
+    (e.from == null || (Number.isInteger(e.from) && e.from >= 1 && e.from <= TOTAL_PAGES));
+}
+function validKhatam(k) {
+  return k && typeof k.id === "string" && typeof k.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(k.date) && typeof k.ts === "number";
+}
+
+/* ---------- Server sync ---------- */
+async function api(path, opts = {}, token) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const res = await fetch("/api/" + path, {
+      ...opts, signal: ctrl.signal, cache: "no-store",
+      headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) },
+    });
+    const ct = res.headers.get("content-type") || "";
+    const body = ct.includes("application/json") ? await res.json() : null;
+    return { ok: res.ok, status: res.status, body };
+  } finally { clearTimeout(timer); }
+}
+const uniq = (a) => [...new Set(a)];
+function docToState(doc) {
+  return {
+    entries: Array.isArray(doc?.entries) ? doc.entries : [],
+    khatams: Array.isArray(doc?.khatams) ? doc.khatams : [],
+    deleted: { entries: doc?.deleted?.entries || [], khatams: doc?.deleted?.khatams || [] },
+    targetDate: doc?.settings?.targetDate || "",
+  };
+}
+function stateToDoc(s) {
+  let tz = "Asia/Kuala_Lumpur";
+  try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || tz; } catch (e) {}
+  return { entries: s.entries, khatams: s.khatams, deleted: s.deleted, settings: { targetDate: s.targetDate || "", tz } };
+}
+// Union by id (this device wins on the same id), minus anything deleted on either side.
+function mergeStates(local, remote) {
+  const deleted = {
+    entries: uniq([...local.deleted.entries, ...remote.deleted.entries]),
+    khatams: uniq([...local.deleted.khatams, ...remote.deleted.khatams]),
+  };
+  const byId = (mine, theirs, dead) => {
+    const m = new Map();
+    for (const x of theirs) m.set(x.id, x);
+    for (const x of mine) m.set(x.id, x);
+    return [...m.values()].filter((x) => !dead.has(x.id));
+  };
+  return {
+    entries: byId(local.entries, remote.entries, new Set(deleted.entries)),
+    khatams: byId(local.khatams, remote.khatams, new Set(deleted.khatams)),
+    deleted,
+    targetDate: local.targetDate || remote.targetDate || "",
+  };
+}
+function urlB64ToUint8Array(b64) {
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+const PUSH_OK = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+/* ---------- App ---------- */
+function QuranTracker() {
+  const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, SEED_ENTRIES));
+  const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
+  const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
+  const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", ...readJson(SETTINGS_KEY, {}) }));
+  const [saveError, setSaveError] = useState("");
+  const T = TEXT[settings.lang] || TEXT.ms;
+
+  // server / role
+  const [role, setRoleState] = useState("checking"); // checking | local | viewer | owner
+  const [hasOwner, setHasOwner] = useState(true);
+  const [syncState, setSyncState] = useState("saved");
+  const roleRef = useRef("checking");
+  const tokenRef = useRef(readStr(TOKEN_KEY));
+  const versionRef = useRef(Number(readStr(VERSION_KEY)) || 0);
+  const syncTimer = useRef(null);
+  const syncing = useRef(false);
+  const stateRef = useRef(null);
+  stateRef.current = { entries, khatams, deleted, targetDate: settings.targetDate };
+  const canEdit = role === "local" || role === "owner";
+  const serverMode = role === "viewer" || role === "owner";
+  function setRole(r) { roleRef.current = r; setRoleState(r); }
+  function setVersion(v) { versionRef.current = v; writeStr(VERSION_KEY, String(v)); }
+
+  // log form
+  const [fromPage, setFromPage] = useState("");
+  const [page, setPage] = useState("");
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState(todayStr());
+  const [formError, setFormError] = useState("");
+
+  // lists
+  const [tab, setTab] = useState("history");
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [editId, setEditId] = useState(null);
+  const [editDraft, setEditDraft] = useState(null);
+
+  // khatam
+  const [khatamOpen, setKhatamOpen] = useState(false);
+  const [showKhatamForm, setShowKhatamForm] = useState(false);
+  const [khatamDate, setKhatamDate] = useState(todayStr());
+  const [khatamNote, setKhatamNote] = useState("");
+  const [confirmKhatamId, setConfirmKhatamId] = useState(null);
+  const [editKhatamId, setEditKhatamId] = useState(null);
+  const [khatamDraft, setKhatamDraft] = useState(null);
+  const [khatamFlash, setKhatamFlash] = useState("");
+  const [badgesOpen, setBadgesOpen] = useState(false);
+
+  // target / settings / backup / install
+  const [editingTarget, setEditingTarget] = useState(false);
+  const [targetDraft, setTargetDraft] = useState("");
+  const [backupMsg, setBackupMsg] = useState("");
+  const [pendingImport, setPendingImport] = useState(null);
+  const [installEvt, setInstallEvt] = useState(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const fileRef = useRef(null);
+
+  // owner dialog
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pin2, setPin2] = useState("");
+  const [loginErr, setLoginErr] = useState("");
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  // notifications
+  const [notif, setNotif] = useState(PUSH_OK ? "unknown" : "unsupported"); // unknown|off|on|denied|unsupported|busy
+  const [notifMsg, setNotifMsg] = useState("");
+
+  const [today, setToday] = useState(todayStr());
+  useEffect(() => { const id = setInterval(() => setToday(todayStr()), 60000); return () => clearInterval(id); }, []);
+  useEffect(() => { document.documentElement.lang = settings.lang; }, [settings.lang]);
+  useEffect(() => { window.dispatchEvent(new Event("app-ready")); }, []);
+
+  // theme
+  const [systemDark, setSystemDark] = useState(() => { try { return matchMedia("(prefers-color-scheme: dark)").matches; } catch (e) { return false; } });
+  useEffect(() => {
+    let mq; try { mq = matchMedia("(prefers-color-scheme: dark)"); } catch (e) { return; }
+    const on = (e) => setSystemDark(e.matches);
+    mq.addEventListener ? mq.addEventListener("change", on) : mq.addListener(on);
+    return () => (mq.removeEventListener ? mq.removeEventListener("change", on) : mq.removeListener(on));
+  }, []);
+  const resolvedTheme = settings.theme === "auto" ? (systemDark ? "dark" : "light") : settings.theme;
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", resolvedTheme);
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", resolvedTheme === "dark" ? "#0C1915" : "#0F4C3A");
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    const onPrompt = (e) => { e.preventDefault(); setInstallEvt(e); };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    try { setIsStandalone(window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true); } catch (e) {}
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
+  }, []);
+
+  /* ----- persistence ----- */
+  function flagSave(ok) { setSaveError(ok ? "" : T.saveErr); }
+  function applyState(s) {
+    setEntries(s.entries); setKhatams(s.khatams); setDeleted(s.deleted);
+    writeJson(STORAGE_KEY, s.entries); writeJson(KHATAM_KEY, s.khatams); writeJson(DELETED_KEY, s.deleted);
+    setSettings((prev) => { const next = { ...prev, targetDate: s.targetDate || "" }; writeJson(SETTINGS_KEY, next); return next; });
+    stateRef.current = { entries: s.entries, khatams: s.khatams, deleted: s.deleted, targetDate: s.targetDate || "" };
+  }
+  function persist(next) { setEntries(next); stateRef.current = { ...stateRef.current, entries: next }; flagSave(writeJson(STORAGE_KEY, next)); queueSync(); }
+  function persistKhatams(next) { setKhatams(next); stateRef.current = { ...stateRef.current, khatams: next }; flagSave(writeJson(KHATAM_KEY, next)); queueSync(); }
+  function persistDeleted(next) { setDeleted(next); stateRef.current = { ...stateRef.current, deleted: next }; writeJson(DELETED_KEY, next); }
+  function persistSettings(patch) {
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    flagSave(writeJson(SETTINGS_KEY, next));
+    if ("targetDate" in patch) { stateRef.current = { ...stateRef.current, targetDate: next.targetDate }; queueSync(); }
+  }
+
+  /* ----- sync ----- */
+  function queueSync() {
+    if (roleRef.current !== "owner") return;
+    writeStr(DIRTY_KEY, "1");
+    setSyncState("saving");
+    clearTimeout(syncTimer.current);
+    syncTimer.current = setTimeout(() => doSync(0), 700);
+  }
+  async function doSync(attempt) {
+    if (roleRef.current !== "owner") return;
+    if (syncing.current) { clearTimeout(syncTimer.current); syncTimer.current = setTimeout(() => doSync(attempt), 500); return; }
+    syncing.current = true;
+    let retry = false;
+    try {
+      const r = await api("journal", { method: "PUT", body: JSON.stringify({ doc: stateToDoc(stateRef.current), baseVersion: versionRef.current }) }, tokenRef.current);
+      if (r.ok && r.body) { setVersion(r.body.version); writeStr(DIRTY_KEY, null); setSyncState("saved"); }
+      else if (r.status === 409 && r.body && attempt < 3) {
+        applyState(mergeStates(stateRef.current, docToState(r.body.doc)));
+        setVersion(r.body.version);
+        retry = true;
+      } else if (r.status === 401) { signOut(); }
+      else setSyncState("error");
+    } catch (e) {
+      setSyncState("offline");
+    } finally {
+      syncing.current = false;
+    }
+    if (retry) doSync(attempt + 1);
+  }
+  async function pullFromServer() {
+    try {
+      const r = await api("journal");
+      if (!r.ok || !r.body || typeof r.body.version !== "number") return;
+      setHasOwner(!!r.body.hasOwner);
+      if (r.body.doc && r.body.version > versionRef.current && !readStr(DIRTY_KEY)) {
+        applyState(docToState(r.body.doc)); setVersion(r.body.version);
+      }
+    } catch (e) {}
+  }
+
+  // Start-up: find out whether a server is available and who this device is.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      let r = null;
+      if (/^https?:$/.test(location.protocol)) { try { r = await api("journal"); } catch (e) { r = null; } }
+      if (cancelled) return;
+      if (!r || !r.body || typeof r.body.version !== "number") {
+        if (readStr(MODE_KEY) === "server" && /^https?:$/.test(location.protocol)) {
+          setRole(tokenRef.current ? "owner" : "viewer");
+          setSyncState(readStr(DIRTY_KEY) ? "offline" : "saved");
+        } else setRole("local");
+        return;
+      }
+      writeStr(MODE_KEY, "server");
+      setHasOwner(!!r.body.hasOwner);
+      let next = "viewer";
+      if (tokenRef.current) {
+        try {
+          const a = await api("auth", {}, tokenRef.current);
+          if (a.body && a.body.valid) next = "owner";
+          else if (a.body) { tokenRef.current = null; writeStr(TOKEN_KEY, null); }
+        } catch (e) { next = "owner"; }
+      }
+      if (cancelled) return;
+      const remote = r.body.doc;
+      roleRef.current = next;
+      if (remote) {
+        if (next === "owner" && readStr(DIRTY_KEY)) {
+          applyState(mergeStates(stateRef.current, docToState(remote)));
+          setVersion(r.body.version);
+          setRole(next);
+          queueSync();
+        } else {
+          applyState(docToState(remote));
+          setVersion(r.body.version);
+          setRole(next);
+        }
+      } else {
+        setVersion(0);
+        setRole(next);
+        if (next === "owner") queueSync();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Refresh when the app comes back to the foreground; retry pending sync when back online.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      if (roleRef.current === "owner" && readStr(DIRTY_KEY)) doSync(0);
+      else if (roleRef.current === "owner" || roleRef.current === "viewer") pullFromServer();
+    };
+    const onOnline = () => { if (roleRef.current === "owner" && readStr(DIRTY_KEY)) doSync(0); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("online", onOnline);
+    const id = setInterval(() => { if (roleRef.current === "viewer" && document.visibilityState === "visible") pullFromServer(); }, 60000);
+    return () => { document.removeEventListener("visibilitychange", onVis); window.removeEventListener("online", onOnline); clearInterval(id); };
+  }, []);
+
+  /* ----- owner sign-in ----- */
+  async function submitLogin(e) {
+    e.preventDefault();
+    setLoginErr("");
+    const claim = !hasOwner;
+    if (pin.length < 6) { setLoginErr(T.pinShort); return; }
+    if (claim && pin !== pin2) { setLoginErr(T.pinMismatch); return; }
+    setLoginBusy(true);
+    try {
+      const r = await api("auth", { method: "POST", body: JSON.stringify({ mode: claim ? "claim" : "login", pin }) });
+      if (r.ok && r.body && r.body.token) {
+        tokenRef.current = r.body.token; writeStr(TOKEN_KEY, r.body.token);
+        setHasOwner(true);
+        setLoginOpen(false); setPin(""); setPin2("");
+        const j = await api("journal");
+        if (j.ok && j.body && j.body.doc) {
+          applyState(docToState(j.body.doc)); setVersion(j.body.version); setRole("owner"); setSyncState("saved");
+        } else {
+          setVersion(j.body ? j.body.version : 0); setRole("owner"); queueSync();
+        }
+      } else if (r.status === 401) setLoginErr(T.wrongPin(r.body ? r.body.left : 0));
+      else if (r.status === 429) setLoginErr(T.tooMany);
+      else if (r.status === 409) { setHasOwner(true); setLoginErr(""); }
+      else if (r.body && r.body.error === "pin_too_short") setLoginErr(T.pinShort);
+      else setLoginErr(T.netErr);
+    } catch (err) { setLoginErr(T.netErr); }
+    setLoginBusy(false);
+  }
+  function signOut() {
+    tokenRef.current = null; writeStr(TOKEN_KEY, null); writeStr(DIRTY_KEY, null);
+    setRole("viewer"); setSyncState("saved");
+    pullFromServer();
+  }
+
+  /* ----- notifications ----- */
+  useEffect(() => {
+    if (!PUSH_OK || role !== "owner") return;
+    let done = false;
+    const t = setTimeout(() => { if (!done) setNotif(Notification.permission === "denied" ? "denied" : "off"); }, 4000);
+    navigator.serviceWorker.ready.then((reg) => reg.pushManager.getSubscription()).then((sub) => {
+      done = true; clearTimeout(t);
+      setNotif(sub ? "on" : (Notification.permission === "denied" ? "denied" : "off"));
+    }).catch(() => { done = true; setNotif("off"); });
+    return () => clearTimeout(t);
+  }, [role]);
+  async function enableNotif() {
+    setNotifMsg(""); setNotif("busy");
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { setNotif(perm === "denied" ? "denied" : "off"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const k = await api("push");
+      if (!k.ok || !k.body) throw new Error("key");
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(k.body.publicKey) });
+      const r = await api("push", { method: "POST", body: JSON.stringify({ subscription: sub.toJSON() }) }, tokenRef.current);
+      if (!r.ok) throw new Error("save");
+      setNotif("on");
+    } catch (e) { setNotif("off"); setNotifMsg(T.netErr); }
+  }
+  async function disableNotif() {
+    setNotifMsg(""); setNotif("busy");
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await api("push", { method: "DELETE", body: JSON.stringify({ endpoint: sub.endpoint }) }, tokenRef.current).catch(() => {});
+        await sub.unsubscribe();
+      }
+      setNotif("off");
+    } catch (e) { setNotif("on"); setNotifMsg(T.netErr); }
+  }
+  async function testNotif() {
+    setNotifMsg("");
+    try {
+      const r = await api("push", { method: "POST", body: JSON.stringify({ action: "test" }) }, tokenRef.current);
+      setNotifMsg(r.ok && r.body ? T.notifSent(r.body.sent) : T.netErr);
+    } catch (e) { setNotifMsg(T.netErr); }
+  }
+
+  const fmtDate = (iso) => parseIso(iso).toLocaleDateString(T.locale, { weekday: "short", day: "numeric", month: "short" });
+  const fmtLong = (iso) => parseIso(iso).toLocaleDateString(T.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const fmtMonth = (key) => parseIso(key + "-01").toLocaleDateString(T.locale, { month: "long", year: "numeric" });
+
+  /* ----- derived ----- */
+  const khatamsAsc = useMemo(() => sortKhatams(khatams), [khatams]);
+  const khatamCount = khatamsAsc.length;
+  const lastKhatam = khatamsAsc[khatamCount - 1] || null;
+  const spans = useMemo(() => computeCoverage(entries, khatamsAsc), [entries, khatamsAsc]);
+
+  const sorted = useMemo(() => [...entries].sort((a, b) => -cmpEntryAsc(a, b)), [entries]);
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const en of sorted) {
+      if (!map.has(en.date)) map.set(en.date, []);
+      map.get(en.date).push(en);
+    }
+    return [...map.entries()];
+  }, [sorted]);
+
+  const months = useMemo(() => {
+    const out = [];
+    for (const [d, list] of grouped) {
+      const key = d.slice(0, 7);
+      let m = out[out.length - 1];
+      if (!m || m.key !== key) { m = { key, days: [], pages: 0, minP: Infinity, maxP: 0 }; out.push(m); }
+      m.days.push([d, list]);
+      for (const en of list) {
+        const [a, b] = spans[en.id] || [en.page, en.page];
+        m.pages += b - a + 1;
+        m.minP = Math.min(m.minP, a);
+        m.maxP = Math.max(m.maxP, b);
+      }
+    }
+    return out;
+  }, [grouped, spans]);
+  const [openMonths, setOpenMonths] = useState(() => new Set());
+  function toggleMonth(key) {
+    setOpenMonths((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; });
+  }
+
+  const coveredPages = useMemo(() => {
+    const s = new Set();
+    for (const en of entries) {
+      if (!isAfterKhatam(en, lastKhatam)) continue;
+      const [a, b] = spans[en.id] || [en.page, en.page];
+      for (let p = a; p <= b; p++) s.add(p);
+    }
+    return s;
+  }, [entries, spans, lastKhatam]);
+  const coveredCount = coveredPages.size;
+  const progressPct = Math.min(100, Math.round((coveredCount / TOTAL_PAGES) * 100));
+  const remaining = TOTAL_PAGES - coveredCount;
+
+  const juzFill = useMemo(() => JUZ_START_PAGES.map((_, i) => {
+    const [a, b] = juzRange(i + 1);
+    let c = 0;
+    for (let p = a; p <= b; p++) if (coveredPages.has(p)) c++;
+    return c / (b - a + 1);
+  }), [coveredPages]);
+  const juzDone = juzFill.filter((f) => f >= 1).length;
+
+  const lastEntry = sorted[0] || null;
+
+  const pagesByDate = useMemo(() => {
+    const m = {};
+    for (const en of entries) {
+      const [a, b] = spans[en.id] || [en.page, en.page];
+      m[en.date] = (m[en.date] || 0) + (b - a + 1);
+    }
+    return m;
+  }, [entries, spans]);
+
+  const streak = useMemo(() => {
+    const days = new Set(entries.map((e) => e.date));
+    let count = 0;
+    let cursor = days.has(today) ? today : addDays(today, -1);
+    while (days.has(cursor)) { count++; cursor = addDays(cursor, -1); }
+    return count;
+  }, [entries, today]);
+
+  const bestStreak = useMemo(() => {
+    const days = [...new Set(entries.map((e) => e.date))].sort();
+    let best = 0, run = 0, prev = null;
+    for (const d of days) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+    return best;
+  }, [entries]);
+  const totalPages = useMemo(() => Object.values(pagesByDate).reduce((a, b) => a + b, 0), [pagesByDate]);
+  const readingDays = Object.keys(pagesByDate).length;
+
+  const pace = useMemo(() => {
+    const start = addDays(today, -29);
+    let sum = 0;
+    for (const [d, n] of Object.entries(pagesByDate)) if (d >= start && d <= today) sum += n;
+    return sum / 30;
+  }, [pagesByDate, today]);
+  const etaIso = pace > 0 && remaining > 0 ? addDays(today, Math.ceil(remaining / pace)) : null;
+
+  const target = settings.targetDate;
+  const targetDaysLeft = target ? daysBetween(today, target) + 1 : null;
+  const targetNeed = target && targetDaysLeft > 0 ? Math.ceil(remaining / targetDaysLeft) : null;
+
+  const notesList = useMemo(() => sorted.filter((e) => e.note), [sorted]);
+
+  const badges = useMemo(() => {
+    const k = khatamCount;
+    const b = (id, icon, have, need) => ({ id, icon, have: Math.min(have, need), need, done: have >= need });
+    return [
+      b("first", "🌱", entries.length, 1),
+      b("s7", "🔥", bestStreak, 7), b("s30", "🌙", bestStreak, 30), b("s100", "💎", bestStreak, 100),
+      b("p100", "📖", totalPages, 100), b("p300", "📚", totalPages, 300),
+      b("j1", "🕌", k > 0 ? 1 : juzDone, 1), b("j10", "⭐", k > 0 ? 10 : juzDone, 10), b("half", "🌗", k > 0 ? 15 : juzDone, 15),
+      b("k1", "🏆", k, 1), b("k3", "👑", k, 3), b("n10", "✍️", notesList.length, 10),
+    ];
+  }, [entries.length, bestStreak, totalPages, juzDone, khatamCount, notesList.length]);
+  const badgesDone = badges.filter((x) => x.done).length;
+
+  /* ----- actions ----- */
+  function addKhatam(kDate, kNote, ts) {
+    const k = { id: makeId("k"), date: kDate, note: (kNote || "").trim(), ts };
+    const next = [...khatams, k];
+    persistKhatams(next);
+    const n = sortKhatams(next).findIndex((x) => x.id === k.id) + 1;
+    setKhatamFlash(T.flash(n, fmtLong(kDate)));
+    setKhatamOpen(true);
+  }
+  function parsePageInput(v) {
+    if (v === "" || v == null) return null;
+    const n = parseInt(v, 10);
+    return Number.isInteger(n) && n >= 1 && n <= TOTAL_PAGES ? n : NaN;
+  }
+  function addEntry(e) {
+    e.preventDefault();
+    const to = parsePageInput(page);
+    const from = parsePageInput(fromPage);
+    if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setFormError(T.invalidPage); return; }
+    setFormError("");
+    const entry = { id: makeId("e"), page: to, from: from && from !== to ? from : null, note: note.trim(), date, ts: Date.now() };
+    persist([entry, ...entries]);
+    if (to === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
+    setPage(""); setFromPage(""); setNote("");
+  }
+  function deleteEntry(id) {
+    persistDeleted({ ...deleted, entries: [...deleted.entries, id] });
+    persist(entries.filter((en) => en.id !== id));
+    setConfirmDeleteId(null);
+  }
+  function startEdit(en) {
+    setConfirmDeleteId(null);
+    setEditId(en.id);
+    setEditDraft({ from: en.from ? String(en.from) : "", page: String(en.page), date: en.date, note: en.note || "", err: "" });
+  }
+  function saveEdit(e) {
+    e.preventDefault();
+    const to = parsePageInput(editDraft.page);
+    const from = parsePageInput(editDraft.from);
+    if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setEditDraft({ ...editDraft, err: T.invalidPage }); return; }
+    persist(entries.map((en) => en.id === editId
+      ? { ...en, page: to, from: from && from !== to ? from : null, date: editDraft.date, note: editDraft.note.trim() }
+      : en));
+    setEditId(null); setEditDraft(null);
+  }
+  function submitKhatam(e) {
+    e.preventDefault();
+    if (!khatamDate) return;
+    addKhatam(khatamDate, khatamNote, Date.now());
+    setKhatamNote("");
+    setShowKhatamForm(false);
+  }
+  function deleteKhatam(id) {
+    persistDeleted({ ...deleted, khatams: [...deleted.khatams, id] });
+    persistKhatams(khatams.filter((k) => k.id !== id));
+    setConfirmKhatamId(null);
+    setKhatamFlash("");
+  }
+  function startEditKhatam(k) {
+    setConfirmKhatamId(null);
+    setEditKhatamId(k.id);
+    setKhatamDraft({ date: k.date, note: k.note || "" });
+  }
+  function saveEditKhatam(e) {
+    e.preventDefault();
+    if (!khatamDraft.date) return;
+    persistKhatams(khatams.map((k) => k.id === editKhatamId ? { ...k, date: khatamDraft.date, note: khatamDraft.note.trim() } : k));
+    setEditKhatamId(null); setKhatamDraft(null); setKhatamFlash("");
+  }
+
+  function backupPayload() {
+    return { app: "quran-journal", version: 3, exportedAt: new Date().toISOString(), entries, khatams, settings: { targetDate: settings.targetDate } };
+  }
+  function exportBackup() {
+    try {
+      const blob = new Blob([JSON.stringify(backupPayload(), null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `quran-journal-backup-${today}.json`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) { setBackupMsg(T.copyFail); }
+  }
+  async function copyBackup() {
+    try { await navigator.clipboard.writeText(JSON.stringify(backupPayload())); setBackupMsg(T.copied); }
+    catch (e) { setBackupMsg(T.copyFail); }
+  }
+  function onImportFile(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        const list = Array.isArray(data) ? data : data.entries;
+        const ks = Array.isArray(data) ? [] : (data.khatams || []);
+        if (!Array.isArray(list) || !list.every(validEntry) || !Array.isArray(ks) || !ks.every(validKhatam)) throw new Error("bad");
+        setPendingImport({ entries: list, khatams: ks, settings: data.settings || null });
+        setBackupMsg("");
+      } catch (e) { setPendingImport(null); setBackupMsg(T.importBad); }
+    };
+    reader.readAsText(file);
+  }
+  function confirmImport() {
+    const keepIds = new Set([...pendingImport.entries.map((x) => x.id), ...pendingImport.khatams.map((x) => x.id)]);
+    persistDeleted({
+      entries: uniq([...deleted.entries, ...entries.map((x) => x.id)]).filter((id) => !keepIds.has(id)),
+      khatams: uniq([...deleted.khatams, ...khatams.map((x) => x.id)]).filter((id) => !keepIds.has(id)),
+    });
+    stateRef.current = { ...stateRef.current, entries: pendingImport.entries, khatams: pendingImport.khatams };
+    setEntries(pendingImport.entries); writeJson(STORAGE_KEY, pendingImport.entries);
+    persistKhatams(pendingImport.khatams);
+    if (pendingImport.settings) persistSettings({ targetDate: pendingImport.settings.targetDate || "" });
+    setPendingImport(null);
+    setBackupMsg(T.importOk);
+  }
+  async function doInstall() {
+    if (!installEvt) return;
+    try { installEvt.prompt(); const res = await installEvt.userChoice; if (res && res.outcome === "accepted") setIsStandalone(true); } catch (e) {}
+    setInstallEvt(null);
+  }
+
+  /* ----- pieces ----- */
+  const rangeLabel = (en) => {
+    const [a, b] = en.from ? [Math.min(en.from, en.page), Math.max(en.from, en.page)] : [en.page, en.page];
+    return a === b ? `p.${b}` : `p.${a}–${b}`;
+  };
+
+  function EntryEditor() {
+    return (
+      <form onSubmit={saveEdit} style={{ marginTop: 2 }}>
+        <div style={styles.formRow3}>
+          <label style={styles.label}>{T.from}
+            <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={editDraft.from} placeholder="—"
+              onChange={(e) => setEditDraft({ ...editDraft, from: e.target.value })} style={styles.input} />
+          </label>
+          <label style={styles.label}>{T.to}
+            <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={editDraft.page} required
+              onChange={(e) => setEditDraft({ ...editDraft, page: e.target.value })} style={styles.input} />
+          </label>
+          <label style={{ ...styles.label, flex: 1.6 }}>{T.date}
+            <input className="qt-input" type="date" value={editDraft.date} max={today} required
+              onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} style={styles.input} />
+          </label>
+        </div>
+        <label style={styles.label}>{T.note}
+          <textarea className="qt-textarea" rows={2} value={editDraft.note}
+            onChange={(e) => setEditDraft({ ...editDraft, note: e.target.value })} style={styles.textarea} />
+        </label>
+        {editDraft.err && <div style={{ ...styles.errorText, marginTop: -6, marginBottom: 8 }}>{editDraft.err}</div>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
+          <button className="qt-btn" type="button" onClick={() => { setEditId(null); setEditDraft(null); }} style={styles.cancelBtn}>{T.cancel}</button>
+        </div>
+      </form>
+    );
+  }
+
+  function EntryCard({ en, showDate }) {
+    if (editId === en.id) return <div style={styles.entryRow}>{EntryEditor()}</div>;
+    return (
+      <div style={{ ...styles.entryRow, ...(canEdit ? {} : { paddingRight: 12 }) }}>
+        <div style={styles.entryPage}>
+          <span style={styles.mono}>{rangeLabel(en)}</span>
+          <span style={styles.entryJuz}>{surahForPage(en.page)} · Juz' {juzForPage(en.page)}</span>
+        </div>
+        {showDate && <div style={styles.entryDate}>{fmtLong(en.date)}</div>}
+        {en.note && <div style={styles.entryNote}>{en.note}</div>}
+        {canEdit && (confirmDeleteId === en.id ? (
+          <div style={styles.confirmRow}>
+            <span style={{ fontSize: 12, opacity: 0.75 }}>{T.removeEntryQ}</span>
+            <button className="qt-btn" onClick={() => deleteEntry(en.id)} style={styles.confirmBtn}>{T.yesRemove}</button>
+            <button className="qt-btn" onClick={() => setConfirmDeleteId(null)} style={styles.cancelBtn}>{T.cancel}</button>
+          </div>
+        ) : (
+          <div style={styles.rowActions}>
+            <button className="qt-btn" onClick={() => startEdit(en)} style={styles.iconBtn} aria-label={`${T.edit} ${rangeLabel(en)}`} title={T.edit}>✎</button>
+            <button className="qt-btn" onClick={() => setConfirmDeleteId(en.id)} style={{ ...styles.iconBtn, color: "var(--danger)" }}
+              aria-label={`${T.del} ${rangeLabel(en)}`} title={T.del}>×</button>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  const syncLabel = { saved: T.syncSaved, saving: T.syncSaving, offline: T.syncOffline, error: T.syncError }[syncState];
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.bgPattern} />
+      <div style={styles.container}>
+        <div style={styles.topBar}>
+          <div style={styles.syncPill} aria-live="polite">
+            {role === "owner" && <><span style={{ ...styles.dot, background: syncState === "saved" ? "var(--bar)" : syncState === "saving" ? "var(--gold)" : "var(--danger)" }} />{syncLabel}</>}
+          </div>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <button className="qt-btn" onClick={() => persistSettings({ theme: resolvedTheme === "dark" ? "light" : "dark" })}
+              style={styles.langBtn} aria-label={T.toggleTheme} title={T.toggleTheme}>{resolvedTheme === "dark" ? "☀" : "☾"}</button>
+            {["ms", "en"].map((l) => (
+              <button key={l} className="qt-btn" onClick={() => persistSettings({ lang: l })}
+                style={{ ...styles.langBtn, ...(settings.lang === l ? styles.langBtnOn : {}) }}>{l === "ms" ? "BM" : "EN"}</button>
+            ))}
+          </div>
+        </div>
+
+        {role === "viewer" && (
+          <div style={styles.viewerBanner}>
+            <span style={{ flex: 1 }}>👁 {T.viewerBanner}</span>
+            <button className="qt-btn" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
+          </div>
+        )}
+
+        <header style={styles.header}>
+          <div style={styles.eyebrow}>وِرْد القُرْآن</div>
+          <h1 style={styles.title}>Qur'an Reading Journal</h1>
+          <p style={styles.subtitle}>{T.subtitle}</p>
+        </header>
+
+        <div style={styles.mihrabWrap}>
+          <div style={styles.mihrab}>
+            <div style={styles.mihrabInner}>
+              {lastEntry ? (
+                <>
+                  <div style={styles.mihrabLabel}>{T.lastRead}</div>
+                  <a href={`https://quran.com/page/${lastEntry.page}`} target="_blank" rel="noopener noreferrer"
+                    style={styles.mihrabLink} aria-label={T.openQuran(lastEntry.page)}>
+                    <span style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></span>
+                    <span style={styles.openHint}>{T.openQuranShort} ↗</span>
+                  </a>
+                  <div style={styles.mihrabSurah}>{surahForPage(lastEntry.page)}</div>
+                  <div style={styles.mihrabMeta}>Juz' {juzForPage(lastEntry.page)} · {fmtDate(lastEntry.date)}</div>
+                </>
+              ) : (
+                <>
+                  <div style={styles.mihrabLabel}>{T.noEntries}</div>
+                  <div style={styles.mihrabMeta}>{T.startHint}</div>
+                </>
+              )}
+              <div style={styles.streakRow}>
+                <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> {T.streak(streak)}</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{coveredCount}</span>/{TOTAL_PAGES} {T.pages}</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>{T.khatamChip}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.progressSection}>
+          <div style={styles.progressTrack}>
+            <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
+          </div>
+          <div style={styles.progressLabel}>
+            {T.through(progressPct)}{khatamCount > 0 ? ` · ${T.round(khatamCount + 1)}` : ""}
+          </div>
+        </div>
+
+        <div style={styles.juzGrid}>
+          {juzFill.map((f, i) => {
+            const num = i + 1;
+            const pct = Math.round(f * 100);
+            const fillStyle = f >= 1 ? styles.juzMarkFilled
+              : f > 0 ? { background: `linear-gradient(0deg, #C9A94F ${pct}%, var(--muted) ${pct}%)`, color: "#16342B" } : {};
+            return (
+              <div key={num} title={`Juz' ${num} · ${pct}%`} style={{ ...styles.juzMark, ...fillStyle }}>
+                <span style={{ ...styles.mono, fontSize: 10 }}>{num}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <section style={styles.estCard}>
+          <div style={styles.estRow}>
+            <div style={{ flex: 1 }}>
+              <div style={styles.estLabel}>{T.estTitle}</div>
+              {etaIso ? (
+                <>
+                  <div style={styles.estValue}>{fmtLong(etaIso)}</div>
+                  <div style={styles.estSub}>{T.estPace(pace.toFixed(1))} · {T.estLeft(remaining)}</div>
+                </>
+              ) : (
+                <div style={styles.estSub}>{T.estNone}</div>
+              )}
+            </div>
+          </div>
+          <div style={styles.estDivider} />
+          {editingTarget ? (
+            <form onSubmit={(e) => { e.preventDefault(); persistSettings({ targetDate: targetDraft }); setEditingTarget(false); }}
+              style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+              <label style={{ ...styles.label, marginBottom: 0, minWidth: 150 }}>{T.target}
+                <input className="qt-input" type="date" value={targetDraft} min={today} required
+                  onChange={(e) => setTargetDraft(e.target.value)} style={styles.input} />
+              </label>
+              <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
+              <button className="qt-btn" type="button" onClick={() => setEditingTarget(false)} style={styles.cancelBtn}>{T.cancel}</button>
+            </form>
+          ) : (
+            <div style={styles.estRow}>
+              <div style={{ flex: 1 }}>
+                <div style={styles.estLabel}>{T.target}</div>
+                {target ? (
+                  <>
+                    <div style={styles.estValueSm}>{fmtLong(target)}</div>
+                    <div style={styles.estSub}>
+                      {targetDaysLeft > 0 ? `${T.targetNeed(targetNeed)} · ${T.targetDays(targetDaysLeft)}` : T.targetPast}
+                    </div>
+                  </>
+                ) : (
+                  <div style={styles.estSub}>{T.targetNone}</div>
+                )}
+              </div>
+              {canEdit && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className="qt-btn" type="button" onClick={() => { setTargetDraft(target || addDays(today, 90)); setEditingTarget(true); }}
+                    style={styles.cancelBtn}>{target ? T.edit : T.targetSet}</button>
+                  {target && <button className="qt-btn" type="button" onClick={() => persistSettings({ targetDate: "" })} style={styles.cancelBtn}>{T.clear}</button>}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {canEdit && (
+          <form onSubmit={addEntry} style={styles.form}>
+            <h2 style={styles.formTitle}>{T.logTitle}</h2>
+            <div style={styles.formRow3}>
+              <label style={styles.label}>
+                {T.from}
+                <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={fromPage}
+                  onChange={(e) => setFromPage(e.target.value)} placeholder={lastEntry ? String(Math.min(lastEntry.page + 1, TOTAL_PAGES)) : "1"} style={styles.input} />
+              </label>
+              <label style={styles.label}>
+                {T.to}
+                <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
+                  onChange={(e) => setPage(e.target.value)} placeholder="1–604" style={styles.input} required />
+              </label>
+              <label style={{ ...styles.label, flex: 1.6 }}>
+                {T.date}
+                <input className="qt-input" type="date" value={date}
+                  onChange={(e) => setDate(e.target.value)} style={styles.input} max={today} required />
+              </label>
+            </div>
+            <div style={styles.hint}>{T.fromHint}</div>
+            <label style={styles.label}>
+              <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
+              <textarea className="qt-textarea" value={note} onChange={(e) => setNote(e.target.value)}
+                placeholder={T.notePh} style={styles.textarea} rows={2} />
+            </label>
+            <button className="qt-btn" type="submit" style={styles.submitBtn}>{T.saveEntry}</button>
+            {(formError || saveError) && <div style={styles.errorText}>{formError || saveError}</div>}
+          </form>
+        )}
+
+        {/* ----- Khatam (collapsible) ----- */}
+        <section style={styles.collapseCard}>
+          <button className="qt-btn" type="button" onClick={() => setKhatamOpen(!khatamOpen)} aria-expanded={khatamOpen} style={styles.collapseHead}>
+            <span style={styles.collapseTitle}>{T.khatam}</span>
+            <span style={styles.khatamCount}>
+              <span style={styles.khatamNum}>{khatamCount}</span>
+              <span style={styles.khatamCountLabel}>{T.times(khatamCount)}</span>
+            </span>
+            <span style={{ ...styles.chev, transform: khatamOpen ? "rotate(90deg)" : "none" }}>›</span>
+          </button>
+          {khatamFlash && <div className="qt-fade" style={{ ...styles.khatamFlash, margin: "0 18px 12px" }}>{khatamFlash}</div>}
+          {khatamOpen && (
+            <div className="qt-fade" style={styles.collapseBody}>
+              {khatamCount === 0 ? (
+                <div style={{ ...styles.emptyState, padding: "4px 4px 8px" }}>{T.khatamEmpty(TOTAL_PAGES)}</div>
+              ) : (
+                <div>
+                  {[...khatamsAsc].reverse().map((k) => {
+                    const n = khatamsAsc.indexOf(k) + 1;
+                    if (editKhatamId === k.id) {
+                      return (
+                        <form key={k.id} onSubmit={saveEditKhatam} style={{ ...styles.khatamRow, display: "block" }}>
+                          <label style={styles.label}>{T.dateDone}
+                            <input className="qt-input" type="date" value={khatamDraft.date} max={today} required
+                              onChange={(e) => setKhatamDraft({ ...khatamDraft, date: e.target.value })} style={styles.input} />
+                          </label>
+                          <label style={styles.label}>{T.note}
+                            <input className="qt-input" type="text" value={khatamDraft.note} placeholder={T.khatamNotePh}
+                              onChange={(e) => setKhatamDraft({ ...khatamDraft, note: e.target.value })}
+                              style={{ ...styles.input, fontFamily: "'Lora', serif" }} />
+                          </label>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
+                            <button className="qt-btn" type="button" onClick={() => { setEditKhatamId(null); setKhatamDraft(null); }} style={styles.cancelBtn}>{T.cancel}</button>
+                          </div>
+                        </form>
+                      );
+                    }
+                    return (
+                      <div key={k.id} style={styles.khatamRow}>
+                        <div style={styles.khatamBadge}><span style={styles.mono}>{n}</span></div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={styles.khatamDate}>{T.khatamN(n)} · {fmtLong(k.date)}</div>
+                          {k.note && <div style={styles.entryNote}>{k.note}</div>}
+                          {confirmKhatamId === k.id && (
+                            <div style={styles.confirmRow}>
+                              <span style={{ fontSize: 12, opacity: 0.75 }}>{T.removeKhatamQ}</span>
+                              <button className="qt-btn" type="button" onClick={() => deleteKhatam(k.id)} style={styles.confirmBtn}>{T.yesRemove}</button>
+                              <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(null)} style={styles.cancelBtn}>{T.cancel}</button>
+                            </div>
+                          )}
+                        </div>
+                        {canEdit && confirmKhatamId !== k.id && (
+                          <div style={{ display: "flex", gap: 2 }}>
+                            <button className="qt-btn" type="button" onClick={() => startEditKhatam(k)} style={styles.iconBtn}
+                              aria-label={`${T.edit} ${T.khatamN(n)}`} title={T.edit}>✎</button>
+                            <button className="qt-btn" type="button" onClick={() => setConfirmKhatamId(k.id)} style={{ ...styles.iconBtn, color: "var(--danger)" }}
+                              aria-label={`${T.del} ${T.khatamN(n)}`} title={T.del}>×</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {canEdit && (showKhatamForm ? (
+                <form onSubmit={submitKhatam} style={{ marginTop: 14 }}>
+                  <label style={styles.label}>
+                    {T.dateDone}
+                    <input className="qt-input" type="date" value={khatamDate} max={today} required
+                      onChange={(e) => setKhatamDate(e.target.value)} style={styles.input} />
+                  </label>
+                  <label style={styles.label}>
+                    <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
+                    <input className="qt-input" type="text" value={khatamNote} onChange={(e) => setKhatamNote(e.target.value)}
+                      placeholder={T.khatamNotePh} style={{ ...styles.input, fontFamily: "'Lora', serif" }} />
+                  </label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button className="qt-btn" type="submit" style={{ ...styles.submitBtn, flex: 1 }}>{T.saveKhatam}</button>
+                    <button className="qt-btn" type="button" onClick={() => setShowKhatamForm(false)} style={{ ...styles.cancelBtn, padding: "0 14px", fontSize: 13.5 }}>{T.cancel}</button>
+                  </div>
+                </form>
+              ) : (
+                <button className="qt-btn" type="button" onClick={() => { setShowKhatamForm(true); setKhatamDate(today); }}
+                  style={styles.khatamAddBtn}>{T.addKhatam}</button>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ----- Achievements (collapsible) ----- */}
+        <section style={styles.collapseCard}>
+          <button className="qt-btn" type="button" onClick={() => setBadgesOpen(!badgesOpen)} aria-expanded={badgesOpen} style={styles.collapseHead}>
+            <span style={styles.collapseTitle}>{T.achievements}</span>
+            <span style={styles.khatamCount}>
+              <span style={styles.khatamNum}>{badgesDone}</span>
+              <span style={styles.khatamCountLabel}>/ {badges.length}</span>
+            </span>
+            <span style={{ ...styles.chev, transform: badgesOpen ? "rotate(90deg)" : "none" }}>›</span>
+          </button>
+          {badgesOpen && (
+            <div className="qt-fade" style={{ ...styles.collapseBody, display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {badges.map((b) => {
+                const [name, sub] = T.badges[b.id];
+                return (
+                  <div key={b.id} style={{ ...styles.badge, ...(b.done ? styles.badgeDone : {}) }} title={`${name} — ${sub}`}>
+                    <div style={{ fontSize: 24, filter: b.done ? "none" : "grayscale(1)", opacity: b.done ? 1 : 0.45 }}>{b.icon}</div>
+                    <div style={styles.badgeName}>{name}</div>
+                    <div style={styles.badgeSub}>{b.done ? sub : `${b.have}/${b.need}`}</div>
+                    {!b.done && <div style={styles.badgeTrack}><div style={{ ...styles.badgeFill, width: `${Math.round((b.have / b.need) * 100)}%` }} /></div>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <div style={styles.tabs} role="tablist">
+          {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal], ["stats", T.tabStats]].map(([key, label]) => (
+            <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => setTab(key)}
+              style={{ ...styles.tab, ...(tab === key ? styles.tabOn : {}) }}>{label}</button>
+          ))}
+        </div>
+
+        {tab === "history" && (
+          <div style={styles.historySection}>
+            {months.length === 0 ? (
+              <div style={styles.emptyState}>{T.emptyHistory}</div>
+            ) : (
+              months.map((m) => {
+                const open = openMonths.has(m.key);
+                return (
+                  <div key={m.key} style={styles.monthBlock}>
+                    <button className="qt-btn" type="button" onClick={() => toggleMonth(m.key)} aria-expanded={open}
+                      style={{ ...styles.monthHead, ...(open ? styles.monthHeadOpen : {}) }}>
+                      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                        <div style={styles.monthName}>{fmtMonth(m.key)}</div>
+                        <div style={styles.monthMeta}>
+                          {T.monthSummary(m.days.length, m.pages)} · <span style={styles.mono}>{m.minP === m.maxP ? `p.${m.maxP}` : `p.${m.minP}–${m.maxP}`}</span>
+                        </div>
+                      </div>
+                      <span style={{ ...styles.chev, transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                    </button>
+                    {open && (
+                      <div className="qt-fade" style={styles.monthBody}>
+                        {m.days.map(([d, list]) => (
+                          <div key={d} style={styles.dayGroup}>
+                            <div style={styles.dayHeader}>{fmtDate(d)}</div>
+                            {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {tab === "reflect" && (
+          <div style={styles.historySection}>
+            {notesList.length === 0 ? (
+              <div style={styles.emptyState}>{T.emptyReflect}</div>
+            ) : (
+              notesList.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: true })}</React.Fragment>)
+            )}
+          </div>
+        )}
+
+        {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
+
+        {tab === "stats" && (
+          <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
+            totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} />
+        )}
+
+        <section style={{ ...styles.form, marginTop: 8 }}>
+          <h2 style={styles.formTitle}>{T.settings}</h2>
+
+          <div style={styles.settingBlock}>
+            <div style={styles.settingTitle}>{T.theme}</div>
+            <div style={styles.segment}>
+              {[["auto", T.themeAuto], ["light", T.themeLight], ["dark", T.themeDark]].map(([k, l]) => (
+                <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ theme: k })}
+                  aria-pressed={settings.theme === k} style={{ ...styles.segBtn, ...(settings.theme === k ? styles.segBtnOn : {}) }}>{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {serverMode && (
+            <div style={styles.settingBlock}>
+              <div style={styles.settingTitle}>{T.notif}</div>
+              <div style={styles.hint}>{T.notifHint}</div>
+              {role !== "owner" ? (
+                <div style={styles.hint}>{T.notifOwnerOnly}</div>
+              ) : notif === "unsupported" ? (
+                <div style={styles.hint}>{IS_IOS && !isStandalone ? T.notifIOS : T.notifUnsupported}</div>
+              ) : notif === "denied" ? (
+                <div style={{ ...styles.hint, color: "var(--danger)", opacity: 1 }}>{T.notifDenied}</div>
+              ) : notif === "on" ? (
+                <>
+                  <div style={{ fontSize: 13, color: "var(--title)", fontWeight: 600, marginBottom: 8 }}>{T.notifStateOn}</div>
+                  <div style={styles.btnRow}>
+                    <button className="qt-btn" type="button" onClick={testNotif} style={styles.smallPrimary}>{T.notifTest}</button>
+                    <button className="qt-btn" type="button" onClick={disableNotif} style={styles.cancelBtn}>{T.notifOff}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button className="qt-btn" type="button" disabled={notif === "busy" || notif === "unknown"} onClick={enableNotif}
+                    style={{ ...styles.smallPrimary, opacity: notif === "busy" ? 0.6 : 1 }}>{T.notifOn}</button>
+                  {IS_IOS && !isStandalone && <div style={{ ...styles.hint, marginTop: 8 }}>{T.notifIOS}</div>}
+                </>
+              )}
+              {notifMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--title)" }}>{notifMsg}</div>}
+            </div>
+          )}
+          {role === "local" && (
+            <div style={styles.settingBlock}>
+              <div style={styles.settingTitle}>{T.notif}</div>
+              <div style={styles.hint}>{T.notifServerOnly}</div>
+            </div>
+          )}
+
+          {role === "owner" && (
+            <div style={styles.settingBlock}>
+              <div style={styles.settingTitle}>{T.account}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 13, flex: 1 }}>{T.ownerOn}</span>
+                <button className="qt-btn" type="button" onClick={signOut} style={styles.cancelBtn}>{T.logout}</button>
+              </div>
+            </div>
+          )}
+
+          <div style={styles.settingBlock}>
+            <div style={styles.settingTitle}>{T.backup}</div>
+            <div style={styles.hint}>{T.backupHint}</div>
+            <div style={styles.btnRow}>
+              <button className="qt-btn" type="button" onClick={exportBackup} style={styles.smallPrimary}>{T.exportBtn}</button>
+              <button className="qt-btn" type="button" onClick={copyBackup} style={styles.cancelBtn}>{T.copyBtn}</button>
+              {canEdit && <button className="qt-btn" type="button" onClick={() => fileRef.current && fileRef.current.click()} style={styles.cancelBtn}>{T.importBtn}</button>}
+              <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
+            </div>
+            {pendingImport && (
+              <div style={{ ...styles.confirmRow, marginTop: 10 }}>
+                <span style={{ fontSize: 12.5 }}>{T.importQ(pendingImport.entries.length, pendingImport.khatams.length)}</span>
+                <button className="qt-btn" type="button" onClick={confirmImport} style={styles.confirmBtn}>{T.save}</button>
+                <button className="qt-btn" type="button" onClick={() => setPendingImport(null)} style={styles.cancelBtn}>{T.cancel}</button>
+              </div>
+            )}
+            {backupMsg && <div style={{ fontSize: 12.5, marginTop: 8, color: backupMsg === T.importBad || backupMsg === T.copyFail ? "var(--danger)" : "var(--title)" }}>{backupMsg}</div>}
+          </div>
+
+          <div style={{ ...styles.settingBlock, borderBottom: "none", paddingBottom: 0, marginBottom: 0 }}>
+            <div style={styles.settingTitle}>{T.install}</div>
+            {isStandalone ? (
+              <div style={styles.hint}>{T.installed}</div>
+            ) : (
+              <>
+                {installEvt && <button className="qt-btn" type="button" onClick={doInstall} style={{ ...styles.smallPrimary, marginBottom: 8 }}>{T.installBtn}</button>}
+                <div style={styles.hint}>{T.installAndroid}</div>
+                <div style={styles.hint}>{T.installIOS}</div>
+              </>
+            )}
+          </div>
+        </section>
+
+        <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
+      </div>
+
+      {loginOpen && (
+        <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setLoginOpen(false); }}>
+          <form onSubmit={submitLogin} style={styles.modal} className="qt-fade" role="dialog" aria-modal="true" aria-labelledby="owner-title">
+            <h2 id="owner-title" style={styles.formTitle}>{hasOwner ? T.ownerTitleLogin : T.ownerTitleClaim}</h2>
+            <div style={{ ...styles.hint, marginTop: 0 }}>{hasOwner ? T.ownerLoginHint : T.ownerClaimHint}</div>
+            <label style={styles.label}>{T.pin}
+              <input className="qt-input" type="password" autoComplete={hasOwner ? "current-password" : "new-password"} value={pin}
+                onChange={(e) => setPin(e.target.value)} style={styles.input} autoFocus required />
+            </label>
+            {!hasOwner && (
+              <label style={styles.label}>{T.pin2}
+                <input className="qt-input" type="password" autoComplete="new-password" value={pin2}
+                  onChange={(e) => setPin2(e.target.value)} style={styles.input} required />
+              </label>
+            )}
+            {loginErr && <div style={{ ...styles.errorText, marginTop: -4, marginBottom: 10 }}>{loginErr}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="qt-btn" type="submit" disabled={loginBusy} style={{ ...styles.submitBtn, flex: 1, opacity: loginBusy ? 0.6 : 1 }}>{hasOwner ? T.enter : T.create}</button>
+              <button className="qt-btn" type="button" onClick={() => setLoginOpen(false)} style={{ ...styles.cancelBtn, padding: "0 14px" }}>{T.cancel}</button>
+            </div>
+          </form>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Calendar heatmap ---------- */
+function Heatmap({ pagesByDate, today, T, fmtLong }) {
+  const [sel, setSel] = useState(null);
+  const scrollRef = useRef(null);
+  const WEEKS = 26;
+  const todayDow = (parseIso(today).getDay() + 6) % 7; // 0 = Monday
+  const start = addDays(today, -(todayDow + (WEEKS - 1) * 7));
+  const weeks = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const col = [];
+    for (let d = 0; d < 7; d++) col.push(addDays(start, w * 7 + d));
+    weeks.push(col);
+  }
+  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth; }, []);
+  const level = (n) => (!n ? 0 : n <= 2 ? 1 : n <= 5 ? 2 : n <= 10 ? 3 : 4);
+  const colors = ["var(--h0)", "var(--h1)", "var(--h2)", "var(--h3)", "var(--h4)"];
+  const monthLabel = (iso) => parseIso(iso).toLocaleDateString(T.locale, { month: "short" });
+  const readDays = Object.keys(pagesByDate).filter((d) => d >= start && d <= today).length;
+
+  return (
+    <div style={styles.historySection}>
+      <div ref={scrollRef} className="qt-heat" style={styles.heatScroll}>
+        <div style={{ display: "flex", gap: 3 }}>
+          {weeks.map((col, wi) => {
+            const first = col[0];
+            const showMonth = wi === 0 || parseIso(first).getMonth() !== parseIso(weeks[wi - 1][0]).getMonth();
+            return (
+              <div key={wi} style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <div style={styles.heatMonth}>{showMonth ? monthLabel(first) : ""}</div>
+                {col.map((d) => {
+                  const future = d > today;
+                  const n = pagesByDate[d] || 0;
+                  return (
+                    <button key={d} className="qt-btn" disabled={future} onClick={() => setSel(d)}
+                      aria-label={T.calDay(fmtLong(d), n)}
+                      style={{ ...styles.heatCell, background: future ? "transparent" : colors[level(n)],
+                        outline: sel === d ? "2px solid var(--gold)" : "none", cursor: future ? "default" : "pointer" }} />
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={styles.heatLegend}>
+        <span>{T.calLegend}</span>
+        {colors.map((c) => <span key={c} style={{ ...styles.heatCell, width: 11, height: 11, background: c, display: "inline-block" }} />)}
+        <span>{T.calMore}</span>
+        <span style={{ marginLeft: "auto" }}><span style={styles.mono}>{readDays}</span>/{WEEKS * 7 - (6 - todayDow)}</span>
+      </div>
+      <div style={styles.heatInfo}>{sel ? T.calDay(fmtLong(sel), pagesByDate[sel] || 0) : T.calTap}</div>
+    </div>
+  );
+}
+
+/* ---------- Statistics: tiles + pages-per-month bars ---------- */
+function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readingDays }) {
+  const thisMonth = today.slice(0, 7);
+  const keys = [];
+  for (let i = 11; i >= 0; i--) keys.push(addMonths(thisMonth, -i));
+  const data = keys.map((k) => {
+    let pages = 0, days = 0;
+    for (const [d, n] of Object.entries(pagesByDate)) if (d.slice(0, 7) === k) { pages += n; days++; }
+    return { k, pages, days };
+  });
+  const [sel, setSel] = useState(data.length - 1);
+  const max = Math.max(1, ...data.map((d) => d.pages));
+  const step = max <= 20 ? 5 : max <= 50 ? 10 : max <= 100 ? 25 : max <= 250 ? 50 : 100;
+  const top = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let v = 0; v <= top; v += step) ticks.push(v);
+  const W = 340, H = 190, L = 30, R = 6, TOP = 20, B = 24;
+  const pw = W - L - R, ph = H - TOP - B;
+  const band = pw / data.length, bw = Math.max(6, band - 4);
+  const y = (v) => TOP + ph - (v / top) * ph;
+  const best = data.reduce((a, b) => (b.pages > a.pages ? b : a), data[0]);
+  const labelIdx = new Set([data.length - 1, data.indexOf(best)]);
+  const shortMonth = (k) => parseIso(k + "-01").toLocaleDateString(T.locale, { month: "short" }).replace(".", "");
+  const bar = (x, yTop, w, h) => {
+    if (h <= 0) return "";
+    const r = Math.min(4, h, w / 2);
+    const yb = yTop + h;
+    return `M${x},${yb} V${yTop + r} Q${x},${yTop} ${x + r},${yTop} H${x + w - r} Q${x + w},${yTop} ${x + w},${yTop + r} V${yb} Z`;
+  };
+  const avg = readingDays ? (totalPages / readingDays).toFixed(1) : "0";
+  const tiles = [
+    [T.statTotal, totalPages, ""], [T.statBest, bestStreak, T.statDaysUnit],
+    [T.statDays, readingDays, ""], [T.statAvg, avg, ""],
+  ];
+  const s = data[sel];
+  return (
+    <div style={styles.historySection}>
+      <div style={styles.statGrid}>
+        {tiles.map(([label, val, unit]) => (
+          <div key={label} style={styles.statTile}>
+            <div style={styles.statLabel}>{label}</div>
+            <div style={styles.statValue}><span style={styles.mono}>{val}</span>{unit && <span style={styles.statUnit}> {unit}</span>}</div>
+          </div>
+        ))}
+      </div>
+      <div style={styles.chartCard}>
+        <div style={styles.chartTitle}>{T.statChart}</div>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={T.statChart} style={{ display: "block", overflow: "visible" }}>
+          {ticks.map((v) => (
+            <g key={v}>
+              <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} stroke="var(--grid)" strokeWidth="1" />
+              <text x={L - 6} y={y(v) + 3.5} textAnchor="end" fontSize="9.5" fill="var(--muted-ink)" fontFamily="IBM Plex Mono, monospace">{v}</text>
+            </g>
+          ))}
+          {data.map((d, i) => {
+            const x = L + i * band + (band - bw) / 2;
+            const h = (d.pages / top) * ph;
+            return (
+              <g key={d.k}>
+                <path d={bar(x, y(d.pages), bw, h)} fill="var(--bar)" opacity={sel === i ? 1 : 0.82} />
+                {labelIdx.has(i) && d.pages > 0 && (
+                  <text x={x + bw / 2} y={y(d.pages) - 5} textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--ink)" fontFamily="IBM Plex Mono, monospace">{d.pages}</text>
+                )}
+                <text x={x + bw / 2} y={H - 8} textAnchor="middle" fontSize="9" fill={sel === i ? "var(--ink)" : "var(--muted-ink)"} fontWeight={sel === i ? 700 : 400}>{shortMonth(d.k)}</text>
+                <rect x={L + i * band} y={TOP - 10} width={band} height={ph + 10 + B} fill="transparent" style={{ cursor: "pointer" }}
+                  onClick={() => setSel(i)} onMouseEnter={() => setSel(i)}>
+                  <title>{T.statTip(fmtMonth(d.k), d.pages, d.days)}</title>
+                </rect>
+              </g>
+            );
+          })}
+          {sel != null && (
+            <line x1={L + sel * band + band / 2} x2={L + sel * band + band / 2} y1={TOP - 6} y2={TOP + ph} stroke="var(--line3)" strokeWidth="1" strokeDasharray="2 3" pointerEvents="none" />
+          )}
+        </svg>
+        <div style={styles.heatInfo} aria-live="polite">{T.statTip(fmtMonth(s.k), s.pages, s.days)}</div>
+        {best.pages > 0 && <div style={{ ...styles.hint, marginTop: 8, marginBottom: 0 }}>{T.statBestMonth(fmtMonth(best.k), best.pages)} · {T.statTapHint}</div>}
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  page: { minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", fontFamily: "'Lora', serif", position: "relative", overflow: "hidden" },
+  bgPattern: { position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05, backgroundImage: "radial-gradient(circle at 20% 20%, #0F4C3A 0, transparent 45%), radial-gradient(circle at 80% 70%, #A8823C 0, transparent 45%)" },
+  container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "14px 20px 60px" },
+  topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12, minHeight: 28 },
+  syncPill: { display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--muted-ink)" },
+  dot: { width: 7, height: 7, borderRadius: "50%", display: "inline-block" },
+  langBtn: { background: "transparent", border: "1px solid var(--line3)", color: "var(--ink)", borderRadius: 999, padding: "3px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: "'IBM Plex Mono', monospace", minWidth: 34 },
+  langBtnOn: { background: "var(--btn)", color: "var(--btn-ink)", borderColor: "var(--btn)" },
+  viewerBanner: { display: "flex", alignItems: "center", gap: 10, background: "var(--banner)", border: "1px solid var(--line2)", borderRadius: 10, padding: "9px 12px", fontSize: 12.5, marginBottom: 16 },
+  header: { textAlign: "center", marginBottom: 28 },
+  eyebrow: { fontFamily: "'Amiri', serif", fontSize: 22, color: "var(--gold)", marginBottom: 6 },
+  title: { fontFamily: "'Amiri', serif", fontSize: 30, fontWeight: 700, margin: 0, color: "var(--ink)", letterSpacing: 0.2 },
+  subtitle: { fontSize: 14, opacity: 0.65, marginTop: 6 },
+  mihrabWrap: { display: "flex", justifyContent: "center", marginBottom: 22 },
+  mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 22px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid rgba(168,130,60,0.33)" },
+  mihrabInner: { textAlign: "center", color: "#F3ECD8" },
+  mihrabLabel: { fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.75, marginBottom: 4 },
+  mihrabPage: { fontSize: 34, fontWeight: 600, color: "#D9BC7A", display: "block" },
+  mihrabLink: { display: "inline-flex", flexDirection: "column", alignItems: "center", textDecoration: "none", color: "inherit", borderRadius: 12, padding: "2px 14px 4px" },
+  openHint: { fontSize: 11, letterSpacing: 0.6, color: "#D9BC7A", opacity: 0.85, border: "1px solid rgba(217,188,122,0.35)", borderRadius: 999, padding: "2px 9px", marginTop: 2, marginBottom: 4 },
+  mihrabSurah: { fontFamily: "'Amiri', serif", fontSize: 18, color: "#F3ECD8", marginTop: 2 },
+  mihrabMeta: { fontSize: 13, opacity: 0.8, marginTop: 2 },
+  streakRow: { display: "flex", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" },
+  streakChip: { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 999, padding: "6px 11px", fontSize: 12.5 },
+  progressSection: { marginBottom: 18 },
+  progressTrack: { height: 8, borderRadius: 999, background: "var(--muted)", overflow: "hidden", border: "1px solid var(--line)" },
+  progressFill: { height: "100%", background: "linear-gradient(90deg, #A8823C, #C9A94F)", borderRadius: 999, transition: "width 0.4s ease" },
+  progressLabel: { fontSize: 12.5, opacity: 0.65, marginTop: 6, textAlign: "center" },
+  juzGrid: { display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 6, marginBottom: 22 },
+  juzMark: { aspectRatio: "1", borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "var(--muted)", border: "1px solid var(--line2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted-ink)" },
+  juzMarkFilled: { background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", border: "1px solid #8A6A2E" },
+  estCard: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "16px 18px", marginBottom: 22, boxShadow: "var(--shadow)" },
+  estRow: { display: "flex", alignItems: "center", gap: 10 },
+  estLabel: { fontSize: 11.5, letterSpacing: 1, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 },
+  estValue: { fontFamily: "'Amiri', serif", fontSize: 22, fontWeight: 700, color: "var(--title)", marginTop: 2 },
+  estValueSm: { fontSize: 15, fontWeight: 600, color: "var(--title)", marginTop: 2 },
+  estSub: { fontSize: 12.5, opacity: 0.7, marginTop: 2 },
+  estDivider: { height: 1, background: "var(--line)", margin: "12px 0" },
+  form: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: 20, marginBottom: 22, boxShadow: "var(--shadow)" },
+  formTitle: { fontFamily: "'Amiri', serif", fontSize: 19, fontWeight: 700, marginTop: 0, marginBottom: 14, color: "var(--title)" },
+  formRow3: { display: "flex", gap: 8 },
+  label: { display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 500, color: "var(--ink)", flex: 1, marginBottom: 12, minWidth: 0 },
+  input: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, padding: "9px 8px", borderRadius: 8, border: "1px solid var(--line3)", background: "var(--input)", color: "var(--ink)", width: "100%", minWidth: 0 },
+  textarea: { fontFamily: "'Lora', serif", fontSize: 14, padding: "9px 10px", borderRadius: 8, border: "1px solid var(--line3)", background: "var(--input)", color: "var(--ink)", resize: "vertical" },
+  hint: { fontSize: 12, opacity: 0.65, marginTop: -6, marginBottom: 12, lineHeight: 1.45 },
+  submitBtn: { width: "100%", background: "var(--btn)", color: "var(--btn-ink)", border: "none", borderRadius: 8, padding: "11px 16px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
+  smallPrimary: { background: "var(--btn)", color: "var(--btn-ink)", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif", whiteSpace: "nowrap" },
+  errorText: { color: "var(--danger)", fontSize: 12.5, marginTop: 8 },
+  collapseCard: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, marginBottom: 14, boxShadow: "var(--shadow)", overflow: "hidden" },
+  collapseHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: "14px 18px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", textAlign: "left" },
+  collapseTitle: { fontFamily: "'Amiri', serif", fontSize: 19, fontWeight: 700, color: "var(--title)", flex: 1 },
+  collapseBody: { padding: "0 18px 16px" },
+  tabs: { display: "flex", gap: 3, background: "var(--tabbg)", borderRadius: 10, padding: 4, marginBottom: 16, marginTop: 10 },
+  tab: { flex: 1, background: "transparent", border: "none", borderRadius: 7, padding: "8px 2px", fontSize: 12.5, fontWeight: 600, color: "var(--ink)", opacity: 0.6, cursor: "pointer", fontFamily: "'Lora', serif", whiteSpace: "nowrap" },
+  tabOn: { background: "var(--card)", color: "var(--title)", opacity: 1, boxShadow: "0 1px 3px rgba(22,52,43,0.12)" },
+  historySection: { marginBottom: 20 },
+  emptyState: { fontSize: 13.5, opacity: 0.6, padding: "18px 4px", textAlign: "center", fontStyle: "italic" },
+  dayGroup: { marginBottom: 16 },
+  dayHeader: { fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "var(--gold)", fontWeight: 600, marginBottom: 6, borderBottom: "1px solid var(--line2)", paddingBottom: 4 },
+  entryRow: { position: "relative", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 64px 10px 12px", marginBottom: 8 },
+  entryPage: { display: "flex", alignItems: "baseline", gap: 8, fontSize: 14, fontWeight: 600, color: "var(--title)", flexWrap: "wrap" },
+  entryJuz: { fontSize: 11.5, fontWeight: 400, opacity: 0.65, color: "var(--ink)" },
+  entryDate: { fontSize: 11.5, color: "var(--gold)", fontWeight: 600, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.6 },
+  entryNote: { fontSize: 13, marginTop: 4, opacity: 0.88, lineHeight: 1.4 },
+  rowActions: { position: "absolute", top: 6, right: 6, display: "flex", gap: 2 },
+  iconBtn: { width: 28, height: 28, borderRadius: "50%", border: "none", background: "transparent", color: "var(--title)", fontSize: 15, lineHeight: 1, cursor: "pointer" },
+  confirmRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" },
+  confirmBtn: { background: "var(--danger)", color: "var(--danger-ink)", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer" },
+  cancelBtn: { background: "transparent", color: "var(--ink)", border: "1px solid var(--line3)", borderRadius: 6, padding: "5px 10px", fontSize: 12, cursor: "pointer", fontFamily: "'Lora', serif", whiteSpace: "nowrap" },
+  mono: { fontFamily: "'IBM Plex Mono', monospace" },
+  khatamCount: { display: "flex", alignItems: "baseline", gap: 5 },
+  khatamNum: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 24, fontWeight: 500, color: "var(--gold)", lineHeight: 1 },
+  khatamCountLabel: { fontSize: 12.5, opacity: 0.65 },
+  khatamFlash: { background: "#0F4C3A", color: "#F3ECD8", borderRadius: 8, padding: "9px 12px", fontSize: 13 },
+  khatamRow: { display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderTop: "1px solid var(--line)" },
+  khatamBadge: { flex: "0 0 auto", width: 30, height: 30, borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 },
+  khatamDate: { fontSize: 14, fontWeight: 600, color: "var(--title)", paddingTop: 5 },
+  khatamAddBtn: { width: "100%", marginTop: 12, background: "transparent", color: "var(--title)", border: "1px dashed var(--line3)", borderRadius: 8, padding: "10px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
+  chev: { fontSize: 22, lineHeight: 1, transition: "transform 0.2s ease", opacity: 0.7, color: "var(--ink)" },
+  badge: { border: "1px solid var(--line)", borderRadius: 12, padding: "10px 6px 8px", textAlign: "center", background: "var(--input)" },
+  badgeDone: { borderColor: "var(--line3)", background: "linear-gradient(180deg, rgba(201,169,79,0.16), rgba(201,169,79,0.04))" },
+  badgeName: { fontSize: 11.5, fontWeight: 600, marginTop: 4, lineHeight: 1.25, color: "var(--ink)" },
+  badgeSub: { fontSize: 10.5, opacity: 0.6, marginTop: 2, fontFamily: "'IBM Plex Mono', monospace" },
+  badgeTrack: { height: 3, borderRadius: 2, background: "var(--muted)", marginTop: 5, overflow: "hidden" },
+  badgeFill: { height: "100%", background: "var(--gold)" },
+  monthBlock: { marginBottom: 10 },
+  monthHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontFamily: "'Lora', serif", color: "var(--ink)", boxShadow: "var(--shadow)" },
+  monthHeadOpen: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  monthName: { fontFamily: "'Amiri', serif", fontSize: 18, fontWeight: 700, lineHeight: 1.2 },
+  monthMeta: { fontSize: 12, opacity: 0.75, marginTop: 2 },
+  monthBody: { padding: "12px 2px 4px" },
+  heatScroll: { overflowX: "auto", paddingBottom: 6, WebkitOverflowScrolling: "touch" },
+  heatMonth: { height: 14, fontSize: 10, color: "var(--muted-ink)", whiteSpace: "nowrap", overflow: "visible" },
+  heatCell: { width: 15, height: 15, borderRadius: 3, border: "none", padding: 0, outlineOffset: 1 },
+  heatLegend: { display: "flex", alignItems: "center", gap: 4, fontSize: 11.5, opacity: 0.8, marginTop: 8 },
+  heatInfo: { fontSize: 13, marginTop: 10, padding: "8px 12px", background: "var(--card)", border: "1px solid var(--line)", borderRadius: 8, minHeight: 36 },
+  statGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 },
+  statTile: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "12px 14px", boxShadow: "var(--shadow)" },
+  statLabel: { fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--gold)", fontWeight: 600 },
+  statValue: { fontSize: 24, fontWeight: 600, color: "var(--ink)", marginTop: 4 },
+  statUnit: { fontSize: 12, opacity: 0.6, fontWeight: 400 },
+  chartCard: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "14px 14px 12px", boxShadow: "var(--shadow)" },
+  chartTitle: { fontSize: 13, fontWeight: 600, marginBottom: 6, color: "var(--ink)" },
+  settingBlock: { borderBottom: "1px solid var(--line)", paddingBottom: 14, marginBottom: 14 },
+  settingTitle: { fontSize: 14, fontWeight: 600, color: "var(--title)", marginBottom: 10 },
+  segment: { display: "inline-flex", background: "var(--tabbg)", borderRadius: 8, padding: 3, gap: 2 },
+  segBtn: { background: "transparent", border: "none", borderRadius: 6, padding: "5px 12px", fontSize: 12.5, cursor: "pointer", color: "var(--ink)", opacity: 0.7, fontFamily: "'Lora', serif" },
+  segBtnOn: { background: "var(--card)", opacity: 1, fontWeight: 600, color: "var(--title)", boxShadow: "0 1px 3px rgba(0,0,0,0.12)" },
+  btnRow: { display: "flex", gap: 8, flexWrap: "wrap" },
+  modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
+  modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
+  footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+};
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<QuranTracker />);
+
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>

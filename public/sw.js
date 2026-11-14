@@ -1,6 +1,7 @@
-// Offline support: the page itself is network-first (so updates show up straight away),
-// libraries and fonts from CDNs are cache-first.
-const CACHE = "quran-journal-v3";
+// Offline support + push notifications.
+// The page itself is network-first (so updates show straight away); CDN libraries and fonts are cache-first.
+// /api/ requests always go to the network and are never cached.
+const CACHE = "quran-journal-v4";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "splash-mark.png"];
 
 self.addEventListener("install", (event) => {
@@ -21,6 +22,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   if (url.origin === self.location.origin) {
+    if (url.pathname.startsWith("/api/")) return;
     event.respondWith(
       fetch(req)
         .then((res) => {
@@ -39,6 +41,32 @@ self.addEventListener("fetch", (event) => {
         if (res.ok || res.type === "opaque") { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
         return res;
       });
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data ? event.data.text() : "" }; }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Wirid Quran", {
+      body: data.body || "",
+      icon: "icon-192.png",
+      badge: "icon-192.png",
+      tag: "daily-reminder",
+      renotify: true,
+      data: { url: data.url || "./" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "./", self.registration.scope).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) return c.focus();
+      return self.clients.openWindow(target);
     })
   );
 });
