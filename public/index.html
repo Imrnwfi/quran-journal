@@ -337,6 +337,14 @@ const BISMILLAH_SOURCES = [
 const PERSONAL_FLAG = "quran-note-personal";
 const PERSONAL = (() => { try { return localStorage.getItem(PERSONAL_FLAG) === "1"; } catch (e) { return false; } })();
 const STORAGE_KEY = PERSONAL ? "qn-personal-entries" : "quran-journal-entries";
+// Ayat hari ini: [surah, ayah, Uthmani text (quranenc.com), Malay (Abdullah Basmeih, tanzil.net), English (Saheeh International)]
+const AYAT = [[3, 31, "قُلۡ إِن كُنتُمۡ تُحِبُّونَ ٱللَّهَ فَٱتَّبِعُونِي يُحۡبِبۡكُمُ ٱللَّهُ وَيَغۡفِرۡ لَكُمۡ ذُنُوبَكُمۡۚ وَٱللَّهُ غَفُورٞ رَّحِيمٞ", "Katakanlah (wahai Muhammad): \"Jika benar kamu mengasihi Allah maka ikutilah daku, nescaya Allah mengasihi kamu serta mengampunkan dosa-dosa kamu. Dan (ingatlah), Allah Maha Pengampun, lagi Maha Mengasihani.\"", "Say, [O Muhammad], \"If you should love Allah, then follow me, [so] Allah will love you and forgive you your sins. And Allah is Forgiving and Merciful.\""], [25, 74, "وَٱلَّذِينَ يَقُولُونَ رَبَّنَا هَبۡ لَنَا مِنۡ أَزۡوَٰجِنَا وَذُرِّيَّـٰتِنَا قُرَّةَ أَعۡيُنٖ وَٱجۡعَلۡنَا لِلۡمُتَّقِينَ إِمَامًا", "Dan juga mereka (yang diredhai Allah itu ialah orang-orang) yang berdoa dengan berkata: \"Wahai Tuhan kami, berilah kami beroleh dari isteri-isteri dan zuriat keturunan kami: perkara-perkara yang menyukakan hati melihatnya, dan jadikanlah kami imam ikutan bagi orang-orang yang (mahu) bertaqwa.\"", "And those who say, \"Our Lord, grant us from among our wives and offspring comfort to our eyes and make us an example for the righteous.\""], [103, 2, "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ", "Sesungguhnya manusia itu dalam kerugian.", "Indeed, mankind is in loss."], [35, 29, "إِنَّ ٱلَّذِينَ يَتۡلُونَ كِتَٰبَ ٱللَّهِ وَأَقَامُواْ ٱلصَّلَوٰةَ وَأَنفَقُواْ مِمَّا رَزَقۡنَٰهُمۡ سِرّٗا وَعَلَانِيَةٗ يَرۡجُونَ تِجَٰرَةٗ لَّن تَبُورَ", "Sesungguhnya orang-orang yang selalu membaca Kitab Allah dan tetap mendirikan sembahyang serta mendermakan dari apa yang Kami kurniakan kepada mereka, secara bersembunyi atau secara terbuka, mereka (dengan amalan yang demikian) mengharapkan sejenis perniagaan yang tidak akan mengalami kerugian.", "Indeed, those who recite the Book of Allah and establish prayer and spend [in His cause] out of what We have provided them, secretly and publicly, [can] expect a profit that will never perish."], [103, 3, "إِلَّا ٱلَّذِينَ ءَامَنُواْ وَعَمِلُواْ ٱلصَّـٰلِحَٰتِ وَتَوَاصَوۡاْ بِٱلۡحَقِّ وَتَوَاصَوۡاْ بِٱلصَّبۡرِ", "Kecuali orang-orang yang beriman dan beramal soleh, dan mereka pula berpesan-pesan dengan kebenaran serta berpesan-pesan dengan sabar.", "Except for those who have believed and done righteous deeds and advised each other to truth and advised each other to patience."], [54, 17, "وَلَقَدۡ يَسَّرۡنَا ٱلۡقُرۡءَانَ لِلذِّكۡرِ فَهَلۡ مِن مُّدَّكِرٖ", "Dan demi sesungguhnya! Kami telah mudahkan Al-Quran untuk menjadi peringatan dan pengajaran, maka adakah sesiapa yang mahu mengambil peringatan dan pelajaran (daripadanya).", "And We have certainly made the Qur'an easy for remembrance, so is there any who will remember."], [12, 86, "قَالَ إِنَّمَآ أَشۡكُواْ بَثِّي وَحُزۡنِيٓ إِلَى ٱللَّهِ وَأَعۡلَمُ مِنَ ٱللَّهِ مَا لَا تَعۡلَمُونَ", "(Nabi Yaakub) menjawab: \"Sesungguhnya aku hanyalah mengadukan kesusahan dan dukacitaku kepada Allah dan aku mengetahui (dengan perantaraan wahyu) dari Allah, apa yang kamu tidak mengetahuinya.\"", "He said, \"I only complain of my suffering and my grief to Allah, and I know from Allah that which you do not know.\""], [39, 53, "۞قُلۡ يَٰعِبَادِيَ ٱلَّذِينَ أَسۡرَفُواْ عَلَىٰٓ أَنفُسِهِمۡ لَا تَقۡنَطُواْ مِن رَّحۡمَةِ ٱللَّهِۚ إِنَّ ٱللَّهَ يَغۡفِرُ ٱلذُّنُوبَ جَمِيعًاۚ إِنَّهُۥ هُوَ ٱلۡغَفُورُ ٱلرَّحِيمُ", "Katakanlah (wahai Muhammad): \"Wahai hamba-hambaKu yang telah melampaui batas terhadap diri mereka sendiri (dengan perbuatan-perbuatan maksiat), janganlah kamu berputus asa dari rahmat Allah, kerana sesungguhnya Allah mengampunkan segala dosa; sesungguhnya Dia lah jua Yang Maha Pengampun, lagi Maha Mengasihani.\"", "Say, \"O My servants who have transgressed against themselves [by sinning], do not despair of the mercy of Allah. Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.\""], [20, 132, "وَأۡمُرۡ أَهۡلَكَ بِٱلصَّلَوٰةِ وَٱصۡطَبِرۡ عَلَيۡهَاۖ لَا نَسۡـَٔلُكَ رِزۡقٗاۖ نَّحۡنُ نَرۡزُقُكَۗ وَٱلۡعَٰقِبَةُ لِلتَّقۡوَىٰ", "Dan perintahkanlah keluargamu serta umatmu mengerjakan sembahyang, dan hendaklah engkau tekun bersabar menunaikannya. Kami tidak meminta rezeki kepadamu, (bahkan) Kamilah yang memberi rezeki kepadamu. Dan (ingatlah) kesudahan yang baik adalah bagi orang-orang yang bertaqwa.", "And enjoin prayer upon your family [and people] and be steadfast therein. We ask you not for provision; We provide for you, and the [best] outcome is for [those of] righteousness."], [3, 134, "ٱلَّذِينَ يُنفِقُونَ فِي ٱلسَّرَّآءِ وَٱلضَّرَّآءِ وَٱلۡكَٰظِمِينَ ٱلۡغَيۡظَ وَٱلۡعَافِينَ عَنِ ٱلنَّاسِۗ وَٱللَّهُ يُحِبُّ ٱلۡمُحۡسِنِينَ", "Iaitu orang-orang yang mendermakan hartanya pada masa senang dan susah, dan orang-orang yang menahan kemarahannya, dan orang-orang yang memaafkan kesalahan orang. Dan (ingatlah), Allah mengasihi orang-orang yang berbuat perkara-perkara yang baik.", "Who spend [in the cause of Allah] during ease and hardship and who restrain anger and who pardon the people - and Allah loves the doers of good."], [94, 7, "فَإِذَا فَرَغۡتَ فَٱنصَبۡ", "Kemudian apabila engkau telah selesai (daripada sesuatu amal soleh), maka bersungguh-sungguhlah engkau berusaha (mengerjakan amal soleh yang lain).", "So when you have finished [your duties], then stand up [for worship]."], [16, 128, "إِنَّ ٱللَّهَ مَعَ ٱلَّذِينَ ٱتَّقَواْ وَّٱلَّذِينَ هُم مُّحۡسِنُونَ", "Sesungguhnya Allah beserta orang-orang yang bertaqwa, dan orang-orang yang berusaha memperbaiki amalannya.", "Indeed, Allah is with those who fear Him and those who are doers of good."], [64, 16, "فَٱتَّقُواْ ٱللَّهَ مَا ٱسۡتَطَعۡتُمۡ وَٱسۡمَعُواْ وَأَطِيعُواْ وَأَنفِقُواْ خَيۡرٗا لِّأَنفُسِكُمۡۗ وَمَن يُوقَ شُحَّ نَفۡسِهِۦ فَأُوْلَـٰٓئِكَ هُمُ ٱلۡمُفۡلِحُونَ", "Oleh itu bertaqwalah kamu kepada Allah sedaya supaya kamu; dan dengarlah (akan pengajaran-pengajaranNya) serta taatlah (akan perintah-perintahNya); dan belanjakanlah harta kamu (serta buatlah) kebajikan untuk diri kamu. Dan (ingatlah), sesiapa yang menjaga serta memelihara dirinya daripada dipengaruhi oleh tabiat bakhilnya, maka merekalah orang-orang yang berjaya.", "So fear Allah as much as you are able and listen and obey and spend [in the way of Allah]; it is better for your selves. And whoever is protected from the stinginess of his soul - it is those who will be the successful."], [89, 28, "ٱرۡجِعِيٓ إِلَىٰ رَبِّكِ رَاضِيَةٗ مَّرۡضِيَّةٗ", "Kembalilah kepada Tuhanmu dengan keadaan engkau berpuas hati (dengan segala nikmat yang diberikan) lagi diredhai (di sisi Tuhanmu).", "Return to your Lord, well-pleased and pleasing [to Him]."], [2, 155, "وَلَنَبۡلُوَنَّكُم بِشَيۡءٖ مِّنَ ٱلۡخَوۡفِ وَٱلۡجُوعِ وَنَقۡصٖ مِّنَ ٱلۡأَمۡوَٰلِ وَٱلۡأَنفُسِ وَٱلثَّمَرَٰتِۗ وَبَشِّرِ ٱلصَّـٰبِرِينَ", "Demi sesungguhnya! Kami akan menguji kamu dengan sedikit perasaan takut (kepada musuh) dan (dengan merasai) kelaparan, dan (dengan berlakunya) kekurangan dari harta benda dan jiwa serta hasil tanaman. Dan berilah khabar gembira kepada orang-orang yang sabar.", "And We will surely test you with something of fear and hunger and a loss of wealth and lives and fruits, but give good tidings to the patient."], [93, 4, "وَلَلۡأٓخِرَةُ خَيۡرٞ لَّكَ مِنَ ٱلۡأُولَىٰ", "Dan sesungguhnya kesudahan keaadaanmu adalah lebih baik bagimu daripada permulaannya.", "And the Hereafter is better for you than the first [life]."], [2, 110, "وَأَقِيمُواْ ٱلصَّلَوٰةَ وَءَاتُواْ ٱلزَّكَوٰةَۚ وَمَا تُقَدِّمُواْ لِأَنفُسِكُم مِّنۡ خَيۡرٖ تَجِدُوهُ عِندَ ٱللَّهِۗ إِنَّ ٱللَّهَ بِمَا تَعۡمَلُونَ بَصِيرٞ", "Dan dirikanlah oleh kamu akan sembahyang dan tunaikanlah zakat dan apa jua yang kamu dahulukan dari kebaikan untuk diri kamu, tentulah kamu akan mendapat balasan pahalanya di sisi Allah. Sesungguhnya Allah sentiasa Melihat segala yang kamu kerjakan.", "And establish prayer and give zakah, and whatever good you put forward for yourselves - you will find it with Allah. Indeed, Allah of what you do, is Seeing."], [10, 57, "يَـٰٓأَيُّهَا ٱلنَّاسُ قَدۡ جَآءَتۡكُم مَّوۡعِظَةٞ مِّن رَّبِّكُمۡ وَشِفَآءٞ لِّمَا فِي ٱلصُّدُورِ وَهُدٗى وَرَحۡمَةٞ لِّلۡمُؤۡمِنِينَ", "Wahai umat manusia! Sesungguhnya telah datang kepada kamu Al-Quran yang menjadi nasihat pengajaran dari Tuhan kamu, dan yang menjadi penawar bagi penyakit-penyakit batin yang ada di dalam dada kamu, dan juga menjadi hidayah petunjuk untuk keselamatan, serta membawa rahmat bagi orang-orang yang beriman.", "O mankind, there has to come to you instruction from your Lord and healing for what is in the breasts and guidance and mercy for the believers."], [47, 24, "أَفَلَا يَتَدَبَّرُونَ ٱلۡقُرۡءَانَ أَمۡ عَلَىٰ قُلُوبٍ أَقۡفَالُهَآ", "(Setelah diterangkan yang demikian) maka adakah mereka sengaja tidak berusaha memahami serta memikirkan isi Al-Quran? Atau telah ada di atas hati mereka kunci penutup (yang menghalangnya daripada menerima ajaran Al-Quran).", "Then do they not reflect upon the Qur'an, or are there locks upon [their] hearts."], [13, 28, "ٱلَّذِينَ ءَامَنُواْ وَتَطۡمَئِنُّ قُلُوبُهُم بِذِكۡرِ ٱللَّهِۗ أَلَا بِذِكۡرِ ٱللَّهِ تَطۡمَئِنُّ ٱلۡقُلُوبُ", "(Iaitu) orang-orang yang beriman dan tenang tenteram hati mereka dengan zikrullah. Ketahuilah dengan \"zikrullah\" itu, tenang tenteramlah hati manusia.", "Those who have believed and whose hearts are assured by the remembrance of Allah. Unquestionably, by the remembrance of Allah hearts are assured."], [67, 2, "ٱلَّذِي خَلَقَ ٱلۡمَوۡتَ وَٱلۡحَيَوٰةَ لِيَبۡلُوَكُمۡ أَيُّكُمۡ أَحۡسَنُ عَمَلٗاۚ وَهُوَ ٱلۡعَزِيزُ ٱلۡغَفُورُ", "Dia lah yang telah mentakdirkan adanya mati dan hidup (kamu) - untuk menguji dan menzahirkan keadaan kamu: siapakah di antara kamu yang lebih baik amalnya; dan Ia Maha Kuasa (membalas amal kamu), lagi Maha Pengampun, (bagi orang-orang yang bertaubat).", "[He] who created death and life to test you [as to] which of you is best in deed - and He is the Exalted in Might, the Forgiving."], [14, 7, "وَإِذۡ تَأَذَّنَ رَبُّكُمۡ لَئِن شَكَرۡتُمۡ لَأَزِيدَنَّكُمۡۖ وَلَئِن كَفَرۡتُمۡ إِنَّ عَذَابِي لَشَدِيدٞ", "Dan (ingatlah) ketika Tuhan kamu memberitahu: \"Demi sesungguhnya! Jika kamu bersyukur nescaya Aku akan tambahi nikmatKu kepada kamu, dan demi sesungguhnya, jika kamu kufur ingkar sesungguhnya azabKu amatlah keras.\"", "And [remember] when your Lord proclaimed, 'If you are grateful, I will surely increase you [in favor]; but if you deny, indeed, My punishment is severe.'"], [18, 46, "ٱلۡمَالُ وَٱلۡبَنُونَ زِينَةُ ٱلۡحَيَوٰةِ ٱلدُّنۡيَاۖ وَٱلۡبَٰقِيَٰتُ ٱلصَّـٰلِحَٰتُ خَيۡرٌ عِندَ رَبِّكَ ثَوَابٗا وَخَيۡرٌ أَمَلٗا", "Harta benda dan anak pinak itu, ialah perhiasan hidup di dunia; dan amal-amal soleh yang kekal faedahnya itu lebih baik pada sisi Tuhanmu sebagai pahala balasan, dan lebih baik sebagai asas yang memberi harapan.", "Wealth and children are [but] adornment of the worldly life. But the enduring good deeds are better to your Lord for reward and better for [one's] hope."], [7, 23, "قَالَا رَبَّنَا ظَلَمۡنَآ أَنفُسَنَا وَإِن لَّمۡ تَغۡفِرۡ لَنَا وَتَرۡحَمۡنَا لَنَكُونَنَّ مِنَ ٱلۡخَٰسِرِينَ", "Mereka berdua merayu: \"Wahai Tuhan kami, kami telah menganiaya diri kami sendiri, dan kalau Engkau tidak mengampunkan kami dan memberi rahmat kepada kami, nescaya menjadilah kami dari orang-orang yang rugi.\"", "They said, \"Our Lord, we have wronged ourselves, and if You do not forgive us and have mercy upon us, we will surely be among the losers.\""], [2, 152, "فَٱذۡكُرُونِيٓ أَذۡكُرۡكُمۡ وَٱشۡكُرُواْ لِي وَلَا تَكۡفُرُونِ", "Oleh itu ingatlah kamu kepadaKu (dengan mematuhi hukum dan undang-undangKu), supaya Aku membalas kamu dengan kebaikan; dan bersyukurlah kamu kepadaKu dan janganlah kamu kufur (akan nikmatKu).", "So remember Me; I will remember you. And be grateful to Me and do not deny Me."], [96, 1, "ٱقۡرَأۡ بِٱسۡمِ رَبِّكَ ٱلَّذِي خَلَقَ", "Bacalah (wahai Muhammad) dengan nama Tuhanmu yang menciptakan (sekalian makhluk).", "Recite in the name of your Lord who created."], [28, 24, "فَسَقَىٰ لَهُمَا ثُمَّ تَوَلَّىٰٓ إِلَى ٱلظِّلِّ فَقَالَ رَبِّ إِنِّي لِمَآ أَنزَلۡتَ إِلَيَّ مِنۡ خَيۡرٖ فَقِيرٞ", "Maka Musa pun memberi minum kepada binatang-binatang ternak mereka, kemudian ia pergi ke tempat teduh lalu berdoa dengan berkata: \"Wahai Tuhanku, sesungguhnya aku sangat berhajat kepada sebarang rezeki pemberian yang Engkau berikan.\"", "So he watered [their flocks] for them; then he went back to the shade and said, \"My Lord, indeed I am, for whatever good You would send down to me, in need.\""], [59, 18, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱتَّقُواْ ٱللَّهَ وَلۡتَنظُرۡ نَفۡسٞ مَّا قَدَّمَتۡ لِغَدٖۖ وَٱتَّقُواْ ٱللَّهَۚ إِنَّ ٱللَّهَ خَبِيرُۢ بِمَا تَعۡمَلُونَ", "Wahai orang-orang yang beriman! Bertaqwalah kepada Allah (dengan mengerjakan suruhanNya dan meninggalkan laranganNya); dan hendaklah tiap-tiap diri melihat dan memerhatikan apa yang ia telah sediakan (dari amal-amalnya) untuk hari esok (hari akhirat). Dan (sekali lagi diingatkan): Bertaqwalah kepada Allah, sesungguhnya Allah Amat Meliputi PengetahuanNya akan segala yang kamu kerjakan.", "O you who have believed, fear Allah. And let every soul look to what it has put forth for tomorrow - and fear Allah. Indeed, Allah is Acquainted with what you do."], [6, 162, "قُلۡ إِنَّ صَلَاتِي وَنُسُكِي وَمَحۡيَايَ وَمَمَاتِي لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ", "Katakanlah: \"Sesungguhnya sembahyangku dan ibadatku, hidupku dan matiku, hanyalah untuk Allah Tuhan yang memelihara dan mentadbirkan sekalian alam.\"", "Say, \"Indeed, my prayer, my rites of sacrifice, my living and my dying are for Allah, Lord of the worlds.\""], [17, 9, "إِنَّ هَٰذَا ٱلۡقُرۡءَانَ يَهۡدِي لِلَّتِي هِيَ أَقۡوَمُ وَيُبَشِّرُ ٱلۡمُؤۡمِنِينَ ٱلَّذِينَ يَعۡمَلُونَ ٱلصَّـٰلِحَٰتِ أَنَّ لَهُمۡ أَجۡرٗا كَبِيرٗا", "Sesungguhnya Al-Quran ini memberi petunjuk ke jalan yang amat betul (ugama Islam), dan memberikan berita yang mengembirakan orang-orang yang beriman yang mengerjakan amal-amal soleh, bahawa mereka beroleh pahala yang besar.", "Indeed, this Qur'an guides to that which is most suitable and gives good tidings to the believers who do righteous deeds that they will have a great reward."], [94, 8, "وَإِلَىٰ رَبِّكَ فَٱرۡغَب", "Dan kepada Tuhanmu sahaja hendaklah engkau memohon (apa yang engkau gemar dan ingini).", "And to your Lord direct [your] longing."], [31, 17, "يَٰبُنَيَّ أَقِمِ ٱلصَّلَوٰةَ وَأۡمُرۡ بِٱلۡمَعۡرُوفِ وَٱنۡهَ عَنِ ٱلۡمُنكَرِ وَٱصۡبِرۡ عَلَىٰ مَآ أَصَابَكَۖ إِنَّ ذَٰلِكَ مِنۡ عَزۡمِ ٱلۡأُمُورِ", "Wahai anak kesayanganku, dirikanlah sembahyang, dan suruhlah berbuat kebaikan, serta laranglah daripada melakukan perbuatan yang mungkar, dan bersabarlah atas segala bala bencana yang menimpamu. Sesungguhnya yang demikian itu adalah dari perkara-perkara yang dikehendaki diambil berat melakukannya.", "O my son, establish prayer, enjoin what is right, forbid what is wrong, and be patient over what befalls you. Indeed, [all] that is of the matters [requiring] determination."], [38, 29, "كِتَٰبٌ أَنزَلۡنَٰهُ إِلَيۡكَ مُبَٰرَكٞ لِّيَدَّبَّرُوٓاْ ءَايَٰتِهِۦ وَلِيَتَذَكَّرَ أُوْلُواْ ٱلۡأَلۡبَٰبِ", "(Al-Quran ini) sebuah Kitab yang Kami turunkan kepadamu (dan umatmu wahai Muhammad), -Kitab yang banyak faedah-faedah dan manfaatnya, untuk mereka memahami dengan teliti kandungan ayat-ayatnya, dan untuk orang-orang yang berakal sempurna beringat mengambil iktibar.", "[This is] a blessed Book which We have revealed to you, [O Muhammad], that they might reflect upon its verses and that those of understanding would be reminded."], [71, 10, "فَقُلۡتُ ٱسۡتَغۡفِرُواْ رَبَّكُمۡ إِنَّهُۥ كَانَ غَفَّارٗا", "Sehingga aku berkata (kepada mereka): \"Pohonkanlah ampun kepada Tuhan kamu, sesungguhnya adalah Ia Maha Pengampun.\"", "And said, 'Ask forgiveness of your Lord. Indeed, He is ever a Perpetual Forgiver.'"], [40, 60, "وَقَالَ رَبُّكُمُ ٱدۡعُونِيٓ أَسۡتَجِبۡ لَكُمۡۚ إِنَّ ٱلَّذِينَ يَسۡتَكۡبِرُونَ عَنۡ عِبَادَتِي سَيَدۡخُلُونَ جَهَنَّمَ دَاخِرِينَ", "Dan Tuhan kamu berfirman: \"Berdoalah kamu kepadaKu nescaya Aku perkenankan doa permohonan kamu. Sesungguhnya orang-orang yang sombong takbur daripada beribadat dan berdoa kepadaKu, akan masuk neraka Jahannam dalam keadaan hina.\"", "And your Lord says, \"Call upon Me; I will respond to you.\" Indeed, those who disdain My worship will enter Hell [rendered] contemptible."], [2, 45, "وَٱسۡتَعِينُواْ بِٱلصَّبۡرِ وَٱلصَّلَوٰةِۚ وَإِنَّهَا لَكَبِيرَةٌ إِلَّا عَلَى ٱلۡخَٰشِعِينَ", "Dan mintalah pertolongan (kepada Allah) dengan jalan sabar dan mengerjakan sembahyang; dan sesungguhnya sembahyang itu amatlah berat kecuali kepada orang-orang yang khusyuk.", "And seek help through patience and prayer, and indeed, it is difficult except for the humbly submissive [to Allah]."], [9, 51, "قُل لَّن يُصِيبَنَآ إِلَّا مَا كَتَبَ ٱللَّهُ لَنَا هُوَ مَوۡلَىٰنَاۚ وَعَلَى ٱللَّهِ فَلۡيَتَوَكَّلِ ٱلۡمُؤۡمِنُونَ", "Katakanlah (wahai Muhammad): \"Tidak sekali-kali akan menimpa kami sesuatu pun melainkan apa yang telah ditetapkan Allah bagi kami. Dia lah Pelindung yang menyelamatkan kami, dan (dengan kepercayaan itu) maka kepada Allah jualah hendaknya orang-orang yang beriman bertawakal.\"", "Say, \"Never will we be struck except by what Allah has decreed for us; He is our protector.\" And upon Allah let the believers rely."], [20, 114, "فَتَعَٰلَى ٱللَّهُ ٱلۡمَلِكُ ٱلۡحَقُّۗ وَلَا تَعۡجَلۡ بِٱلۡقُرۡءَانِ مِن قَبۡلِ أَن يُقۡضَىٰٓ إِلَيۡكَ وَحۡيُهُۥۖ وَقُل رَّبِّ زِدۡنِي عِلۡمٗا", "Maka Maha Tinggilah Allah, yang Menguasai seluruh alam, lagi Yang Benar (pada segala-galanya). Dan janganlah engkau (wahai Muhammad) tergesa-gesa membaca Al-Quran sebelum selesai dibacakan oleh Jibril kepadamu, dan berdoalah dengan berkata: \"Wahai Tuhanku, tambahilah ilmuku.\"", "So high [above all] is Allah, the Sovereign, the Truth. And, [O Muhammad], do not hasten with [recitation of] the Qur'an before its revelation is completed to you, and say, \"My Lord, increase me in knowledge.\""], [2, 186, "وَإِذَا سَأَلَكَ عِبَادِي عَنِّي فَإِنِّي قَرِيبٌۖ أُجِيبُ دَعۡوَةَ ٱلدَّاعِ إِذَا دَعَانِۖ فَلۡيَسۡتَجِيبُواْ لِي وَلۡيُؤۡمِنُواْ بِي لَعَلَّهُمۡ يَرۡشُدُونَ", "Dan apabila hamba-hambaKu bertanya kepadamu mengenai Aku maka (beritahu kepada mereka): sesungguhnya Aku (Allah) sentiasa hampir (kepada mereka); Aku perkenankan permohonan orang yang berdoa apabila ia berdoa kepadaKu. Maka hendaklah mereka menyahut seruanku (dengan mematuhi perintahKu), dan hendaklah mereka beriman kepadaKu supaya mereka menjadi baik serta betul.", "And when My servants ask you, [O Muhammad], concerning Me - indeed I am near. I respond to the invocation of the supplicant when he calls upon Me. So let them respond to Me [by obedience] and believe in Me that they may be [rightly] guided."], [3, 190, "إِنَّ فِي خَلۡقِ ٱلسَّمَٰوَٰتِ وَٱلۡأَرۡضِ وَٱخۡتِلَٰفِ ٱلَّيۡلِ وَٱلنَّهَارِ لَأٓيَٰتٖ لِّأُوْلِي ٱلۡأَلۡبَٰبِ", "Sesungguhnya pada kejadian langit dan bumi, dan pada pertukaran malam dan siang, ada tanda-tanda (kekuasaan, kebijaksanaan, dan keluasan rahmat Allah) bagi orang-orang yang berakal.", "Indeed, in the creation of the heavens and the earth and the alternation of the night and the day are signs for those of understanding."], [14, 40, "رَبِّ ٱجۡعَلۡنِي مُقِيمَ ٱلصَّلَوٰةِ وَمِن ذُرِّيَّتِيۚ رَبَّنَا وَتَقَبَّلۡ دُعَآءِ", "Wahai Tuhanku! Jadikanlah daku orang yang mendirikan sembahyang dan demikianlah juga zuriat keturunanku. Wahai Tuhan kami, perkenankanlah doa permohonanku.", "My Lord, make me an establisher of prayer, and [many] from my descendants. Our Lord, and accept my supplication."], [55, 13, "فَبِأَيِّ ءَالَآءِ رَبِّكُمَا تُكَذِّبَانِ", "Maka yang mana satu di antara nikmat-nikmat Tuhan kamu, yang kamu hendak dustakan (wahai umat manusia dan jin).", "So which of the favors of your Lord would you deny."], [26, 62, "قَالَ كَلَّآۖ إِنَّ مَعِيَ رَبِّي سَيَهۡدِينِ", "Nabi Musa menjawab: \"Tidak! Jangan fikir (akan berlaku yang demikian)! Sesungguhnya aku sentiasa disertai oleh Tuhanku (dengan pemuliharaan dan pertolonganNya), Ia akan menunjuk jalan kepadaku.\"", "[Moses] said, \"No! Indeed, with me is my Lord; He will guide me.\""], [93, 5, "وَلَسَوۡفَ يُعۡطِيكَ رَبُّكَ فَتَرۡضَىٰٓ", "Dan sesungguhnya Tuhanmu akan memberikanmu (kejayaan dan kebahagiaan di dunia dan di akhirat) sehingga engkau reda - berpuas hati.", "And your Lord is going to give you, and you will be satisfied."], [7, 56, "وَلَا تُفۡسِدُواْ فِي ٱلۡأَرۡضِ بَعۡدَ إِصۡلَٰحِهَا وَٱدۡعُوهُ خَوۡفٗا وَطَمَعًاۚ إِنَّ رَحۡمَتَ ٱللَّهِ قَرِيبٞ مِّنَ ٱلۡمُحۡسِنِينَ", "Dan janganlah kamu berbuat kerosakan di bumi sesudah Allah menyediakan segala yang membawa kebaikan padanya, dan berdoalah kepadaNya dengan perasaan bimbang (kalau-kalau tidak diterima) dan juga dengan perasaan terlalu mengharapkan (supaya makbul). Sesungguhnya rahmat Allah itu dekat kepada orang-orang yang memperbaiki amalannya.", "And cause not corruption upon the earth after its reformation. And invoke Him in fear and aspiration. Indeed, the mercy of Allah is near to the doers of good."], [93, 3, "مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ", "(Bahawa) Tuhanmu (wahai Muhammad) tidak meninggalkanmu, dan Ia tidak benci (kepadamu, sebagaimana yang dituduh oleh kaum musyrik).", "Your Lord has not taken leave of you, [O Muhammad], nor has He detested [you]."], [29, 69, "وَٱلَّذِينَ جَٰهَدُواْ فِينَا لَنَهۡدِيَنَّهُمۡ سُبُلَنَاۚ وَإِنَّ ٱللَّهَ لَمَعَ ٱلۡمُحۡسِنِينَ", "Dan orang-orang yang berusaha dengan bersungguh-sungguh kerana memenuhi kehendak ugama Kami, sesungguhnya Kami akan memimpin mereka ke jalan-jalan Kami (yang menjadikan mereka bergembira serta beroleh keredaan); dan sesungguhnya (pertolongan dan bantuan) Allah adalah berserta orang-orang yang berusaha membaiki amalannya.", "And those who strive for Us - We will surely guide them to Our ways. And indeed, Allah is with the doers of good."], [3, 139, "وَلَا تَهِنُواْ وَلَا تَحۡزَنُواْ وَأَنتُمُ ٱلۡأَعۡلَوۡنَ إِن كُنتُم مُّؤۡمِنِينَ", "Dan janganlah kamu merasa lemah (dalam perjuangan mempertahan dan menegakkan Islam), dan janganlah kamu berdukacita (terhadap apa yang akan menimpa kamu), padahal kamulah orang-orang yang tertinggi (mengatasi musuh dengan mencapai kemenangan) jika kamu orang-orang yang (sungguh-sungguh) beriman.", "So do not weaken and do not grieve, and you will be superior if you are [true] believers."], [23, 1, "قَدۡ أَفۡلَحَ ٱلۡمُؤۡمِنُونَ", "Sesungguhnya berjayalah orang-orang yang beriman.", "Certainly will the believers have succeeded."], [94, 6, "إِنَّ مَعَ ٱلۡعُسۡرِ يُسۡرٗا", "(Sekali lagi ditegaskan): bahawa sesungguhnya tiap-tiap kesukaran disertai kemudahan.", "Indeed, with hardship [will be] ease."], [42, 19, "ٱللَّهُ لَطِيفُۢ بِعِبَادِهِۦ يَرۡزُقُ مَن يَشَآءُۖ وَهُوَ ٱلۡقَوِيُّ ٱلۡعَزِيزُ", "Allah Maha Lembut tadbirNya (serta melimpah-limpah kebaikan dan belas kasihanNya) kepada hamba-hambaNya; Ia memberi rezeki kepada sesiapa yang dikehendakiNya (menurut peraturan yang telah ditetapkan), dan Dia lah Yang Maha Kuat, lagi Maha Kuasa.", "Allah is Subtle with His servants; He gives provisions to whom He wills. And He is the Powerful, the Exalted in Might."], [87, 14, "قَدۡ أَفۡلَحَ مَن تَزَكَّىٰ", "Sesungguhnya berjayalah orang yang - setelah menerima peringatan itu - berusaha membersihkan dirinya (dengan taat dan amal yang soleh).", "He has certainly succeeded who purifies himself."], [20, 25, "قَالَ رَبِّ ٱشۡرَحۡ لِي صَدۡرِي", "Nabi Musa berdoa dengan berkata: \"Wahai Tuhanku, lapangkanlah bagiku, dadaku.\"", "[Moses] said, \"My Lord, expand for me my breast [with assurance].\""], [18, 10, "إِذۡ أَوَى ٱلۡفِتۡيَةُ إِلَى ٱلۡكَهۡفِ فَقَالُواْ رَبَّنَآ ءَاتِنَا مِن لَّدُنكَ رَحۡمَةٗ وَهَيِّئۡ لَنَا مِنۡ أَمۡرِنَا رَشَدٗا", "(Ingatkanlah peristiwa) ketika serombongan orang-orang muda pergi ke gua, lalu mereka berdoa: \"Wahai Tuhan kami! Kurniakanlah kami rahmat dari sisiMu, dan berilah kemudahan-kemudahan serta pimpinan kepada kami untuk keselamatan ugama kami.\"", "[Mention] when the youths retreated to the cave and said, \"Our Lord, grant us from Yourself mercy and prepare for us from our affair right guidance.\""], [33, 41, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱذۡكُرُواْ ٱللَّهَ ذِكۡرٗا كَثِيرٗا", "Wahai orang-orang yang beriman, (untuk bersyukur kepada Allah) ingatlah serta sebutlah nama Allah dengan ingatan serta sebutan yang sebanyak-banyaknya.", "O you who have believed, remember Allah with much remembrance."], [51, 56, "وَمَا خَلَقۡتُ ٱلۡجِنَّ وَٱلۡإِنسَ إِلَّا لِيَعۡبُدُونِ", "Dan (ingatlah) Aku tidak menciptakan jin dan manusia melainkan untuk mereka menyembah dan beribadat kepadaKu.", "And I did not create the jinn and mankind except to worship Me."], [17, 82, "وَنُنَزِّلُ مِنَ ٱلۡقُرۡءَانِ مَا هُوَ شِفَآءٞ وَرَحۡمَةٞ لِّلۡمُؤۡمِنِينَ وَلَا يَزِيدُ ٱلظَّـٰلِمِينَ إِلَّا خَسَارٗا", "Dan Kami turunkan dengan beransur-ansur dari Al-Quran Aya-ayat Suci yang menjadi ubat penawar dan rahmat bagi orang-orang yang beriman kepadanya; dan (sebaliknya) Al-Quran tidak menambahkan orang-orang yang zalim (disebabkan keingkaran mereka) melainkan kerugian jua.", "And We send down of the Qur'an that which is healing and mercy for the believers, but it does not increase the wrongdoers except in loss."], [94, 5, "فَإِنَّ مَعَ ٱلۡعُسۡرِ يُسۡرًا", "Oleh itu, maka (tetapkanlah kepercayaanmu) bahawa sesungguhnya tiap-tiap kesukaran disertai kemudahan.", "For indeed, with hardship [will be] ease."], [11, 6, "۞وَمَا مِن دَآبَّةٖ فِي ٱلۡأَرۡضِ إِلَّا عَلَى ٱللَّهِ رِزۡقُهَا وَيَعۡلَمُ مُسۡتَقَرَّهَا وَمُسۡتَوۡدَعَهَاۚ كُلّٞ فِي كِتَٰبٖ مُّبِينٖ", "Dan tiadalah sesuatupun dari makhluk-makhluk yang bergerak di bumi melainkan Allah jualah yang menanggung rezekinya dan mengetahui tempat kediamannya dan tempat ia disimpan. Semuanya itu tersurat di dalam Kitab (Lauh mahfuz) yang nyata (kepada malaikat-malaikat yang berkenaan).", "And there is no creature on earth but that upon Allah is its provision, and He knows its place of dwelling and place of storage. All is in a clear register."], [12, 87, "يَٰبَنِيَّ ٱذۡهَبُواْ فَتَحَسَّسُواْ مِن يُوسُفَ وَأَخِيهِ وَلَا تَاْيۡـَٔسُواْ مِن رَّوۡحِ ٱللَّهِۖ إِنَّهُۥ لَا يَاْيۡـَٔسُ مِن رَّوۡحِ ٱللَّهِ إِلَّا ٱلۡقَوۡمُ ٱلۡكَٰفِرُونَ", "Wahai anak-anakku! Pergilah dan intiplah khabar berita mengenai Yusuf dan saudaranya (Bunyamin), dan janganlah kamu berputus asa dari rahmat serta pertolongan Allah. Sesungguhnya tidak berputus asa dari rahmat dan pertolongan Allah itu melainkan kaum yang kafir.", "O my sons, go and find out about Joseph and his brother and despair not of relief from Allah. Indeed, no one despairs of relief from Allah except the disbelieving people."], [3, 92, "لَن تَنَالُواْ ٱلۡبِرَّ حَتَّىٰ تُنفِقُواْ مِمَّا تُحِبُّونَۚ وَمَا تُنفِقُواْ مِن شَيۡءٖ فَإِنَّ ٱللَّهَ بِهِۦ عَلِيمٞ", "Kamu tidak sekali-kali akan dapat mencapai (hakikat) kebajikan dan kebaktian (yang sempurna) sebelum kamu dermakan sebahagian dari apa yang kamu sayangi. Dan sesuatu apa jua yang kamu dermakan maka sesungguhnya Allah mengetahuinya.", "Never will you attain the good [reward] until you spend [in the way of Allah] from that which you love. And whatever you spend - indeed, Allah is Knowing of it."], [49, 10, "إِنَّمَا ٱلۡمُؤۡمِنُونَ إِخۡوَةٞ فَأَصۡلِحُواْ بَيۡنَ أَخَوَيۡكُمۡۚ وَٱتَّقُواْ ٱللَّهَ لَعَلَّكُمۡ تُرۡحَمُونَ", "Sebenarnya orang-orang yang beriman itu adalah bersaudara, maka damaikanlah di antara dua saudara kamu (yang bertelingkah) itu; dan bertaqwalah kepada Allah supaya kamu beroleh rahmat.", "The believers are but brothers, so make settlement between your brothers. And fear Allah that you may receive mercy."], [4, 28, "يُرِيدُ ٱللَّهُ أَن يُخَفِّفَ عَنكُمۡۚ وَخُلِقَ ٱلۡإِنسَٰنُ ضَعِيفٗا", "Allah (sentiasa) hendak meringankan (beban hukumnya) daripada kamu, kerana manusia itu dijadikan berkeadaan lemah.", "And Allah wants to lighten for you [your difficulties]; and mankind was created weak."], [3, 8, "رَبَّنَا لَا تُزِغۡ قُلُوبَنَا بَعۡدَ إِذۡ هَدَيۡتَنَا وَهَبۡ لَنَا مِن لَّدُنكَ رَحۡمَةًۚ إِنَّكَ أَنتَ ٱلۡوَهَّابُ", "(Mereka berdoa dengan berkata): \"Wahai Tuhan kami! Janganlah Engkau memesongkan hati kami sesudah Engkau beri petunjuk kepada kami, dan kurniakanlah kepada kami limpah rahmat dari sisiMu; sesungguhnya Engkau jualah Tuhan Yang melimpah-limpah pemberianNya.\"", "[Who say], \"Our Lord, let not our hearts deviate after You have guided us and grant us from Yourself mercy. Indeed, You are the Bestower.\""], [2, 153, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱسۡتَعِينُواْ بِٱلصَّبۡرِ وَٱلصَّلَوٰةِۚ إِنَّ ٱللَّهَ مَعَ ٱلصَّـٰبِرِينَ", "Wahai sekalian orang-orang yang beriman! Mintalah pertolongan (untuk menghadapi susah payah dalam menyempurnakan sesuatu perintah Tuhan) dengan bersabar dan dengan (mengerjakan) sembahyang; kerana sesungguhnya Allah menyertai (menolong) orang-orang yang sabar.", "O you who have believed, seek help through patience and prayer. Indeed, Allah is with the patient."], [50, 16, "وَلَقَدۡ خَلَقۡنَا ٱلۡإِنسَٰنَ وَنَعۡلَمُ مَا تُوَسۡوِسُ بِهِۦ نَفۡسُهُۥۖ وَنَحۡنُ أَقۡرَبُ إِلَيۡهِ مِنۡ حَبۡلِ ٱلۡوَرِيدِ", "Dan demi sesungguhnya, Kami telah mencipta manusia dan Kami sedia mengetahui apa yang dibisikkan oleh hatinya, sedang (pengetahuan) Kami lebih dekat kepadanya daripada urat lehernya.", "And We have already created man and know what his soul whispers to him, and We are closer to him than [his] jugular vein."], [3, 200, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱصۡبِرُواْ وَصَابِرُواْ وَرَابِطُواْ وَٱتَّقُواْ ٱللَّهَ لَعَلَّكُمۡ تُفۡلِحُونَ", "Wahai orang-orang yang beriman! Bersabarlah kamu (menghadapi segala kesukaran dalam mengerjakan perkara-perkara yang berkebajikan), dan kuatkanlah kesabaran kamu lebih daripada kesabaran musuh, di medan perjuangan), dan bersedialah (dengan kekuatan pertahanan di daerah-daerah sempadan) serta bertaqwalah kamu kepada Allah supaya, kamu berjaya (mencapai kemenangan).", "O you who have believed, persevere and endure and remain stationed and fear Allah that you may be successful."], [8, 2, "إِنَّمَا ٱلۡمُؤۡمِنُونَ ٱلَّذِينَ إِذَا ذُكِرَ ٱللَّهُ وَجِلَتۡ قُلُوبُهُمۡ وَإِذَا تُلِيَتۡ عَلَيۡهِمۡ ءَايَٰتُهُۥ زَادَتۡهُمۡ إِيمَٰنٗا وَعَلَىٰ رَبِّهِمۡ يَتَوَكَّلُونَ", "Sesungguhnya orang-orang yang beriman itu (yang sempurna imannya) ialah mereka yang apabila disebut nama Allah (dan sifat-sifatNya) gementarlah hati mereka; dan apabila dibacakan kepada mereka ayat-ayatNya, menjadikan mereka bertambah iman, dan kepada Tuhan mereka jualah mereka berserah.", "The believers are only those who, when Allah is mentioned, their hearts become fearful, and when His verses are recited to them, it increases them in faith; and upon their Lord they rely."], [20, 46, "قَالَ لَا تَخَافَآۖ إِنَّنِي مَعَكُمَآ أَسۡمَعُ وَأَرَىٰ", "Allah berfirman: \"Janganlah kamu takut, sesungguhnya Aku ada bersama-sama kamu; Aku mendengar dan melihat segala-galanya.\"", "[Allah] said, \"Fear not. Indeed, I am with you both; I hear and I see.\""], [2, 201, "وَمِنۡهُم مَّن يَقُولُ رَبَّنَآ ءَاتِنَا فِي ٱلدُّنۡيَا حَسَنَةٗ وَفِي ٱلۡأٓخِرَةِ حَسَنَةٗ وَقِنَا عَذَابَ ٱلنَّارِ", "Dan di antara mereka pula ada yang (berdoa dengan) berkata: \"Wahai Tuhan kami, berilah kami kebaikan di dunia dan kebaikan di akhirat, dan peliharalah kami dari azab neraka.\"", "But among them is he who says, \"Our Lord, give us in this world [that which is] good and in the Hereafter [that which is] good and protect us from the punishment of the Fire.\""], [16, 97, "مَنۡ عَمِلَ صَٰلِحٗا مِّن ذَكَرٍ أَوۡ أُنثَىٰ وَهُوَ مُؤۡمِنٞ فَلَنُحۡيِيَنَّهُۥ حَيَوٰةٗ طَيِّبَةٗۖ وَلَنَجۡزِيَنَّهُمۡ أَجۡرَهُم بِأَحۡسَنِ مَا كَانُواْ يَعۡمَلُونَ", "Sesiapa yang beramal soleh, dari lelaki atau perempuan, sedang ia beriman, maka sesungguhnya Kami akan menghidupkan dia dengan kehidupan yang baik; dan sesungguhnya kami akan membalas mereka, dengan memberikan pahala yang lebih dari apa yang mereka telah kerjakan.", "Whoever does righteousness, whether male or female, while he is a believer - We will surely cause him to live a good life, and We will surely give them their reward [in the Hereafter] according to the best of what they used to do."], [65, 3, "وَيَرۡزُقۡهُ مِنۡ حَيۡثُ لَا يَحۡتَسِبُۚ وَمَن يَتَوَكَّلۡ عَلَى ٱللَّهِ فَهُوَ حَسۡبُهُۥٓۚ إِنَّ ٱللَّهَ بَٰلِغُ أَمۡرِهِۦۚ قَدۡ جَعَلَ ٱللَّهُ لِكُلِّ شَيۡءٖ قَدۡرٗا", "Serta memberinya rezeki dari jalan yang tidak terlintas di hatinya. Dan (Ingatlah), sesiapa berserah diri bulat-bulat kepada Allah, maka Allah cukuplah baginya (untuk menolong dan menyelamatkannya). Sesungguhnya Allah tetap melakukan segala perkara yang dikehendakiNya. Allah telahpun menentukan kadar dan masa bagi berlakunya tiap-tiap sesuatu.", "And will provide for him from where he does not expect. And whoever relies upon Allah - then He is sufficient for him. Indeed, Allah will accomplish His purpose. Allah has already set for everything a [decreed] extent."]];
+const AL_KAHF = [293, 304];
+const REPAIR_PER_MONTH = 2;
+function ayatForDay(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return AYAT[Math.floor(Date.UTC(y, m - 1, d) / 86400000) % AYAT.length];
+}
 const KHATAM_KEY = PERSONAL ? "qn-personal-khatams" : "quran-journal-khatams";
 const SETTINGS_KEY = "quran-journal-settings";
 const DELETED_KEY = PERSONAL ? "qn-personal-deleted" : "quran-journal-deleted";
@@ -467,6 +475,13 @@ const TEXT = {
     deletedToast: (r) => `Dipadam: ${r}`, undo: "Buat asal",
     searchPh: "Cari surah, nota, muka surat…", searchCount: (n) => `${n} catatan dijumpai`, searchNone: "Tiada catatan yang sepadan.",
     weekly: "Laporan mingguan", weeklyHint: "Ringkasan bacaan minggu ini setiap Ahad jam 9 malam.",
+    celebrateRepair: "🩹 Streak diselamatkan! Semalam telah diganti",
+    repairTitle: (n) => `Semalam terlepas, streak ${n} hari masih boleh diselamatkan`,
+    repairBody: (n, more, left) => `Baca ${n} muka surat ${more ? "lagi " : ""}hari ini (2× bacaan biasa) untuk ganti semalam. Baki ganti bulan ini: ${left}/${REPAIR_PER_MONTH}.`,
+    repairBtn: "Catat",
+    calCovered: (d) => `${d}: diganti (baca 2× keesokan harinya)`,
+    ayatToday: "Ayat hari ini", ayatTafsir: "Tafsir", ayatShare: "Kongsi ayat", ayatCopied: "Ayat disalin",
+    ayatMoreLbl: "Baca penuh ▾", ayatLess: "Ringkaskan ▴", ayatSource: "Terjemahan: Abdullah Muhammad Basmeih",
     celebrateJuz: (n) => `🎉 Juz' ${n} selesai!`, celebrateStreak: (n) => `🔥 Streak ${n} hari! MasyaAllah`, celebrateBest: (n) => `🏆 Rekod streak baru: ${n} hari`,
     celebrateBadge: (b) => `🏅 Pencapaian baru: ${b}`, celebrateKhatam: "🌙 Alhamdulillah, khatam!",
     passkey: "Passkey (cap jari / Face ID)", passkeyHint: "Masuk sebagai pemilik tanpa taip PIN. Daftar sekali di setiap telefon.",
@@ -490,6 +505,8 @@ const TEXT = {
     badges: {
       first: ["Langkah pertama", "Catatan pertama"], s7: ["Istiqamah 7 hari", "Streak 7 hari"], s30: ["Istiqamah 30 hari", "Streak 30 hari"],
       s100: ["Istiqamah 100 hari", "Streak 100 hari"], p100: ["100 muka surat", "Jumlah dibaca"], p300: ["300 muka surat", "Jumlah dibaca"],
+      subuh: ["Pembaca Subuh", "7 hari berturut lepas Subuh"], maghrib: ["Antara Maghrib & Isyak", "10 kali"], qiam: ["Qiamullail", "3 malam sebelum Subuh"],
+      jumaat: ["Jumaat berkat", "Baca 4 hari Jumaat"], kahf: ["Al-Kahfi Jumaat", "Baca Al-Kahfi hari Jumaat"], ganti: ["Bangkit semula", "Ganti hari terlepas"],
       j1: ["Juz' pertama", "Habis satu juz'"], j10: ["10 juz'", "Dalam satu pusingan"], half: ["Separuh Mushaf", "15 juz' satu pusingan"],
       k1: ["Khatam pertama", "Alhamdulillah"], k3: ["3 kali khatam", "Khatam berulang"], n10: ["10 refleksi", "Nota tadabbur"],
     },
@@ -596,6 +613,13 @@ const TEXT = {
     deletedToast: (r) => `Deleted: ${r}`, undo: "Undo",
     searchPh: "Search surah, note, page…", searchCount: (n) => `${n} entr${n === 1 ? "y" : "ies"} found`, searchNone: "No matching entries.",
     weekly: "Weekly report", weeklyHint: "A summary of the week's reading every Sunday at 9 pm.",
+    celebrateRepair: "🩹 Streak saved! Yesterday has been made up",
+    repairTitle: (n) => `You missed yesterday. Your ${n}-day streak can still be saved`,
+    repairBody: (n, more, left) => `Read ${n} ${more ? "more " : ""}page${n === 1 ? "" : "s"} today (2× your usual) to make up for yesterday. Make-ups left this month: ${left}/${REPAIR_PER_MONTH}.`,
+    repairBtn: "Log",
+    calCovered: (d) => `${d}: made up (read 2× the next day)`,
+    ayatToday: "Verse of the day", ayatTafsir: "Tafsir", ayatShare: "Share verse", ayatCopied: "Verse copied",
+    ayatMoreLbl: "Read in full ▾", ayatLess: "Show less ▴", ayatSource: "Translation: Saheeh International",
     celebrateJuz: (n) => `🎉 Juz' ${n} complete!`, celebrateStreak: (n) => `🔥 ${n}-day streak! MashaAllah`, celebrateBest: (n) => `🏆 New best streak: ${n} days`,
     celebrateBadge: (b) => `🏅 New achievement: ${b}`, celebrateKhatam: "🌙 Alhamdulillah, khatam!",
     passkey: "Passkey (fingerprint / Face ID)", passkeyHint: "Sign in as owner without typing the PIN. Register once on each phone.",
@@ -618,6 +642,8 @@ const TEXT = {
     badges: {
       first: ["First step", "First entry"], s7: ["7-day streak", "Best streak"], s30: ["30-day streak", "Best streak"],
       s100: ["100-day streak", "Best streak"], p100: ["100 pages", "Total read"], p300: ["300 pages", "Total read"],
+      subuh: ["Fajr reader", "7 days in a row after Fajr"], maghrib: ["Maghrib to Isha", "10 times"], qiam: ["Night prayer", "3 nights before Fajr"],
+      jumaat: ["Blessed Fridays", "Read on 4 Fridays"], kahf: ["Friday Al-Kahf", "Read Al-Kahf on a Friday"], ganti: ["Bounce back", "Made up a missed day"],
       j1: ["First juz'", "One juz' complete"], j10: ["10 juz'", "In one round"], half: ["Half the Mushaf", "15 juz' in one round"],
       k1: ["First khatam", "Alhamdulillah"], k3: ["3 khatams", "Again and again"], n10: ["10 reflections", "Notes of tadabbur"],
     },
@@ -872,6 +898,8 @@ const ICON_PATHS = {
   trash: <><path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13" /></>,
   calendar: <><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  share: <><circle cx="6" cy="12" r="2.5" /><circle cx="17.5" cy="6" r="2.5" /><circle cx="17.5" cy="18" r="2.5" /><path d="m8.2 10.8 7.1-3.6M8.2 13.2l7.1 3.6" /></>,
+  external: <><path d="M14 4h6v6" /><path d="M20 4 11 13" /><path d="M18 14v5.5H4.5V6H10" /></>,
 };
 function Icon({ name, size = 22, stroke = 1.8, style }) {
   return (
@@ -1420,20 +1448,87 @@ function QuranTracker() {
     return m;
   }, [entries, spans]);
 
+  // Ganti hari terlepas: a single missed day is covered when the next day has at least 2× the usual reading.
+  // Max REPAIR_PER_MONTH per month (by the missed day's month). Worked out from the data, so every device agrees.
+  const repair = useMemo(() => {
+    const days = new Set(Object.keys(pagesByDate));
+    // "Usual" = median pages on reading days in the 14 days before (ignores one-off big catch-up days)
+    const needFor = (m) => {
+      const v = [];
+      for (let i = 1; i <= 14; i++) { const x = pagesByDate[addDays(m, -i)]; if (x) v.push(x); }
+      v.sort((x, y) => x - y);
+      const med = v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : 1;
+      return Math.max(2, Math.ceil(2 * med));
+    };
+    const covered = new Set(), used = {};
+    for (const d of [...days].sort()) {
+      const m = addDays(d, -1);
+      if (days.has(m) || !days.has(addDays(d, -2))) continue;
+      const mon = m.slice(0, 7);
+      if ((used[mon] || 0) >= REPAIR_PER_MONTH) continue;
+      if ((pagesByDate[d] || 0) >= needFor(m)) { covered.add(m); used[mon] = (used[mon] || 0) + 1; }
+    }
+    let pending = null;
+    const y = addDays(today, -1);
+    if (!days.has(y) && !covered.has(y) && days.has(addDays(today, -2))) {
+      const left = REPAIR_PER_MONTH - (used[y.slice(0, 7)] || 0);
+      if (left > 0) pending = { missed: y, need: needFor(y), have: pagesByDate[today] || 0, left };
+    }
+    return { covered, pending, total: covered.size };
+  }, [pagesByDate, today]);
+  const effDays = useMemo(() => {
+    const s = new Set(Object.keys(pagesByDate));
+    repair.covered.forEach((d) => s.add(d));
+    return s;
+  }, [pagesByDate, repair]);
+
   const streak = useMemo(() => {
-    const days = new Set(entries.map((e) => e.date));
     let count = 0;
-    let cursor = days.has(today) ? today : addDays(today, -1);
-    while (days.has(cursor)) { count++; cursor = addDays(cursor, -1); }
+    let cursor = effDays.has(today) ? today : addDays(today, -1);
+    for (;;) {
+      if (effDays.has(cursor)) { count++; cursor = addDays(cursor, -1); }
+      else if (repair.pending && cursor === repair.pending.missed) cursor = addDays(cursor, -1); // still savable today
+      else break;
+    }
     return count;
-  }, [entries, today]);
+  }, [effDays, repair, today]);
 
   const bestStreak = useMemo(() => {
-    const days = [...new Set(entries.map((e) => e.date))].sort();
+    const days = [...effDays].sort();
     let best = 0, run = 0, prev = null;
     for (const d of days) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; best = Math.max(best, run); prev = d; }
     return best;
-  }, [entries]);
+  }, [effDays]);
+
+  // Lencana waktu bacaan: uses the time each reading was logged (same day only)
+  const timeStats = useMemo(() => {
+    const sol = readJson("quran-journal-solat", null);
+    const d0 = sol && Array.isArray(sol.days) && (sol.days.find((d) => d.date === today) || sol.days[0]);
+    const mins = (hm, fb) => { const m = /^(\d{1,2}):(\d{2})/.exec((d0 && hm) || ""); return m ? +m[1] * 60 + +m[2] : fb; };
+    const fajr = mins(d0 && d0.fajr, 340), syuruk = mins(d0 && d0.syuruk, 425), magh = mins(d0 && d0.maghrib, 1155), isha = mins(d0 && d0.isha, 1225);
+    const subuh = new Set(), maghrib = new Set(), qiam = new Set(), fridays = new Set();
+    let kahf = 0;
+    for (const en of entries) {
+      if (en.ts) {
+        const dt = new Date(en.ts);
+        if (isoOf(dt) === en.date) {
+          const t = dt.getHours() * 60 + dt.getMinutes();
+          if (t >= fajr && t <= syuruk + 90) subuh.add(en.date);
+          if (t >= magh && t <= isha + 20) maghrib.add(en.date);
+          if (t >= 150 && t < fajr) qiam.add(en.date);
+        }
+      }
+      if (parseIso(en.date).getDay() === 5) {
+        fridays.add(en.date);
+        const [a, b] = spans[en.id] || [en.page, en.page];
+        if (a <= AL_KAHF[1] && b >= AL_KAHF[0]) kahf = 1;
+      }
+    }
+    const ds = [...subuh].sort();
+    let subuhRun = 0, r = 0, prev = null;
+    for (const d of ds) { r = prev && addDays(prev, 1) === d ? r + 1 : 1; subuhRun = Math.max(subuhRun, r); prev = d; }
+    return { subuhRun, maghrib: maghrib.size, qiam: qiam.size, fridays: fridays.size, kahf };
+  }, [entries, spans, today]);
   const totalPages = useMemo(() => Object.values(pagesByDate).reduce((a, b) => a + b, 0), [pagesByDate]);
   const readingDays = Object.keys(pagesByDate).length;
 
@@ -1481,8 +1576,10 @@ function QuranTracker() {
       b("p100", "📖", totalPages, 100), b("p300", "📚", totalPages, 300),
       b("j1", "🕌", k > 0 ? 1 : juzDone, 1), b("j10", "⭐", k > 0 ? 10 : juzDone, 10), b("half", "🌗", k > 0 ? 15 : juzDone, 15),
       b("k1", "🏆", k, 1), b("k3", "👑", k, 3), b("n10", "✍️", notesList.length, 10),
+      b("subuh", "🌅", timeStats.subuhRun, 7), b("maghrib", "🌆", timeStats.maghrib, 10), b("qiam", "🌌", timeStats.qiam, 3),
+      b("jumaat", "📿", timeStats.fridays, 4), b("kahf", "⛰️", timeStats.kahf, 1), b("ganti", "🩹", repair.total, 1),
     ];
-  }, [entries.length, bestStreak, totalPages, juzDone, khatamCount, notesList.length]);
+  }, [entries.length, bestStreak, totalPages, juzDone, khatamCount, notesList.length, timeStats, repair.total]);
   const badgesDone = badges.filter((x) => x.done).length;
 
   // Celebrations: only right after the owner logs or edits a reading on this device.
@@ -1495,20 +1592,21 @@ function QuranTracker() {
     setTimeout(() => setCelebration((c) => (c && Date.now() - c.id >= 3100 ? null : c)), 3300);
   }
   useEffect(() => {
-    const snap = { juz: juzFill.map((f) => f >= 1), streak, best: bestStreak, khatam: khatamCount, badges: badges.filter((b) => b.done).map((b) => b.id) };
+    const snap = { juz: juzFill.map((f) => f >= 1), streak, best: bestStreak, khatam: khatamCount, rep: repair.total, badges: badges.filter((b) => b.done).map((b) => b.id) };
     const prev = prevSnap.current;
     prevSnap.current = snap;
     if (!prev || !celebrateArmed.current) return;
     celebrateArmed.current = false;
     const msgs = [];
     if (snap.khatam > prev.khatam) msgs.push(T.celebrateKhatam);
+    if (snap.rep > prev.rep) msgs.push(T.celebrateRepair);
     snap.juz.forEach((done, i) => { if (done && !prev.juz[i] && snap.khatam === prev.khatam) msgs.push(T.celebrateJuz(i + 1)); });
     const MILESTONES = [3, 7, 14, 21, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 365];
     if (snap.streak > prev.streak && MILESTONES.includes(snap.streak)) msgs.push(T.celebrateStreak(snap.streak));
     else if (snap.best > prev.best && prev.best >= 3 && snap.best === prev.best + 1) msgs.push(T.celebrateBest(snap.best));
     snap.badges.filter((id) => !prev.badges.includes(id)).forEach((id) => msgs.push(T.celebrateBadge(T.badges[id][0])));
     if (msgs.length) celebrate(msgs.slice(0, 3));
-  }, [juzFill, streak, bestStreak, khatamCount, badges]);
+  }, [juzFill, streak, bestStreak, khatamCount, badges, repair.total]);
 
   /* ----- actions ----- */
   function addKhatam(kDate, kNote, ts) {
@@ -2077,8 +2175,21 @@ function QuranTracker() {
               </div>
             )}
 
+            {canEdit && repair.pending && repair.pending.have < repair.pending.need && (
+              <section className="qt-fade" style={styles.repairCard} aria-live="polite">
+                <span style={{ color: "var(--gold)", flexShrink: 0 }}><Icon name="flame" size={22} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={styles.repairTitle}>{T.repairTitle(streak)}</div>
+                  <div style={styles.repairBody}>{T.repairBody(repair.pending.need - repair.pending.have, repair.pending.have > 0, repair.pending.left)}</div>
+                </div>
+                <button className="qt-btn" type="button" onClick={openLog} style={styles.repairBtn}>{T.repairBtn}</button>
+              </section>
+            )}
+
             <PrayerCard T={T} lang={settings.lang} settings={settings} persistSettings={persistSettings} today={today}
               available={role !== "local" && role !== "checking"} openSignal={prayerSignal} />
+
+            <AyatCard T={T} lang={settings.lang} today={today} onCopied={() => showToast(T.ayatCopied)} />
 
             <div ref={carRef} className="qt-car" style={{ ...styles.carousel, height: carH || undefined }} onScroll={(e) => {
               const el = e.currentTarget, first = el.firstElementChild;
@@ -2162,7 +2273,7 @@ function QuranTracker() {
           </div>
         )}
 
-        {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
+        {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} covered={repair.covered} today={today} T={T} fmtLong={fmtLong} />}
             </>)}
 
           </div>
@@ -2488,7 +2599,7 @@ function Tour({ T, onDone }) {
 }
 
 /* ---------- Calendar heatmap ---------- */
-function Heatmap({ pagesByDate, today, T, fmtLong }) {
+function Heatmap({ pagesByDate, covered, today, T, fmtLong }) {
   const [sel, setSel] = useState(null);
   const scrollRef = useRef(null);
   const WEEKS = 26;
@@ -2519,10 +2630,11 @@ function Heatmap({ pagesByDate, today, T, fmtLong }) {
                 {col.map((d) => {
                   const future = d > today;
                   const n = pagesByDate[d] || 0;
+                  const cov = !n && covered && covered.has(d);
                   return (
                     <button key={d} className="qt-btn" disabled={future} onClick={() => setSel(d)}
-                      aria-label={T.calDay(fmtLong(d), n)}
-                      style={{ ...styles.heatCell, background: future ? "transparent" : colors[level(n)],
+                      aria-label={cov ? T.calCovered(fmtLong(d)) : T.calDay(fmtLong(d), n)}
+                      style={{ ...styles.heatCell, background: future || cov ? "transparent" : colors[level(n)], boxShadow: cov ? "inset 0 0 0 1.5px var(--gold)" : "none",
                         outline: sel === d ? "2px solid var(--gold)" : "none", cursor: future ? "default" : "pointer" }} />
                   );
                 })}
@@ -2537,7 +2649,7 @@ function Heatmap({ pagesByDate, today, T, fmtLong }) {
         <span>{T.calMore}</span>
         <span style={{ marginLeft: "auto" }}><span style={styles.mono}>{readDays}</span>/{WEEKS * 7 - (6 - todayDow)}</span>
       </div>
-      <div style={styles.heatInfo}>{sel ? T.calDay(fmtLong(sel), pagesByDate[sel] || 0) : T.calTap}</div>
+      <div style={styles.heatInfo}>{sel ? (!pagesByDate[sel] && covered && covered.has(sel) ? T.calCovered(fmtLong(sel)) : T.calDay(fmtLong(sel), pagesByDate[sel] || 0)) : T.calTap}</div>
     </div>
   );
 }
@@ -2570,6 +2682,44 @@ function Confetti() {
 }
 
 /* ---------- Prayer times card (JAKIM e-Solat via /api/solat) ---------- */
+function AyatCard({ T, lang, today, onCopied }) {
+  const [s, a, ar, ms, en] = ayatForDay(today);
+  const [more, setMore] = useState(false);
+  useEffect(() => setMore(false), [today]);
+  const tr = lang === "en" ? en : ms;
+  const ref = `${SURAH_NAMES[s - 1]} · ${s}:${a}`;
+  const long = tr.length > 150;
+  async function share() {
+    haptic(8);
+    const text = `${ar}\n\n"${tr}"\n— ${ref}\n\nQuran Note`;
+    try {
+      if (navigator.share) { await navigator.share({ text }); return; }
+      await navigator.clipboard.writeText(text); onCopied && onCopied();
+    } catch (e) {}
+  }
+  return (
+    <section style={{ ...styles.estCard, marginBottom: 14 }} aria-label={T.ayatToday}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <span style={styles.estLabel}>{T.ayatToday}</span>
+        <span style={{ fontSize: 12, color: "var(--gold)", whiteSpace: "nowrap" }}>{ref}</span>
+      </div>
+      <div lang="ar" dir="rtl" style={styles.ayatAr}>{ar}</div>
+      <button className="qt-btn" type="button" onClick={() => long && setMore(!more)} aria-expanded={long ? more : undefined}
+        style={{ ...styles.ayatTr, ...(long && !more ? styles.ayatClamp : {}), cursor: long ? "pointer" : "default" }}>
+        {tr}
+      </button>
+      {long && <button className="qt-btn" type="button" onClick={() => setMore(!more)} style={styles.ayatMore}>{more ? T.ayatLess : T.ayatMoreLbl}</button>}
+      <div style={styles.ayatFoot}>
+        <span style={{ fontSize: 10.5, opacity: 0.6, flex: 1, minWidth: 0 }}>{T.ayatSource}</span>
+        <a className="qt-btn" href={`https://quran.com/${s}/${a}/tafsirs/en-tafisr-ibn-kathir`} target="_blank" rel="noopener" style={styles.ayatBtn}>
+          {T.ayatTafsir}<Icon name="external" size={13} />
+        </a>
+        <button className="qt-btn" type="button" onClick={share} style={styles.ayatBtn} aria-label={T.ayatShare}><Icon name="share" size={15} /></button>
+      </div>
+    </section>
+  );
+}
+
 function PrayerCard({ T, lang, settings, persistSettings, today, available, openSignal }) {
   const [data, setData] = useState(() => readJson("quran-journal-solat", null));
   const [open, setOpen] = useState(false);
@@ -3072,6 +3222,16 @@ const styles = {
   modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
   modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+  repairCard: { display: "flex", alignItems: "center", gap: 12, background: "var(--card)", border: "1.5px dashed var(--gold)", borderRadius: 14, padding: "12px 14px", marginBottom: 14 },
+  repairTitle: { fontSize: 14, fontWeight: 600, color: "var(--title)" },
+  repairBody: { fontSize: 12.5, opacity: 0.8, marginTop: 2, lineHeight: 1.45 },
+  repairBtn: { flexShrink: 0, background: "var(--btn)", color: "var(--btn-ink)", border: "none", borderRadius: 999, padding: "8px 14px", fontSize: 13, fontFamily: "'Lora', serif", fontWeight: 600, cursor: "pointer" },
+  ayatAr: { fontFamily: "'Amiri', serif", fontSize: 23, lineHeight: 1.9, color: "var(--title)", textAlign: "right", margin: "10px 0 6px" },
+  ayatTr: { display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: 0, color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 13.5, lineHeight: 1.6, fontStyle: "italic" },
+  ayatClamp: { display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" },
+  ayatMore: { background: "transparent", border: "none", padding: "4px 0 0", color: "var(--gold)", fontSize: 12.5, fontFamily: "'Lora', serif", cursor: "pointer" },
+  ayatFoot: { display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line2)" },
+  ayatBtn: { display: "inline-flex", alignItems: "center", gap: 5, background: "transparent", border: "1px solid var(--line2)", borderRadius: 999, padding: "6px 11px", fontSize: 12.5, color: "var(--title)", textDecoration: "none", fontFamily: "'Lora', serif", cursor: "pointer", flexShrink: 0 },
   solatHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
   solatSummary: { display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--title)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   celebrate: { position: "fixed", left: "50%", top: "calc(18px + env(safe-area-inset-top))", zIndex: 80, background: "linear-gradient(180deg, var(--acc2), var(--acc))", color: "#F3ECD8",
