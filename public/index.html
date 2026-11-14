@@ -181,6 +181,12 @@ const SURAH_NAMES = [
   "Al-Masad", "Al-Ikhlas", "Al-Falaq", "An-Nas",
 ];
 const TOTAL_PAGES = 604;
+// Doa khatam Al-Quran commonly recited after completing the Quran.
+const DOA_KHATAM = {
+  ar: "اللَّهُمَّ ارْحَمْنِي بِالْقُرْآنِ، وَاجْعَلْهُ لِي إِمَامًا وَنُورًا وَهُدًى وَرَحْمَةً. اللَّهُمَّ ذَكِّرْنِي مِنْهُ مَا نَسِيتُ، وَعَلِّمْنِي مِنْهُ مَا جَهِلْتُ، وَارْزُقْنِي تِلَاوَتَهُ آنَاءَ اللَّيْلِ وَأَطْرَافَ النَّهَارِ، وَاجْعَلْهُ لِي حُجَّةً يَا رَبَّ الْعَالَمِينَ.",
+  ms: "Ya Allah, rahmatilah aku dengan Al-Quran, dan jadikanlah ia bagiku ikutan, cahaya, petunjuk dan rahmat. Ya Allah, ingatkanlah aku apa yang aku lupa daripadanya, ajarkanlah aku apa yang aku tidak tahu daripadanya, kurniakanlah aku membacanya sepanjang malam dan siang, dan jadikanlah ia hujah bagiku, wahai Tuhan sekalian alam.",
+  en: "O Allah, have mercy on me through the Quran, and make it for me a guide, a light, guidance and mercy. O Allah, remind me of what I have forgotten of it, teach me what I do not know of it, grant me its recitation through the hours of the night and the ends of the day, and make it a proof for me, O Lord of the worlds.",
+};
 const BISMILLAH_SOURCES = [
   "https://everyayah.com/data/Saood_ash-Shuraym_128kbps/001001.mp3",
   "https://verses.quran.com/Shuraym/mp3/001001.mp3",
@@ -300,6 +306,13 @@ const TEXT = {
     statTotal: "Jumlah muka surat", statBest: "Streak terbaik", statDays: "Hari membaca", statAvg: "Purata / hari membaca",
     statDaysUnit: "hari", statChart: "Muka surat sebulan (12 bulan)", statBestMonth: (m, n) => `Bulan terbaik: ${m} (${n} muka surat)`,
     statTip: (m, n, d) => `${m}: ${n} muka surat · ${d} hari membaca`, statTapHint: "Ketik bar untuk butiran.",
+    doaTitle: "Doa Khatam Al-Quran", doaBtn: "📿 Doa khatam", doaMeaning: "Maksudnya", close: "Tutup",
+    doaCongrats: (n) => `Alhamdulillah — khatam #${n}! 🤲`,
+    yearTitle: (y) => `Ringkasan ${y}`, yearPages: "muka surat dibaca", yearDays: "Hari membaca", yearStreak: "Streak terbaik",
+    yearKhatam: "Khatam", yearBestMonth: "Bulan terbaik", yearTopSurah: "Surah paling banyak dibaca", yearNotes: "Refleksi",
+    yearShare: "Kongsi gambar", yearDownload: "Muat turun gambar", yearEmpty: "Tiada bacaan pada tahun ini.",
+    yearSince: (d) => `Bacaan pertama: ${d}`, yearMaking: "Menyediakan gambar…", yearFail: "Tak dapat sediakan gambar.",
+    yearDaysUnit: "hari",
   },
   en: {
     locale: "en-GB",
@@ -372,6 +385,13 @@ const TEXT = {
     statTotal: "Total pages", statBest: "Best streak", statDays: "Reading days", statAvg: "Avg / reading day",
     statDaysUnit: "days", statChart: "Pages per month (12 months)", statBestMonth: (m, n) => `Best month: ${m} (${n} pages)`,
     statTip: (m, n, d) => `${m}: ${n} pages · ${d} reading days`, statTapHint: "Tap a bar for details.",
+    doaTitle: "Doa for Completing the Quran", doaBtn: "📿 Khatam doa", doaMeaning: "Meaning", close: "Close",
+    doaCongrats: (n) => `Alhamdulillah — khatam #${n}! 🤲`,
+    yearTitle: (y) => `${y} in review`, yearPages: "pages read", yearDays: "Reading days", yearStreak: "Best streak",
+    yearKhatam: "Khatam", yearBestMonth: "Best month", yearTopSurah: "Most-read surah", yearNotes: "Reflections",
+    yearShare: "Share image", yearDownload: "Download image", yearEmpty: "No reading this year.",
+    yearSince: (d) => `First reading: ${d}`, yearMaking: "Preparing image…", yearFail: "Couldn't prepare the image.",
+    yearDaysUnit: "days",
   },
 };
 
@@ -638,6 +658,7 @@ function QuranTracker() {
   const [khatamDraft, setKhatamDraft] = useState(null);
   const [khatamFlash, setKhatamFlash] = useState("");
   const [badgesOpen, setBadgesOpen] = useState(false);
+  const [doa, setDoa] = useState(null); // null | { n } (n = 0 when opened from the button)
 
   // target / settings / backup / install
   const [editingTarget, setEditingTarget] = useState(false);
@@ -1010,6 +1031,7 @@ function QuranTracker() {
     const n = sortKhatams(next).findIndex((x) => x.id === k.id) + 1;
     setKhatamFlash(T.flash(n, fmtLong(kDate)));
     setKhatamOpen(true);
+    setDoa({ n });
   }
   function parsePageInput(v) {
     if (v === "" || v == null) return null;
@@ -1421,6 +1443,8 @@ function QuranTracker() {
                 </div>
               )}
 
+              <button className="qt-btn" type="button" onClick={() => setDoa({ n: 0 })} style={{ ...styles.khatamAddBtn, borderStyle: "solid" }}>{T.doaBtn}</button>
+
               {canEdit && (showKhatamForm ? (
                 <form onSubmit={submitKhatam} style={{ marginTop: 14 }}>
                   <label style={styles.label}>
@@ -1529,8 +1553,11 @@ function QuranTracker() {
         {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
 
         {tab === "stats" && (
-          <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
-            totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} />
+          <>
+            <YearSummary entries={entries} spans={spans} khatams={khatamsAsc} today={today} T={T} fmtMonth={fmtMonth} fmtLong={fmtLong} />
+            <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
+              totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} />
+          </>
         )}
 
         <section style={{ ...styles.form, marginTop: 8 }}>
@@ -1642,6 +1669,19 @@ function QuranTracker() {
         <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
       </div>
 
+      {doa && (
+        <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setDoa(null); }}>
+          <div style={{ ...styles.modal, maxWidth: 440, maxHeight: "86vh", overflowY: "auto" }} className="qt-fade" role="dialog" aria-modal="true" aria-labelledby="doa-title">
+            {doa.n > 0 && <div style={styles.doaCongrats}>{T.doaCongrats(doa.n)}</div>}
+            <h2 id="doa-title" style={{ ...styles.formTitle, textAlign: "center" }}>{T.doaTitle}</h2>
+            <p lang="ar" dir="rtl" style={styles.doaAr}>{DOA_KHATAM.ar}</p>
+            <div style={styles.estLabel}>{T.doaMeaning}</div>
+            <p style={styles.doaTr}>{settings.lang === "en" ? DOA_KHATAM.en : DOA_KHATAM.ms}</p>
+            <button className="qt-btn" type="button" onClick={() => setDoa(null)} style={styles.submitBtn} autoFocus>{T.close}</button>
+          </div>
+        </div>
+      )}
+
       {loginOpen && (
         <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setLoginOpen(false); }}>
           <form onSubmit={submitLogin} style={styles.modal} className="qt-fade" role="dialog" aria-modal="true" aria-labelledby="owner-title">
@@ -1720,6 +1760,165 @@ function Heatmap({ pagesByDate, today, T, fmtLong }) {
         <span style={{ marginLeft: "auto" }}><span style={styles.mono}>{readDays}</span>/{WEEKS * 7 - (6 - todayDow)}</span>
       </div>
       <div style={styles.heatInfo}>{sel ? T.calDay(fmtLong(sel), pagesByDate[sel] || 0) : T.calTap}</div>
+    </div>
+  );
+}
+
+/* ---------- Yearly summary (+ shareable image) ---------- */
+function computeYear(entries, spans, khatams, year) {
+  const list = entries.filter((e) => e.date.slice(0, 4) === year);
+  const byDate = {}, byMonth = {}, bySurah = {};
+  for (const en of list) {
+    const [a, b] = spans[en.id] || [en.page, en.page];
+    const n = b - a + 1;
+    byDate[en.date] = (byDate[en.date] || 0) + n;
+    const m = en.date.slice(0, 7);
+    byMonth[m] = (byMonth[m] || 0) + n;
+    for (let p = a; p <= b; p++) { const s = surahForPage(p); bySurah[s] = (bySurah[s] || 0) + 1; }
+  }
+  const days = Object.keys(byDate).sort();
+  let best = 0, run = 0, prev = null;
+  for (const d of days) { run = prev && addDays(prev, 1) === d ? run + 1 : 1; best = Math.max(best, run); prev = d; }
+  const top = (obj) => Object.entries(obj).sort((x, y) => y[1] - x[1])[0] || null;
+  return {
+    year,
+    pages: Object.values(byDate).reduce((x, y) => x + y, 0),
+    days: days.length,
+    bestStreak: best,
+    khatams: khatams.filter((k) => k.date.slice(0, 4) === year).length,
+    bestMonth: top(byMonth),
+    topSurah: top(bySurah),
+    notes: list.filter((e) => e.note).length,
+    first: days[0] || null,
+  };
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+}
+
+async function drawYearCard(sum, tiles, T, fmtLong) {
+  const W = 1080, H = 1350;
+  try {
+    await Promise.all([
+      document.fonts.load("700 72px Amiri"), document.fonts.load("400 48px Amiri"),
+      document.fonts.load("500 150px 'IBM Plex Mono'"), document.fonts.load("400 34px Lora"), document.fonts.load("600 40px Lora"),
+    ]);
+  } catch (e) {}
+  const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "splash-mark.png"; });
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#0F4C3A"); bg.addColorStop(1, "#052A1F");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  const glow = ctx.createRadialGradient(W / 2, 250, 10, W / 2, 250, 520);
+  glow.addColorStop(0, "rgba(255,205,110,0.32)"); glow.addColorStop(1, "rgba(255,205,110,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = "rgba(217,188,122,0.45)"; ctx.lineWidth = 3; rrect(ctx, 36, 36, W - 72, H - 72, 40); ctx.stroke();
+  if (img) { const h = 250, w = img.width * h / img.height; ctx.drawImage(img, (W - w) / 2, 90, w, h); }
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#E6C068"; ctx.font = "400 46px Amiri, serif"; ctx.fillText("وِرْد القُرْآن", W / 2, 400);
+  ctx.fillStyle = "#F3ECD8"; ctx.font = "700 72px Amiri, serif"; ctx.fillText(T.yearTitle(sum.year), W / 2, 485);
+  ctx.fillStyle = "#D9BC7A"; ctx.font = "500 150px 'IBM Plex Mono', monospace"; ctx.fillText(String(sum.pages), W / 2, 650);
+  ctx.fillStyle = "rgba(243,236,216,0.8)"; ctx.font = "400 34px Lora, serif"; ctx.fillText(T.yearPages, W / 2, 705);
+  const cols = 2, tw = 440, th = 128, gx = 40, gy = 24, x0 = (W - (cols * tw + gx)) / 2, y0 = 752;
+  tiles.forEach(([label, value], i) => {
+    const x = x0 + (i % cols) * (tw + gx), y = y0 + Math.floor(i / cols) * (th + gy);
+    ctx.fillStyle = "rgba(255,255,255,0.07)"; rrect(ctx, x, y, tw, th, 22); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.14)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.textAlign = "left";
+    ctx.fillStyle = "rgba(243,236,216,0.7)"; ctx.font = "400 26px Lora, serif"; ctx.fillText(label.toUpperCase(), x + 28, y + 46);
+    ctx.fillStyle = "#F3ECD8"; ctx.font = "600 40px Lora, serif";
+    let v = String(value); while (ctx.measureText(v).width > tw - 56 && v.length > 4) v = v.slice(0, -2) + "…";
+    ctx.fillText(v, x + 28, y + 98);
+  });
+  ctx.textAlign = "center"; ctx.fillStyle = "rgba(243,236,216,0.6)"; ctx.font = "400 28px Lora, serif";
+  ctx.fillText("Quran Note", W / 2, H - 82);
+  return await new Promise((res) => c.toBlob(res, "image/png"));
+}
+
+function YearSummary({ entries, spans, khatams, today, T, fmtMonth, fmtLong }) {
+  const years = useMemo(() => {
+    const ys = new Set(entries.map((e) => e.date.slice(0, 4)));
+    ys.add(today.slice(0, 4));
+    return [...ys].sort().reverse();
+  }, [entries, today]);
+  const [year, setYear] = useState(years[0]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const sum = useMemo(() => computeYear(entries, spans, khatams, year), [entries, spans, khatams, year]);
+  const tiles = [
+    [T.yearDays, `${sum.days} ${T.yearDaysUnit}`],
+    [T.yearStreak, `${sum.bestStreak} ${T.yearDaysUnit}`],
+    [T.yearKhatam, `${sum.khatams}×`],
+    [T.yearNotes, String(sum.notes)],
+    [T.yearBestMonth, sum.bestMonth ? `${fmtMonth(sum.bestMonth[0]).split(" ")[0]} · ${sum.bestMonth[1]}` : "—"],
+    [T.yearTopSurah, sum.topSurah ? sum.topSurah[0] : "—"],
+  ];
+  async function share(download) {
+    setBusy(true); setMsg(T.yearMaking);
+    try {
+      const blob = await drawYearCard(sum, tiles, T, fmtLong);
+      if (!blob) throw new Error("blob");
+      const name = `quran-note-${sum.year}.png`;
+      const file = new File([blob], name, { type: "image/png" });
+      if (!download && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: `Quran Note — ${T.yearTitle(sum.year)}` });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+      }
+      setMsg("");
+    } catch (e) {
+      setMsg(e && e.name === "AbortError" ? "" : T.yearFail);
+    }
+    setBusy(false);
+  }
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {years.length > 1 && (
+        <div style={styles.yearChips}>
+          {years.map((y) => (
+            <button key={y} className="qt-btn" type="button" onClick={() => setYear(y)}
+              style={{ ...styles.langBtn, ...(y === year ? styles.langBtnOn : {}) }}>{y}</button>
+          ))}
+        </div>
+      )}
+      <div style={styles.yearCard}>
+        <div style={{ textAlign: "center", fontFamily: "'Amiri', serif", color: "#E6C068", fontSize: 18 }}>وِرْد القُرْآن</div>
+        <h3 style={styles.yearTitle}>{T.yearTitle(sum.year)}</h3>
+        {sum.pages === 0 ? (
+          <div style={{ textAlign: "center", opacity: 0.75, fontSize: 13.5, margin: "16px 0 6px" }}>{T.yearEmpty}</div>
+        ) : (
+          <>
+            <div style={styles.yearBig}>
+              <div style={styles.yearBigNum}>{sum.pages}</div>
+              <div style={{ fontSize: 13, opacity: 0.8 }}>{T.yearPages}</div>
+            </div>
+            <div style={styles.yearGrid}>
+              {tiles.map(([l, v]) => (
+                <div key={l} style={styles.yearTile}>
+                  <div style={styles.yearTileLabel}>{l}</div>
+                  <div style={styles.yearTileValue}>{v}</div>
+                </div>
+              ))}
+            </div>
+            {sum.first && <div style={{ textAlign: "center", fontSize: 11.5, opacity: 0.6, marginTop: 12 }}>{T.yearSince(fmtLong(sum.first))}</div>}
+          </>
+        )}
+      </div>
+      {sum.pages > 0 && (
+        <div style={styles.btnRow}>
+          <button className="qt-btn" type="button" disabled={busy} onClick={() => share(false)} style={{ ...styles.smallPrimary, opacity: busy ? 0.6 : 1 }}>{T.yearShare}</button>
+          <button className="qt-btn" type="button" disabled={busy} onClick={() => share(true)} style={styles.cancelBtn}>{T.yearDownload}</button>
+          {msg && <span style={{ fontSize: 12.5, alignSelf: "center", opacity: 0.75 }}>{msg}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1919,6 +2118,20 @@ const styles = {
   modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
   modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+  doaCongrats: { textAlign: "center", background: "#0F4C3A", color: "#F3ECD8", borderRadius: 10, padding: "10px 12px", fontSize: 14, marginBottom: 14 },
+  doaAr: { fontFamily: "'Amiri', serif", fontSize: 24, lineHeight: 2, textAlign: "center", color: "var(--ink)", margin: "4px 0 16px" },
+  doaTr: { fontSize: 14, lineHeight: 1.6, opacity: 0.9, margin: "6px 0 18px" },
+  yearCard: { position: "relative", overflow: "hidden", borderRadius: 16, padding: "20px 18px 16px", marginBottom: 12, color: "#F3ECD8",
+    background: "radial-gradient(circle at 50% 0%, rgba(255,205,110,0.22) 0%, rgba(255,205,110,0) 55%), linear-gradient(180deg, #0F4C3A 0%, #072E23 100%)",
+    boxShadow: "0 8px 24px rgba(15,76,58,0.25)", border: "1px solid rgba(217,188,122,0.35)" },
+  yearChips: { display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" },
+  yearTitle: { fontFamily: "'Amiri', serif", fontSize: 24, fontWeight: 700, textAlign: "center", margin: 0 },
+  yearBig: { textAlign: "center", marginTop: 6 },
+  yearBigNum: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 46, fontWeight: 500, color: "#D9BC7A", lineHeight: 1.1 },
+  yearGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 },
+  yearTile: { background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "8px 10px" },
+  yearTileLabel: { fontSize: 10.5, letterSpacing: 0.6, textTransform: "uppercase", opacity: 0.7 },
+  yearTileValue: { fontSize: 15, fontWeight: 600, marginTop: 2, color: "#F3ECD8" },
 };
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
