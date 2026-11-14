@@ -55,7 +55,7 @@
   .qt-heat::-webkit-scrollbar { height: 6px; }
   .qt-heat::-webkit-scrollbar-thumb { background: var(--line3); border-radius: 3px; }
 
-  /* Opening scene (~1.5 s) */
+  /* Opening scene (~2.5 s) */
   #splash { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
     background: radial-gradient(circle at 50% 40%, #166E52 0%, #0A4A37 45%, #052A1F 100%); color: #F3ECD8;
     transition: opacity 0.3s ease, transform 0.3s ease; }
@@ -90,7 +90,7 @@
   <div class="sp-title">Qur'an Reading Journal</div>
 </div>
 <script>
-  // Show the opening scene for 1.5 s (1.2 s + 0.3 s fade); if the app is still loading, wait for it.
+  // Show the opening scene for 2.5 s (2.2 s + 0.3 s fade); if the app is still loading, wait for it.
   (function () {
     var el = document.getElementById("splash"), minDone = false, ready = false, gone = false;
     function hide() {
@@ -98,7 +98,7 @@
       gone = true; el.classList.add("out");
       setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 320);
     }
-    setTimeout(function () { minDone = true; hide(); }, 1200);
+    setTimeout(function () { minDone = true; hide(); }, 2200);
     window.addEventListener("app-ready", function () { ready = true; hide(); });
     setTimeout(function () { ready = true; minDone = true; hide(); }, 8000);
   })();
