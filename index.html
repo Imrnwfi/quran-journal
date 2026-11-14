@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Qur'an Reading Journal</title>
+<link rel="icon" href="data:,">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .qt-input:focus, .qt-textarea:focus, .qt-btn:focus-visible {
+    outline: 2px solid #A8823C;
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .qt-fade { animation: none !important; }
+  }
+  @keyframes qtFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .qt-fade { animation: qtFadeIn 0.35s ease-out; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel" data-type="module">
+const { useState, useEffect, useMemo } = React;
+
+const JUZ_START_PAGES = [
+  1, 22, 42, 62, 82, 102, 121, 142, 162, 182,
+  201, 222, 242, 262, 282, 302, 322, 342, 362, 382,
+  402, 422, 442, 462, 482, 502, 522, 542, 562, 582,
+];
+const TOTAL_PAGES = 604;
+const STORAGE_KEY = "quran-journal-entries";
+
+function juzForPage(page) {
+  let j = 1;
+  for (let i = 0; i < JUZ_START_PAGES.length; i++) {
+    if (page >= JUZ_START_PAGES[i]) j = i + 1;
+  }
+  return j;
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmtDate(iso) {
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+function loadEntries() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveEntries(entries) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function QuranTracker() {
+  const [entries, setEntries] = useState(() => loadEntries());
+  const [saveError, setSaveError] = useState("");
+  const [page, setPage] = useState("");
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState(todayStr());
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  function persist(next) {
+    setEntries(next);
+    const ok = saveEntries(next);
+    setSaveError(ok ? "" : "Couldn't save — your browser storage may be full or disabled.");
+  }
+
+  function addEntry(e) {
+    e.preventDefault();
+    const p = parseInt(page, 10);
+    if (!p || p < 1 || p > TOTAL_PAGES) return;
+    const entry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      page: p,
+      note: note.trim(),
+      date,
+      ts: Date.now(),
+    };
+    persist([entry, ...entries]);
+    setPage("");
+    setNote("");
+  }
+
+  function deleteEntry(id) {
+    persist(entries.filter((en) => en.id !== id));
+    setConfirmDeleteId(null);
+  }
+
+  const sorted = useMemo(
+    () => [...entries].sort((a, b) => (a.date === b.date ? b.ts - a.ts : b.date.localeCompare(a.date))),
+    [entries]
+  );
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const en of sorted) {
+      if (!map.has(en.date)) map.set(en.date, []);
+      map.get(en.date).push(en);
+    }
+    return [...map.entries()];
+  }, [sorted]);
+
+  const uniquePages = useMemo(() => new Set(entries.map((e) => e.page)).size, [entries]);
+  const progressPct = Math.min(100, Math.round((uniquePages / TOTAL_PAGES) * 100));
+  const lastEntry = sorted[0] || null;
+  const currentJuz = lastEntry ? juzForPage(lastEntry.page) : 0;
+  const reachedJuz = useMemo(() => {
+    const s = new Set();
+    for (const en of entries) s.add(juzForPage(en.page));
+    return s;
+  }, [entries]);
+
+  const streak = useMemo(() => {
+    const days = new Set(entries.map((e) => e.date));
+    let count = 0;
+    let cursor = new Date();
+    if (!days.has(todayStr())) cursor.setDate(cursor.getDate() - 1);
+    while (true) {
+      const iso = cursor.toISOString().slice(0, 10);
+      if (days.has(iso)) {
+        count++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else break;
+    }
+    return count;
+  }, [entries]);
+
+  const khatms = Math.floor(uniquePages / TOTAL_PAGES);
+
+  return (
+    <div style={styles.page}>
+      <div style={styles.bgPattern} />
+      <div style={styles.container}>
+        <header style={styles.header}>
+          <div style={styles.eyebrow}>وِرْد القُرْآن</div>
+          <h1 style={styles.title}>Qur'an Reading Journal</h1>
+          <p style={styles.subtitle}>Mark your page, keep your rhythm.</p>
+        </header>
+
+        <div style={styles.mihrabWrap}>
+          <div style={styles.mihrab}>
+            <div style={styles.mihrabInner}>
+              {lastEntry ? (
+                <>
+                  <div style={styles.mihrabLabel}>Last read</div>
+                  <div style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></div>
+                  <div style={styles.mihrabMeta}>Juz' {currentJuz} · {fmtDate(lastEntry.date)}</div>
+                </>
+              ) : (
+                <>
+                  <div style={styles.mihrabLabel}>No entries yet</div>
+                  <div style={styles.mihrabMeta}>Log today's page below to begin</div>
+                </>
+              )}
+              <div style={styles.streakRow}>
+                <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> day{streak === 1 ? "" : "s"} streak</div>
+                <div style={styles.streakChip}><span style={styles.mono}>{uniquePages}</span>/{TOTAL_PAGES} pages</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.progressSection}>
+          <div style={styles.progressTrack}>
+            <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
+          </div>
+          <div style={styles.progressLabel}>
+            {progressPct}% through the Mushaf{khatms > 0 ? ` · ${khatms} khatm${khatms > 1 ? "s" : ""} completed` : ""}
+          </div>
+        </div>
+
+        <div style={styles.juzGrid}>
+          {JUZ_START_PAGES.map((_, i) => {
+            const num = i + 1;
+            const reached = reachedJuz.has(num);
+            return (
+              <div key={num} title={`Juz' ${num}`} style={{ ...styles.juzMark, ...(reached ? styles.juzMarkFilled : {}) }}>
+                <span style={{ ...styles.mono, fontSize: 10 }}>{num}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <form onSubmit={addEntry} style={styles.form}>
+          <h2 style={styles.formTitle}>Log today's reading</h2>
+          <div style={styles.formRow}>
+            <label style={styles.label}>
+              Page
+              <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
+                onChange={(e) => setPage(e.target.value)} placeholder="1–604" style={styles.input} required />
+            </label>
+            <label style={styles.label}>
+              Date
+              <input className="qt-input" type="date" value={date}
+                onChange={(e) => setDate(e.target.value)} style={styles.input} max={todayStr()} required />
+            </label>
+          </div>
+          <label style={styles.label}>
+            Note <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span>
+            <textarea className="qt-textarea" value={note} onChange={(e) => setNote(e.target.value)}
+              placeholder="A reflection, a verse that struck you, how it felt…" style={styles.textarea} rows={2} />
+          </label>
+          <button className="qt-btn" type="submit" style={styles.submitBtn}>Save entry</button>
+          {saveError && <div style={styles.errorText}>{saveError}</div>}
+        </form>
+
+        <div style={styles.historySection}>
+          <h2 style={styles.formTitle}>History</h2>
+          {grouped.length === 0 ? (
+            <div style={styles.emptyState}>Nothing logged yet. Your first entry will appear here.</div>
+          ) : (
+            grouped.map(([d, list]) => (
+              <div key={d} className="qt-fade" style={styles.dayGroup}>
+                <div style={styles.dayHeader}>{fmtDate(d)}</div>
+                {list.map((en) => (
+                  <div key={en.id} style={styles.entryRow}>
+                    <div style={styles.entryPage}>
+                      <span style={styles.mono}>p.{en.page}</span>
+                      <span style={styles.entryJuz}>Juz' {juzForPage(en.page)}</span>
+                    </div>
+                    {en.note && <div style={styles.entryNote}>{en.note}</div>}
+                    {confirmDeleteId === en.id ? (
+                      <div style={styles.confirmRow}>
+                        <span style={{ fontSize: 12, opacity: 0.75 }}>Remove this entry?</span>
+                        <button className="qt-btn" onClick={() => deleteEntry(en.id)} style={styles.confirmBtn}>Yes, remove</button>
+                        <button className="qt-btn" onClick={() => setConfirmDeleteId(null)} style={styles.cancelBtn}>Cancel</button>
+                      </div>
+                    ) : (
+                      <button className="qt-btn" onClick={() => setConfirmDeleteId(en.id)} style={styles.deleteBtn}
+                        aria-label={`Delete entry for page ${en.page}`}>×</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        <footer style={styles.footer}>Saved privately in this browser · {TOTAL_PAGES}-page Mushaf reference</footer>
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  page: { minHeight: "100vh", background: "#F3ECD8", color: "#16342B", fontFamily: "'Lora', serif", position: "relative", overflow: "hidden" },
+  bgPattern: { position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05, backgroundImage: "radial-gradient(circle at 20% 20%, #0F4C3A 0, transparent 45%), radial-gradient(circle at 80% 70%, #A8823C 0, transparent 45%)" },
+  container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "40px 20px 60px" },
+  header: { textAlign: "center", marginBottom: 28 },
+  eyebrow: { fontFamily: "'Amiri', serif", fontSize: 22, color: "#A8823C", marginBottom: 6 },
+  title: { fontFamily: "'Amiri', serif", fontSize: 30, fontWeight: 700, margin: 0, color: "#16342B", letterSpacing: 0.2 },
+  subtitle: { fontSize: 14, opacity: 0.65, marginTop: 6 },
+  mihrabWrap: { display: "flex", justifyContent: "center", marginBottom: 22 },
+  mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 28px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid #A8823C55" },
+  mihrabInner: { textAlign: "center", color: "#F3ECD8" },
+  mihrabLabel: { fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.75, marginBottom: 4 },
+  mihrabPage: { fontSize: 34, fontWeight: 600, color: "#D9BC7A" },
+  mihrabMeta: { fontSize: 13, opacity: 0.8, marginTop: 2 },
+  streakRow: { display: "flex", justifyContent: "center", gap: 10, marginTop: 16, flexWrap: "wrap" },
+  streakChip: { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 999, padding: "6px 12px", fontSize: 12.5 },
+  progressSection: { marginBottom: 18 },
+  progressTrack: { height: 8, borderRadius: 999, background: "#E4D9B8", overflow: "hidden", border: "1px solid #A8823C33" },
+  progressFill: { height: "100%", background: "linear-gradient(90deg, #A8823C, #C9A94F)", borderRadius: 999, transition: "width 0.4s ease" },
+  progressLabel: { fontSize: 12.5, opacity: 0.65, marginTop: 6, textAlign: "center" },
+  juzGrid: { display: "grid", gridTemplateColumns: "repeat(10, 1fr)", gap: 6, marginBottom: 28 },
+  juzMark: { aspectRatio: "1", borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "#E4D9B8", border: "1px solid #A8823C44", display: "flex", alignItems: "center", justifyContent: "center", color: "#8A7B57" },
+  juzMarkFilled: { background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", border: "1px solid #8A6A2E" },
+  form: { background: "#FBF7EA", border: "1px solid #A8823C33", borderRadius: 14, padding: 20, marginBottom: 28, boxShadow: "0 2px 10px rgba(22,52,43,0.06)" },
+  formTitle: { fontFamily: "'Amiri', serif", fontSize: 19, fontWeight: 700, marginTop: 0, marginBottom: 14, color: "#0F4C3A" },
+  formRow: { display: "flex", gap: 12, marginBottom: 12 },
+  label: { display: "flex", flexDirection: "column", gap: 4, fontSize: 13, fontWeight: 500, color: "#16342B", flex: 1, marginBottom: 12 },
+  input: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, padding: "9px 10px", borderRadius: 8, border: "1px solid #A8823C55", background: "#FFFDF6", color: "#16342B" },
+  textarea: { fontFamily: "'Lora', serif", fontSize: 14, padding: "9px 10px", borderRadius: 8, border: "1px solid #A8823C55", background: "#FFFDF6", color: "#16342B", resize: "vertical" },
+  submitBtn: { width: "100%", background: "#0F4C3A", color: "#F3ECD8", border: "none", borderRadius: 8, padding: "11px 16px", fontSize: 14.5, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif" },
+  errorText: { color: "#8C3B2E", fontSize: 12.5, marginTop: 8 },
+  historySection: { marginBottom: 20 },
+  emptyState: { fontSize: 13.5, opacity: 0.6, padding: "18px 4px", textAlign: "center", fontStyle: "italic" },
+  dayGroup: { marginBottom: 16 },
+  dayHeader: { fontSize: 12, textTransform: "uppercase", letterSpacing: 1, color: "#A8823C", fontWeight: 600, marginBottom: 6, borderBottom: "1px solid #A8823C33", paddingBottom: 4 },
+  entryRow: { position: "relative", background: "#FBF7EA", border: "1px solid #A8823C22", borderRadius: 10, padding: "10px 36px 10px 12px", marginBottom: 8 },
+  entryPage: { display: "flex", alignItems: "baseline", gap: 8, fontSize: 14, fontWeight: 600, color: "#0F4C3A" },
+  entryJuz: { fontSize: 11.5, fontWeight: 400, opacity: 0.6 },
+  entryNote: { fontSize: 13, marginTop: 4, opacity: 0.85, lineHeight: 1.4 },
+  deleteBtn: { position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%", border: "none", background: "transparent", color: "#8C3B2E", fontSize: 16, lineHeight: 1, cursor: "pointer" },
+  confirmRow: { display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" },
+  confirmBtn: { background: "#8C3B2E", color: "#FBF7EA", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" },
+  cancelBtn: { background: "transparent", color: "#16342B", border: "1px solid #16342B33", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" },
+  mono: { fontFamily: "'IBM Plex Mono', monospace" },
+  footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+};
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<QuranTracker />);
+</script>
+</body>
+</html>
