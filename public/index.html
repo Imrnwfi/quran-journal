@@ -19,7 +19,8 @@
     try {
       var q = new URLSearchParams(location.search);
       if (q.get("action") !== "read") return;
-      var e = JSON.parse(localStorage.getItem("quran-journal-entries") || "[]"), last = null;
+      var key = localStorage.getItem("quran-note-personal") === "1" ? "qn-personal-entries" : "quran-journal-entries";
+      var e = JSON.parse(localStorage.getItem(key) || "[]"), last = null;
       for (var i = 0; i < e.length; i++) { var x = e[i]; if (!last || x.date > last.date || (x.date === last.date && x.ts > last.ts)) last = x; }
       if (last) location.replace("https://quran.com/page/" + Math.min(last.page + 1, 604));
     } catch (err) {}
@@ -315,10 +316,13 @@ const BISMILLAH_SOURCES = [
   "https://everyayah.com/data/Maher_AlMuaiqly_64kbps/001001.mp3",
   "https://verses.quran.foundation/Alafasy/mp3/001001.mp3",
 ];
-const STORAGE_KEY = "quran-journal-entries";
-const KHATAM_KEY = "quran-journal-khatams";
+// "Jurnal saya": a visitor's own journal kept only on their phone, separate from the owner's data.
+const PERSONAL_FLAG = "quran-note-personal";
+const PERSONAL = (() => { try { return localStorage.getItem(PERSONAL_FLAG) === "1"; } catch (e) { return false; } })();
+const STORAGE_KEY = PERSONAL ? "qn-personal-entries" : "quran-journal-entries";
+const KHATAM_KEY = PERSONAL ? "qn-personal-khatams" : "quran-journal-khatams";
 const SETTINGS_KEY = "quran-journal-settings";
-const DELETED_KEY = "quran-journal-deleted";
+const DELETED_KEY = PERSONAL ? "qn-personal-deleted" : "quran-journal-deleted";
 const TOKEN_KEY = "quran-journal-token";
 const MODE_KEY = "quran-journal-mode";
 const VERSION_KEY = "quran-journal-version";
@@ -399,7 +403,14 @@ const TEXT = {
     monthSummary: (d, p) => `${d} hari · ${p} muka surat`,
     openQuran: (p) => `Buka muka surat ${p} di Quran.com`, openQuranShort: "Baca di Quran.com",
     // sync & owner
-    viewerBanner: "Mod lihat sahaja — hanya pemilik boleh mencatat.", iAmOwner: "Saya pemilik",
+    viewerBanner: "Anda sedang melihat jurnal pemilik (lihat sahaja).", iAmOwner: "Saya pemilik",
+    usePersonal: "📱 Guna untuk diri sendiri", personalMode: "Jurnal saya (telefon ini)",
+    personalPitch: "Mulakan jurnal bacaan sendiri. Semua ciri boleh digunakan, dan data disimpan dalam telefon anda sahaja.",
+    personalHint: "Data jurnal anda disimpan dalam telefon ini sahaja. Muat turun backup sekali-sekala (Tetapan → Backup data) supaya tak hilang.",
+    personalBack: "Lihat jurnal pemilik", personalDelete: "Padam jurnal saya", personalDeleteQ: "Padam semua catatan dan khatam dalam jurnal anda? Tak boleh diundur.",
+    personalWelcome: "Jurnal anda dah sedia ✓ Tekan ＋ untuk catat bacaan pertama. Data disimpan dalam telefon ini.",
+    notifPersonal: "Peringatan dan laporan mingguan hanya untuk jurnal dalam talian pemilik.",
+    footerPersonal: (n) => `Jurnal saya · disimpan dalam telefon ini · Rujukan Mushaf ${n} muka surat`,
     syncSaved: "Disegerakkan", syncSaving: "Menyimpan…", syncOffline: "Luar talian — akan disegerakkan", syncError: "Gagal segerak",
     ownerTitleClaim: "Cipta PIN pemilik", ownerTitleLogin: "Masuk sebagai pemilik",
     ownerClaimHint: "Kali pertama: cipta PIN (sekurang-kurangnya 6 aksara). Hanya pemilik boleh mencatat; orang lain hanya boleh melihat. Data dalam peranti ini akan dimuat naik.",
@@ -516,7 +527,14 @@ const TEXT = {
     invalidPage: "Page must be between 1 and 604.",
     monthSummary: (d, p) => `${d} day${d === 1 ? "" : "s"} · ${p} page${p === 1 ? "" : "s"}`,
     openQuran: (p) => `Open page ${p} on Quran.com`, openQuranShort: "Read on Quran.com",
-    viewerBanner: "View only — only the owner can log readings.", iAmOwner: "I'm the owner",
+    viewerBanner: "You're viewing the owner's journal (view only).", iAmOwner: "I'm the owner",
+    usePersonal: "📱 Use it for myself", personalMode: "My journal (this phone)",
+    personalPitch: "Start your own reading journal. Every feature works, and your data stays on your phone.",
+    personalHint: "Your journal is stored on this phone only. Download a backup now and then (Settings → Back up data) so it isn't lost.",
+    personalBack: "View the owner's journal", personalDelete: "Delete my journal", personalDeleteQ: "Delete all entries and khatams in your journal? This can't be undone.",
+    personalWelcome: "Your journal is ready ✓ Tap ＋ to log your first reading. Data stays on this phone.",
+    notifPersonal: "Reminders and the weekly report are only for the owner's online journal.",
+    footerPersonal: (n) => `My journal · stored on this phone · ${n}-page Mushaf reference`,
     syncSaved: "Synced", syncSaving: "Saving…", syncOffline: "Offline — will sync", syncError: "Sync failed",
     ownerTitleClaim: "Create owner PIN", ownerTitleLogin: "Sign in as owner",
     ownerClaimHint: "First time: create a PIN (at least 6 characters). Only the owner can log; everyone else can only view. The data on this device will be uploaded.",
@@ -796,7 +814,7 @@ const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
 /* ---------- App ---------- */
 function QuranTracker() {
-  const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, SEED_ENTRIES));
+  const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, PERSONAL ? [] : SEED_ENTRIES));
   const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
   const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
   const [settings, setSettings] = useState(() => ({ lang: "ms", targetDate: "", theme: "auto", sound: true, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...readJson(SETTINGS_KEY, {}) }));
@@ -826,7 +844,7 @@ function QuranTracker() {
   const syncing = useRef(false);
   const stateRef = useRef(null);
   stateRef.current = { entries, khatams, deleted, targetDate: settings.targetDate, reminderMode: settings.reminderMode, weeklyReport: settings.weeklyReport !== false };
-  const canEdit = role === "local" || role === "owner";
+  const canEdit = role === "local" || role === "owner" || role === "personal";
   const serverMode = role === "viewer" || role === "owner";
   function setRole(r) { roleRef.current = r; setRoleState(r); }
   function setVersion(v) { versionRef.current = v; writeStr(VERSION_KEY, String(v)); }
@@ -867,7 +885,7 @@ function QuranTracker() {
   const [prayerSignal, setPrayerSignal] = useState(0);
   const carRef = useRef(null);
   const toastTimer = useRef(null);
-  function showToast(msg) { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(""), 2600); }
+  function showToast(msg, ms = 2600) { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(""), ms); }
   function go(next) {
     if (next === screen) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     if (next === "home") { try { history.pushState(null, "", location.pathname + location.search); } catch (e) {} setScreen("home"); }
@@ -1030,6 +1048,7 @@ function QuranTracker() {
   // Start-up: find out whether a server is available and who this device is.
   useEffect(() => {
     let cancelled = false;
+    if (PERSONAL) { setRole("personal"); return; }
     (async () => {
       let r = null;
       if (/^https?:$/.test(location.protocol)) { try { r = await api("journal"); } catch (e) { r = null; } }
@@ -1161,6 +1180,22 @@ function QuranTracker() {
       setVersion(j.body ? j.body.version : 0); setRole("owner"); queueSync();
     }
   }
+
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  function startPersonal() {
+    writeStr(PERSONAL_FLAG, "1");
+    try { sessionStorage.setItem("qn-welcome", "1"); } catch (e) {}
+    location.replace(location.pathname);
+  }
+  function leavePersonal() { writeStr(PERSONAL_FLAG, null); location.replace(location.pathname); }
+  function wipePersonal() {
+    ["qn-personal-entries", "qn-personal-khatams", "qn-personal-deleted"].forEach((k) => writeStr(k, null));
+    location.replace(location.pathname);
+  }
+  useEffect(() => {
+    let w = null; try { w = sessionStorage.getItem("qn-welcome"); sessionStorage.removeItem("qn-welcome"); } catch (e) {}
+    if (w && PERSONAL) setTimeout(() => showToast(T.personalWelcome, 5000), 3600);
+  }, []);
 
   function signOut() {
     tokenRef.current = null; writeStr(TOKEN_KEY, null); writeStr(DIRTY_KEY, null);
@@ -1590,7 +1625,7 @@ function QuranTracker() {
       </>
     ) },
     { key: "notif", icon: "🔔", title: T.notif, value: notifValue, body: !serverMode ? (
-      <div style={{ ...styles.hint, marginBottom: 0 }}>{T.notifServerOnly}</div>
+      <div style={{ ...styles.hint, marginBottom: 0 }}>{role === "personal" ? T.notifPersonal : T.notifServerOnly}</div>
     ) : (
       <>
         <div style={styles.hint}>{T.notifHint}</div>
@@ -1655,7 +1690,29 @@ function QuranTracker() {
       </>
     ) },
     role === "viewer" && { key: "account", icon: "👤", title: T.account, value: "", body: (
-      <button className="qt-btn" type="button" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
+      <>
+        <div style={styles.hint}>{T.personalPitch}</div>
+        <div style={styles.btnRow}>
+          <button className="qt-btn" type="button" onClick={startPersonal} style={styles.smallPrimary}>{T.usePersonal}</button>
+          <button className="qt-btn" type="button" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.cancelBtn}>{T.iAmOwner}</button>
+        </div>
+      </>
+    ) },
+    role === "personal" && { key: "account", icon: "📱", title: T.personalMode, value: "", body: (
+      <>
+        <div style={styles.hint}>{T.personalHint}</div>
+        <div style={styles.btnRow}>
+          <button className="qt-btn" type="button" onClick={leavePersonal} style={styles.cancelBtn}>{T.personalBack}</button>
+          <button className="qt-btn" type="button" onClick={() => setConfirmWipe(true)} style={{ ...styles.cancelBtn, color: "var(--danger)" }}>{T.personalDelete}</button>
+        </div>
+        {confirmWipe && (
+          <div style={{ ...styles.confirmRow, marginTop: 10 }}>
+            <span style={{ fontSize: 12.5 }}>{T.personalDeleteQ}</span>
+            <button className="qt-btn" type="button" onClick={wipePersonal} style={styles.confirmBtn}>{T.yesRemove}</button>
+            <button className="qt-btn" type="button" onClick={() => setConfirmWipe(false)} style={styles.cancelBtn}>{T.cancel}</button>
+          </div>
+        )}
+      </>
     ) },
     { key: "backup", icon: "💾", title: T.backup, value: "", body: (
       <>
@@ -1782,9 +1839,12 @@ function QuranTracker() {
         )}
 
         {role === "viewer" && screen !== "settings" && (
-          <div style={styles.viewerBanner}>
-            <span style={{ flex: 1 }}>👁 {T.viewerBanner}</span>
-            <button className="qt-btn" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
+          <div style={{ ...styles.viewerBanner, flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+            <span>👁 {T.viewerBanner}</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="qt-btn" onClick={startPersonal} style={{ ...styles.smallPrimary, flex: 1 }}>{T.usePersonal}</button>
+              <button className="qt-btn" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.cancelBtn}>{T.iAmOwner}</button>
+            </div>
           </div>
         )}
 
@@ -2081,7 +2141,7 @@ function QuranTracker() {
                 );
               })}
             </section>
-            <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
+            <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : role === "personal" ? T.footerPersonal(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
           </>
         )}
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
