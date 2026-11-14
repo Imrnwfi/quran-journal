@@ -34,6 +34,7 @@
       var t = s.theme || "auto";
       if (t === "auto") t = window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
       document.documentElement.setAttribute("data-theme", t);
+      document.documentElement.setAttribute("data-accent", s.accent || "zamrud");
     } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
   })();
 </script>
@@ -42,7 +43,9 @@
   :root {
     --bg: #F3ECD8; --ink: #16342B; --card: #FBF7EA; --input: #FFFDF6;
     --line: rgba(168,130,60,0.20); --line2: rgba(168,130,60,0.34); --line3: rgba(168,130,60,0.55);
-    --gold: #A8823C; --title: #0F4C3A; --btn: #0F4C3A; --btn-ink: #F3ECD8;
+    --acc: #0F4C3A; --acc2: #13664D; --acc3: #0C3D2F; --acc-dbtn: #1D7454; --acc-dtitle: #9AD6BA;
+    --sp1: #166E52; --sp2: #0A4A37; --sp3: #052A1F;
+    --gold: #A8823C; --title: var(--acc); --btn: var(--acc); --btn-ink: #F3ECD8;
     --muted: #E4D9B8; --muted-ink: #8A7B57; --danger: #8C3B2E; --danger-ink: #FBF7EA;
     --shadow: 0 2px 10px rgba(22,52,43,0.06); --tabbg: #E4D9B8; --bar: #0E8A5F; --grid: rgba(22,52,43,0.10);
     --h0: #E4D9B8; --h1: #A9CBB7; --h2: #6FA58A; --h3: #2E7558; --h4: #0F4C3A;
@@ -51,12 +54,25 @@
   [data-theme="dark"] {
     --bg: #0C1915; --ink: #E7E1CF; --card: #13241E; --input: #0F1E19;
     --line: rgba(217,188,122,0.16); --line2: rgba(217,188,122,0.26); --line3: rgba(217,188,122,0.45);
-    --gold: #D9BC7A; --title: #9AD6BA; --btn: #1D7454; --btn-ink: #F3ECD8;
+    --gold: #D9BC7A; --title: var(--acc-dtitle); --btn: var(--acc-dbtn); --btn-ink: #F3ECD8;
     --muted: #22362E; --muted-ink: #8FA197; --danger: #E58A75; --danger-ink: #1A0D0A;
     --shadow: 0 2px 12px rgba(0,0,0,0.35); --tabbg: #1A2D26; --bar: #22A975; --grid: rgba(231,225,207,0.10);
     --h0: #22362E; --h1: #1E5240; --h2: #2A7A5B; --h3: #3FA67C; --h4: #8BDDB7;
     --banner: #2A2615; color-scheme: dark;
   }
+  /* Colour themes (accent) */
+  [data-accent="biru"]  { --acc: #1B3A5C; --acc2: #234B75; --acc3: #142C47; --acc-dbtn: #2B5C8F; --acc-dtitle: #A9C8EA; --sp1: #2A5885; --sp2: #18324F; --sp3: #0B1A2B; }
+  [data-accent="ungu"]  { --acc: #4A2C5E; --acc2: #5C3875; --acc3: #3A2249; --acc-dbtn: #6B4589; --acc-dtitle: #D2B8E6; --sp1: #6A4386; --sp2: #3E2550; --sp3: #1E1128; }
+  [data-accent="kurma"] { --acc: #5A3A22; --acc2: #6E4729; --acc3: #462D1A; --acc-dbtn: #7F5532; --acc-dtitle: #E2C3A2; --sp1: #7E5432; --sp2: #4A2F1B; --sp3: #24160C; }
+  [data-theme="dark"][data-accent="biru"]  { --bg: #0B1420; --card: #121E2C; --input: #0E1824; --muted: #1E2A38; --tabbg: #16212E; }
+  [data-theme="dark"][data-accent="ungu"]  { --bg: #140F1A; --card: #1E1726; --input: #18121F; --muted: #2A2133; --tabbg: #221A2A; }
+  [data-theme="dark"][data-accent="kurma"] { --bg: #17110C; --card: #221A13; --input: #1B140E; --muted: #2E241B; --tabbg: #261D15; }
+  /* Screen transitions */
+  @keyframes qtFromRight { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+  @keyframes qtFromLeft { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+  .qt-screen-r { animation: qtFromRight 0.26s cubic-bezier(.2,.8,.2,1); }
+  .qt-screen-l { animation: qtFromLeft 0.26s cubic-bezier(.2,.8,.2,1); }
+  @media (prefers-reduced-motion: reduce) { .qt-screen-r, .qt-screen-l { animation: none; } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); }
   .qt-input:focus, .qt-textarea:focus, .qt-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
@@ -78,7 +94,7 @@
 
   /* Opening scene (~3.5 s) */
   #splash { position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: radial-gradient(circle at 50% 40%, #166E52 0%, #0A4A37 45%, #052A1F 100%); color: #F3ECD8;
+    background: radial-gradient(circle at 50% 40%, var(--sp1) 0%, var(--sp2) 45%, var(--sp3) 100%); color: #F3ECD8;
     transition: opacity 0.3s ease, transform 0.3s ease; }
   #splash.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
   #splash .sp-glow { position: absolute; width: 340px; height: 340px; border-radius: 50%; top: 50%; left: 50%;
@@ -363,7 +379,7 @@ const TEXT = {
     subtitle: "Tandakan muka surat, kekalkan rentak.",
     lastRead: "Bacaan terakhir", noEntries: "Belum ada catatan", startHint: "Catat muka surat hari ini di bawah untuk mula",
     streak: () => "hari streak", pages: "muka surat", khatamChip: "× khatam", chipDays: "hari",
-    fontSize: "Saiz tulisan", fontNormal: "Biasa", fontLarge: "Besar", fontXL: "Sangat besar",
+    accent: "Warna tema", fontSize: "Saiz tulisan", fontNormal: "Biasa", fontLarge: "Besar", fontXL: "Sangat besar",
     through: (p) => `${p}% daripada Mushaf`, round: (n) => `pusingan ${n}`,
     estTitle: "Jangkaan khatam", estNone: "Catat bacaan beberapa hari untuk dapat anggaran.",
     estPace: (n) => `Purata ${n} muka surat sehari (30 hari lepas)`,
@@ -494,7 +510,7 @@ const TEXT = {
     subtitle: "Mark your page, keep your rhythm.",
     lastRead: "Last read", noEntries: "No entries yet", startHint: "Log today's page below to begin",
     streak: (n) => (n === 1 ? "day streak" : "days streak"), pages: "pages", khatamChip: "× khatam", chipDays: "days",
-    fontSize: "Text size", fontNormal: "Normal", fontLarge: "Large", fontXL: "Extra large",
+    accent: "Colour theme", fontSize: "Text size", fontNormal: "Normal", fontLarge: "Large", fontXL: "Extra large",
     through: (p) => `${p}% through the Mushaf`, round: (n) => `round ${n}`,
     estTitle: "Projected khatam", estNone: "Log a few days of reading to get an estimate.",
     estPace: (n) => `Averaging ${n} pages a day (last 30 days)`,
@@ -825,6 +841,13 @@ function urlB64ToUint8Array(b64) {
 const PUSH_OK = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
+const ACCENTS = {
+  zamrud: { hex: "#0F4C3A", ms: "Zamrud", en: "Emerald" },
+  biru: { hex: "#1B3A5C", ms: "Biru malam", en: "Night blue" },
+  ungu: { hex: "#4A2C5E", ms: "Ungu Dhuha", en: "Dhuha purple" },
+  kurma: { hex: "#5A3A22", ms: "Coklat kurma", en: "Date brown" },
+};
+
 /* ---------- Line icons (consistent on every phone) ---------- */
 const ICON_PATHS = {
   home: <><path d="M3 11 12 4l9 7" /><path d="M5.5 9.5V20h4.5v-5.5h4V20h4.5V9.5" /></>,
@@ -864,7 +887,7 @@ function QuranTracker() {
   const [entries, setEntries] = useState(() => readJson(STORAGE_KEY, PERSONAL ? [] : SEED_ENTRIES));
   const [khatams, setKhatams] = useState(() => readJson(KHATAM_KEY, []));
   const [deleted, setDeleted] = useState(() => ({ entries: [], khatams: [], ...readJson(DELETED_KEY, {}) }));
-  const [settings, setSettings] = useState(() => (() => { const { near, ...saved } = readJson(SETTINGS_KEY, {}); return { lang: "ms", targetDate: "", theme: "auto", sound: true, fontScale: 1, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...saved }; })());
+  const [settings, setSettings] = useState(() => (() => { const { near, ...saved } = readJson(SETTINGS_KEY, {}); return { lang: "ms", targetDate: "", theme: "auto", accent: "zamrud", sound: true, fontScale: 1, reminderMode: "smart", zone: "", zoneLabel: "", hijriOffset: 0, ...saved }; })());
   const previewRef = useRef(null);
   function previewSound() {
     try {
@@ -925,7 +948,16 @@ function QuranTracker() {
   // Screens (Utama / Sejarah / Statistik / Tetapan) live in the URL hash so the phone's Back button works.
   const SCREENS = ["home", "history", "stats", "settings"];
   const readScreen = () => { const h = (location.hash || "").slice(1); return SCREENS.includes(h) ? h : "home"; };
-  const [screen, setScreen] = useState(readScreen);
+  const [screen, setScreenRaw] = useState(readScreen);
+  const [screenDir, setScreenDir] = useState("");
+  const screenRef = useRef(screen);
+  function setScreen(next) {
+    const order = ["home", "history", "stats", "settings"];
+    const a = order.indexOf(screenRef.current), b2 = order.indexOf(next);
+    if (next !== screenRef.current) setScreenDir(b2 > a ? "qt-screen-r" : "qt-screen-l");
+    screenRef.current = next;
+    setScreenRaw(next);
+  }
   const [juzOpen, setJuzOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -1037,8 +1069,9 @@ function QuranTracker() {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolvedTheme);
     const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute("content", resolvedTheme === "dark" ? "#0C1915" : "#0F4C3A");
-  }, [resolvedTheme]);
+    document.documentElement.setAttribute("data-accent", settings.accent || "zamrud");
+    if (m) m.setAttribute("content", resolvedTheme === "dark" ? "#0C1915" : (ACCENTS[settings.accent || "zamrud"] || ACCENTS.zamrud).hex);
+  }, [resolvedTheme, settings.accent]);
 
   useEffect(() => {
     const onPrompt = (e) => { e.preventDefault(); setInstallEvt(e); };
@@ -1686,12 +1719,27 @@ function QuranTracker() {
   /* ----- settings rows ----- */
   const notifValue = !serverMode ? "" : role !== "owner" ? "" : notif === "on" ? (settings.reminderMode === "fixed" ? T.remindFixed : T.remindSmart) : notif === "denied" ? "✕" : T.soundOff;
   const settingRows = [
-    { key: "theme", icon: "palette", title: T.theme, value: { auto: T.themeAuto, light: T.themeLight, dark: T.themeDark }[settings.theme], body: (
+    { key: "theme", icon: "moon", title: T.theme, value: { auto: T.themeAuto, light: T.themeLight, dark: T.themeDark }[settings.theme], body: (
       <div style={styles.segment}>
         {[["auto", T.themeAuto], ["light", T.themeLight], ["dark", T.themeDark]].map(([k, l]) => (
           <button key={k} className="qt-btn" type="button" onClick={() => persistSettings({ theme: k })}
             aria-pressed={settings.theme === k} style={{ ...styles.segBtn, ...(settings.theme === k ? styles.segBtnOn : {}) }}>{l}</button>
         ))}
+      </div>
+    ) },
+    { key: "accent", icon: "palette", title: T.accent, value: (ACCENTS[settings.accent] || ACCENTS.zamrud)[settings.lang === "en" ? "en" : "ms"], body: (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+        {Object.entries(ACCENTS).map(([k, a]) => {
+          const on = (settings.accent || "zamrud") === k;
+          return (
+            <button key={k} className="qt-btn" type="button" onClick={() => { haptic(8); persistSettings({ accent: k }); }} aria-pressed={on}
+              style={{ background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" }}>
+              <span style={{ display: "block", height: 44, borderRadius: 12, background: `linear-gradient(135deg, ${a.hex}, ${a.hex}cc 60%, #C9A94F)`,
+                boxShadow: on ? "0 0 0 2px var(--card), 0 0 0 4px var(--gold)" : "none", marginBottom: 6 }} />
+              <span style={{ fontSize: 11.5, fontWeight: on ? 700 : 400 }}>{a[settings.lang === "en" ? "en" : "ms"]}</span>
+            </button>
+          );
+        })}
       </div>
     ) },
     { key: "lang", icon: "globe", title: T.language, value: settings.lang === "en" ? "English" : "Bahasa Melayu", body: (
@@ -1962,7 +2010,7 @@ function QuranTracker() {
         )}
 
         {screen === "home" && (
-          <>
+          <div key="home" className={screenDir}>
             <header style={styles.header}>
               <div style={styles.eyebrow}>وِرْد القُرْآن</div>
               <h1 style={styles.title}>Quran Note</h1>
@@ -2043,11 +2091,11 @@ function QuranTracker() {
                 {slides.map((_, i) => <span key={i} style={{ ...styles.dotI, ...(i === slide ? styles.dotOn : {}) }} />)}
               </div>
             )}
-          </>
+          </div>
         )}
 
         {screen === "history" && (
-          <>
+          <div key="history" className={screenDir}>
             <h2 style={styles.screenTitle}>{T.navHistory}</h2>
             <label style={styles.searchBox}>
               <Icon name="search" size={18} style={{ opacity: 0.6 }} />
@@ -2117,11 +2165,11 @@ function QuranTracker() {
         {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
             </>)}
 
-          </>
+          </div>
         )}
 
         {screen === "stats" && (
-          <>
+          <div key="stats" className={screenDir}>
             <h2 style={styles.screenTitle}>{T.navStats}</h2>
             <YearSummary entries={entries} spans={spans} khatams={khatamsAsc} today={today} T={T} fmtMonth={fmtMonth} fmtLong={fmtLong} />
         {/* ----- Khatam (collapsible) ----- */}
@@ -2235,11 +2283,11 @@ function QuranTracker() {
 
             <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
               totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} ayahsTotal={ayahsTotal} khatamCount={khatamCount} />
-          </>
+          </div>
         )}
 
         {screen === "settings" && (
-          <>
+          <div key="settings" className={screenDir}>
             <h2 style={styles.screenTitle}>{T.navSettings}</h2>
             <section style={{ ...styles.collapseCard, padding: "4px 10px" }}>
               {settingRows.filter(Boolean).map((row, idx) => {
@@ -2258,7 +2306,7 @@ function QuranTracker() {
               })}
             </section>
             <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : role === "personal" ? T.footerPersonal(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
-          </>
+          </div>
         )}
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
       </div>
@@ -2715,7 +2763,8 @@ async function drawYearCard(sum, tiles, T, fmtLong) {
   const img = await new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = "splash-mark.png"; });
   const c = document.createElement("canvas"); c.width = W; c.height = H;
   const ctx = c.getContext("2d");
-  const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#0F4C3A"); bg.addColorStop(1, "#052A1F");
+  const css = getComputedStyle(document.documentElement);
+  const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, css.getPropertyValue("--acc").trim() || "#0F4C3A"); bg.addColorStop(1, css.getPropertyValue("--sp3").trim() || "#052A1F");
   ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
   const glow = ctx.createRadialGradient(W / 2, 250, 10, W / 2, 250, 520);
   glow.addColorStop(0, "rgba(255,205,110,0.32)"); glow.addColorStop(1, "rgba(255,205,110,0)");
@@ -2911,7 +2960,7 @@ function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readin
 
 const styles = {
   page: { minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", fontFamily: "'Lora', serif", position: "relative", overflow: "hidden" },
-  bgPattern: { position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05, backgroundImage: "radial-gradient(circle at 20% 20%, #0F4C3A 0, transparent 45%), radial-gradient(circle at 80% 70%, #A8823C 0, transparent 45%)" },
+  bgPattern: { position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05, backgroundImage: "radial-gradient(circle at 20% 20%, var(--acc) 0, transparent 45%), radial-gradient(circle at 80% 70%, #A8823C 0, transparent 45%)" },
   container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "calc(12px + env(safe-area-inset-top)) 18px calc(110px + env(safe-area-inset-bottom))" },
   topBar: { display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 4, minHeight: 18 },
   syncPill: { display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--muted-ink)" },
@@ -2924,7 +2973,7 @@ const styles = {
   title: { fontFamily: "'Amiri', serif", fontSize: 26, fontWeight: 700, margin: 0, color: "var(--ink)", letterSpacing: 0.2, lineHeight: 1.2 },
   subtitle: { fontSize: 14, opacity: 0.65, marginTop: 6 },
   mihrabWrap: { display: "flex", justifyContent: "center", marginBottom: 16 },
-  mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 22px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid rgba(168,130,60,0.33)" },
+  mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, var(--acc) 0%, var(--acc3) 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 22px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid rgba(168,130,60,0.33)" },
   mihrabInner: { textAlign: "center", color: "#F3ECD8" },
   mihrabLabel: { fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.75, marginBottom: 4 },
   mihrabPage: { fontSize: 34, fontWeight: 600, color: "#D9BC7A", display: "block" },
@@ -2984,7 +3033,7 @@ const styles = {
   khatamCount: { display: "flex", alignItems: "baseline", gap: 5 },
   khatamNum: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 24, fontWeight: 500, color: "var(--gold)", lineHeight: 1 },
   khatamCountLabel: { fontSize: 12.5, opacity: 0.65 },
-  khatamFlash: { background: "#0F4C3A", color: "#F3ECD8", borderRadius: 8, padding: "9px 12px", fontSize: 13 },
+  khatamFlash: { background: "var(--acc)", color: "#F3ECD8", borderRadius: 8, padding: "9px 12px", fontSize: 13 },
   khatamRow: { display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 0", borderTop: "1px solid var(--line)" },
   khatamBadge: { flex: "0 0 auto", width: 30, height: 30, borderTopLeftRadius: "50%", borderTopRightRadius: "50%", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, background: "linear-gradient(180deg, #C9A94F, #A8823C)", color: "#16342B", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 },
   khatamDate: { fontSize: 14, fontWeight: 600, color: "var(--title)", paddingTop: 5 },
@@ -2998,7 +3047,7 @@ const styles = {
   badgeFill: { height: "100%", background: "var(--gold)" },
   monthBlock: { marginBottom: 10 },
   monthHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontFamily: "'Lora', serif", color: "var(--ink)", boxShadow: "var(--shadow)" },
-  monthHeadOpen: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  monthHeadOpen: { background: "var(--acc)", color: "#F3ECD8", borderColor: "var(--acc)" },
   monthName: { fontFamily: "'Amiri', serif", fontSize: 18, fontWeight: 700, lineHeight: 1.2 },
   monthMeta: { fontSize: 12, opacity: 0.75, marginTop: 2 },
   monthBody: { padding: "12px 2px 4px" },
@@ -3025,10 +3074,10 @@ const styles = {
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
   solatHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
   solatSummary: { display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--title)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  celebrate: { position: "fixed", left: "50%", top: "calc(18px + env(safe-area-inset-top))", zIndex: 80, background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8",
+  celebrate: { position: "fixed", left: "50%", top: "calc(18px + env(safe-area-inset-top))", zIndex: 80, background: "linear-gradient(180deg, var(--acc2), var(--acc))", color: "#F3ECD8",
     border: "1px solid rgba(217,188,122,0.6)", borderRadius: 16, padding: "12px 18px", fontSize: 15, fontWeight: 600, textAlign: "center", boxShadow: "0 12px 30px rgba(0,0,0,0.3)", lineHeight: 1.6, maxWidth: "88vw" },
   holyBadge: { flex: "0 0 auto", fontSize: 11.5, fontWeight: 600, color: "var(--title)", background: "var(--input)", border: "1px solid var(--line2)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" },
-  holyBadgeToday: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  holyBadgeToday: { background: "var(--acc)", color: "#F3ECD8", borderColor: "var(--acc)" },
   quickRow: { display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 },
   chip: { display: "inline-flex", alignItems: "center", gap: 5, background: "var(--input)", color: "var(--ink)", border: "1px solid var(--line3)", borderRadius: 999, padding: "7px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'Lora', serif", minHeight: 36 },
   chipOn: { background: "var(--btn)", color: "var(--btn-ink)", borderColor: "var(--btn)" },
@@ -3049,11 +3098,11 @@ const styles = {
   navBtn: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, height: 62, background: "transparent", border: "none", cursor: "pointer", color: "var(--muted-ink)", fontFamily: "'Lora', serif" },
   navBtnOn: { color: "var(--title)", fontWeight: 600 },
   navLabel: { fontSize: 10.5 },
-  fab: { justifySelf: "center", alignSelf: "center", width: 56, height: 56, marginTop: -26, borderRadius: "50%", border: "3px solid var(--bg)", background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8", cursor: "pointer", boxShadow: "0 6px 16px rgba(15,76,58,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 },
+  fab: { justifySelf: "center", alignSelf: "center", width: 56, height: 56, marginTop: -26, borderRadius: "50%", border: "3px solid var(--bg)", background: "linear-gradient(180deg, var(--acc2), var(--acc))", color: "#F3ECD8", cursor: "pointer", boxShadow: "0 6px 16px rgba(15,76,58,0.35)", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 },
   sheetWrap: { position: "fixed", inset: 0, zIndex: 60, background: "rgba(5,20,15,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" },
   sheet: { width: "100%", maxWidth: 560, background: "var(--card)", color: "var(--ink)", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "8px 20px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -10px 40px rgba(0,0,0,0.3)", maxHeight: "92vh", overflowY: "auto" },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, background: "var(--line3)", margin: "4px auto 12px" },
-  toast: { position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(80px + env(safe-area-inset-bottom))", zIndex: 70, background: "#0F4C3A", color: "#F3ECD8", padding: "10px 16px", borderRadius: 999, fontSize: 13.5, boxShadow: "0 6px 20px rgba(0,0,0,0.25)", whiteSpace: "nowrap" },
+  toast: { position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(80px + env(safe-area-inset-bottom))", zIndex: 70, background: "var(--acc)", color: "#F3ECD8", padding: "10px 16px", borderRadius: 999, fontSize: 13.5, boxShadow: "0 6px 20px rgba(0,0,0,0.25)", whiteSpace: "nowrap" },
   setRowWrap: { borderTop: "1px solid var(--line)" },
   setRow: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: "12px 8px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 14 },
   setIcon: { width: 22, display: "flex", justifyContent: "center", color: "var(--gold)" },
@@ -3063,14 +3112,14 @@ const styles = {
   solatNext: { fontSize: 15, fontWeight: 600, color: "var(--title)", marginBottom: 10 },
   solatGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 },
   solatCell: { textAlign: "center", padding: "8px 2px", borderRadius: 8, background: "var(--input)", border: "1px solid var(--line)" },
-  solatCellOn: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  solatCellOn: { background: "var(--acc)", color: "#F3ECD8", borderColor: "var(--acc)" },
   solatName: { fontSize: 11.5, opacity: 0.75, whiteSpace: "nowrap" },
   solatTime: { fontSize: 14, fontWeight: 600, marginTop: 2, fontFamily: "'IBM Plex Mono', monospace", whiteSpace: "nowrap" },
-  doaCongrats: { textAlign: "center", background: "#0F4C3A", color: "#F3ECD8", borderRadius: 10, padding: "10px 12px", fontSize: 14, marginBottom: 14 },
+  doaCongrats: { textAlign: "center", background: "var(--acc)", color: "#F3ECD8", borderRadius: 10, padding: "10px 12px", fontSize: 14, marginBottom: 14 },
   doaAr: { fontFamily: "'Amiri', serif", fontSize: 24, lineHeight: 2, textAlign: "center", color: "var(--ink)", margin: "4px 0 16px" },
   doaTr: { fontSize: 14, lineHeight: 1.6, opacity: 0.9, margin: "6px 0 18px" },
   yearCard: { position: "relative", overflow: "hidden", borderRadius: 16, padding: "20px 18px 16px", marginBottom: 12, color: "#F3ECD8",
-    background: "radial-gradient(circle at 50% 0%, rgba(255,205,110,0.22) 0%, rgba(255,205,110,0) 55%), linear-gradient(180deg, #0F4C3A 0%, #072E23 100%)",
+    background: "radial-gradient(circle at 50% 0%, rgba(255,205,110,0.22) 0%, rgba(255,205,110,0) 55%), linear-gradient(180deg, var(--acc) 0%, var(--acc3) 100%)",
     boxShadow: "0 8px 24px rgba(15,76,58,0.25)", border: "1px solid rgba(217,188,122,0.35)" },
   yearChips: { display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" },
   yearTitle: { fontFamily: "'Amiri', serif", fontSize: 24, fontWeight: 700, textAlign: "center", margin: 0 },
