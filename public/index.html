@@ -2,7 +2,7 @@
 <html lang="ms">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Quran Note</title>
 <meta name="theme-color" content="#0F4C3A" />
 <meta name="description" content="Jurnal bacaan Al-Qur'an: catat muka surat, streak dan khatam." />
@@ -64,6 +64,11 @@
   @media (prefers-reduced-motion: reduce) { .qt-fade { animation: none !important; } }
   @keyframes qtFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
   .qt-fade { animation: qtFadeIn 0.35s ease-out; }
+  .qt-car { scrollbar-width: none; }
+  .qt-car::-webkit-scrollbar { display: none; }
+  @keyframes qtSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .qt-sheet { animation: qtSheetUp 0.28s cubic-bezier(.2,.8,.2,1); }
+  @media (prefers-reduced-motion: reduce) { .qt-sheet { animation: none; } }
   .qt-heat::-webkit-scrollbar { height: 6px; }
   .qt-heat::-webkit-scrollbar-thumb { background: var(--line3); border-radius: 3px; }
 
@@ -397,6 +402,9 @@ const TEXT = {
     solatError: "Tak dapat ambil waktu solat. Cuba lagi sebentar.", solatSource: (x) => `Sumber: ${x}`,
     solatServerOnly: "Waktu solat hanya tersedia di laman Netlify.", solatEmpty: "Guna lokasi semasa atau pilih zon untuk lihat waktu solat JAKIM.",
     solatTomorrow: "esok", solatLoading: "Memuatkan…",
+    navHome: "Utama", navHistory: "Sejarah", navStats: "Statistik", navSettings: "Tetapan",
+    juzShow: "lihat juz' ▾", juzHide: "tutup juz' ▴", savedToast: (r) => `Disimpan ✓ ${r}`,
+    solatPickShort: "pilih zon", solatTap: "Ketik untuk lihat semua waktu",
     notifOn: "Hidupkan peringatan", notifOff: "Matikan", notifTest: "Hantar notifikasi ujian",
     notifStateOn: "Peringatan aktif ✓", notifDenied: "Notifikasi disekat. Benarkan dalam tetapan pelayar/telefon.",
     notifUnsupported: "Pelayar ini tak menyokong notifikasi.",
@@ -494,6 +502,9 @@ const TEXT = {
     solatError: "Couldn't load prayer times. Try again shortly.", solatSource: (x) => `Source: ${x}`,
     solatServerOnly: "Prayer times are only available on the Netlify site.", solatEmpty: "Use your current location or choose a zone to see JAKIM prayer times.",
     solatTomorrow: "tomorrow", solatLoading: "Loading…",
+    navHome: "Home", navHistory: "History", navStats: "Stats", navSettings: "Settings",
+    juzShow: "show juz' ▾", juzHide: "hide juz' ▴", savedToast: (r) => `Saved ✓ ${r}`,
+    solatPickShort: "choose zone", solatTap: "Tap to see all times",
     notifOn: "Turn on reminder", notifOff: "Turn off", notifTest: "Send a test notification",
     notifStateOn: "Reminder on ✓", notifDenied: "Notifications are blocked. Allow them in your browser/phone settings.",
     notifUnsupported: "This browser doesn't support notifications.",
@@ -785,8 +796,42 @@ function QuranTracker() {
   const [khatamDraft, setKhatamDraft] = useState(null);
   const [khatamFlash, setKhatamFlash] = useState("");
   const [badgesOpen, setBadgesOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [openSetting, setOpenSetting] = useState(null);
+
+  // Screens (Utama / Sejarah / Statistik / Tetapan) live in the URL hash so the phone's Back button works.
+  const SCREENS = ["home", "history", "stats", "settings"];
+  const readScreen = () => { const h = (location.hash || "").slice(1); return SCREENS.includes(h) ? h : "home"; };
+  const [screen, setScreen] = useState(readScreen);
+  const [juzOpen, setJuzOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [toast, setToast] = useState("");
+  const [slide, setSlide] = useState(0);
+  const [prayerSignal, setPrayerSignal] = useState(0);
+  const carRef = useRef(null);
+  const toastTimer = useRef(null);
+  function showToast(msg) { setToast(msg); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(""), 2600); }
+  function go(next) {
+    if (next === screen) { window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    if (next === "home") { try { history.pushState(null, "", location.pathname + location.search); } catch (e) {} setScreen("home"); }
+    else location.hash = next;
+    window.scrollTo(0, 0);
+  }
+  useEffect(() => {
+    const onNav = () => { setScreen(readScreen()); setSheetOpen(false); };
+    window.addEventListener("hashchange", onNav);
+    window.addEventListener("popstate", onNav);
+    return () => { window.removeEventListener("hashchange", onNav); window.removeEventListener("popstate", onNav); };
+  }, []);
+  function openLog() {
+    if (!canEdit) { setLoginErr(""); setLoginOpen(true); return; }
+    setFormError(""); setDate(todayStr());
+    try { history.pushState({ sheet: 1 }, "", location.href); } catch (e) {}
+    setSheetOpen(true);
+    setTimeout(() => { const el = document.getElementById("log-to"); if (el) el.focus(); }, 320);
+  }
+  function closeLog() {
+    if (history.state && history.state.sheet) history.back(); else setSheetOpen(false);
+  }
   const [doa, setDoa] = useState(null); // null | { n } (n = 0 when opened from the button)
 
   // target / settings / backup / install
@@ -828,17 +873,17 @@ function QuranTracker() {
       location.href = "https://quran.com/page/" + (last ? Math.min(last.page + 1, TOTAL_PAGES) : 1);
       return;
     }
-    const go = () => {
+    const run = () => {
       if (action === "log") {
         if (roleRef.current === "viewer") { setLoginOpen(true); return; }
-        const el = document.getElementById("log-to");
-        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => el.focus(), 400); }
+        openLog();
       } else if (action === "solat") {
-        const el = document.getElementById("solat");
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        setScreen("home");
+        setPrayerSignal((n) => n + 1);
+        setTimeout(() => { const el = document.getElementById("solat"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 150);
       }
     };
-    setTimeout(go, document.getElementById("splash") ? 3600 : 300);
+    setTimeout(run, document.getElementById("splash") ? 3600 : 300);
   }, [role]);
 
   // theme
@@ -1212,6 +1257,8 @@ function QuranTracker() {
     persist([entry, ...entries]);
     if (to === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
     setPage(""); setFromPage(""); setNote("");
+    closeLog();
+    showToast(T.savedToast(rangeLabel(entry)));
   }
   function deleteEntry(id) {
     persistDeleted({ ...deleted, entries: [...deleted.entries, id] });
@@ -1490,97 +1537,9 @@ function QuranTracker() {
     ) },
   ];
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.bgPattern} />
-      <div style={styles.container}>
-        <div style={styles.topBar}>
-          <div style={styles.syncPill} aria-live="polite">
-            {role === "owner" && <><span style={{ ...styles.dot, background: syncState === "saved" ? "var(--bar)" : syncState === "saving" ? "var(--gold)" : "var(--danger)" }} />{syncLabel}</>}
-          </div>
-          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            <button className="qt-btn" onClick={() => persistSettings({ theme: resolvedTheme === "dark" ? "light" : "dark" })}
-              style={styles.langBtn} aria-label={T.toggleTheme} title={T.toggleTheme}>{resolvedTheme === "dark" ? "☀" : "☾"}</button>
-            {["ms", "en"].map((l) => (
-              <button key={l} className="qt-btn" onClick={() => persistSettings({ lang: l })}
-                style={{ ...styles.langBtn, ...(settings.lang === l ? styles.langBtnOn : {}) }}>{l === "ms" ? "BM" : "EN"}</button>
-            ))}
-          </div>
-        </div>
-
-        {role === "viewer" && (
-          <div style={styles.viewerBanner}>
-            <span style={{ flex: 1 }}>👁 {T.viewerBanner}</span>
-            <button className="qt-btn" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
-          </div>
-        )}
-
-        <header style={styles.header}>
-          <div style={styles.eyebrow}>وِرْد القُرْآن</div>
-          <h1 style={styles.title}>Quran Note</h1>
-          <p style={styles.subtitle}>{T.subtitle}</p>
-          <div style={styles.todayLine}>
-            {parseIso(today).toLocaleDateString(T.locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            {fmtHijri(today, hOff, settings.lang) && <> · <span style={{ color: "var(--gold)" }}>{fmtHijri(today, hOff, settings.lang)}</span></>}
-          </div>
-        </header>
-
-        <div style={styles.mihrabWrap}>
-          <div style={styles.mihrab}>
-            <div style={styles.mihrabInner}>
-              {lastEntry ? (
-                <>
-                  <div style={styles.mihrabLabel}>{T.lastRead}</div>
-                  <a href={`https://quran.com/page/${lastEntry.page}`} target="_blank" rel="noopener noreferrer"
-                    style={styles.mihrabLink} aria-label={T.openQuran(lastEntry.page)}>
-                    <span style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></span>
-                    <span style={styles.openHint}>{T.openQuranShort} ↗</span>
-                  </a>
-                  <div style={styles.mihrabSurah}>{surahForPage(lastEntry.page)}</div>
-                  <div style={styles.mihrabMeta}>Juz' {juzForPage(lastEntry.page)} · {fmtDate(lastEntry.date)}</div>
-                </>
-              ) : (
-                <>
-                  <div style={styles.mihrabLabel}>{T.noEntries}</div>
-                  <div style={styles.mihrabMeta}>{T.startHint}</div>
-                </>
-              )}
-              <div style={styles.streakRow}>
-                <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> {T.streak(streak)}</div>
-                <div style={styles.streakChip}><span style={styles.mono}>{coveredCount}</span>/{TOTAL_PAGES} {T.pages}</div>
-                <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>{T.khatamChip}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={styles.progressSection}>
-          <div style={styles.progressTrack}>
-            <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
-          </div>
-          <div style={styles.progressLabel}>
-            {T.through(progressPct)}{khatamCount > 0 ? ` · ${T.round(khatamCount + 1)}` : ""}
-          </div>
-        </div>
-
-        <div style={styles.juzGrid}>
-          {juzFill.map((f, i) => {
-            const num = i + 1;
-            const pct = Math.round(f * 100);
-            const fillStyle = f >= 1 ? styles.juzMarkFilled
-              : f > 0 ? { background: `linear-gradient(0deg, #C9A94F ${pct}%, var(--muted) ${pct}%)`, color: "#16342B" } : {};
-            return (
-              <div key={num} title={`Juz' ${num} · ${pct}%`} style={{ ...styles.juzMark, ...fillStyle }}>
-                <span style={{ ...styles.mono, fontSize: 10 }}>{num}</span>
-              </div>
-            );
-          })}
-        </div>
-
-        <PrayerCard T={T} lang={settings.lang} settings={settings} persistSettings={persistSettings} today={today}
-          available={role !== "local" && role !== "checking"} />
-
-        <section style={styles.estCard}>
+  const navItems = [["home", "🏠", T.navHome], ["history", "📖", T.navHistory], ["log", "+", T.logTitle], ["stats", "📊", T.navStats], ["settings", "⚙️", T.navSettings]];
+  const slides = [
+    <>
           <div style={styles.estRow}>
             <div style={{ flex: 1 }}>
               <div style={styles.estLabel}>{T.estTitle}</div>
@@ -1594,7 +1553,8 @@ function QuranTracker() {
               )}
             </div>
           </div>
-          <div style={styles.estDivider} />
+    </>,
+    <>
           {editingTarget ? (
             <form onSubmit={(e) => { e.preventDefault(); persistSettings({ targetDate: targetDraft }); setEditingTarget(false); }}
               style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -1629,9 +1589,8 @@ function QuranTracker() {
               )}
             </div>
           )}
-          {ramadan && (
-            <>
-              <div style={styles.estDivider} />
+    </>,
+    ramadan && <>
               <div style={styles.estLabel}>🌙 {T.ramadanLabel}</div>
               {ramadan.inRamadan ? (
                 <>
@@ -1645,41 +1604,177 @@ function QuranTracker() {
                   <div style={styles.estSub}>{T.ramadanPlan(Math.ceil(TOTAL_PAGES / ramadan.length), Math.ceil(TOTAL_PAGES / ramadan.length / 5))}</div>
                 </>
               )}
-            </>
-          )}
-        </section>
+    </>,
+  ].filter(Boolean);
 
-        {canEdit && (
-          <form onSubmit={addEntry} style={styles.form}>
-            <h2 style={styles.formTitle}>{T.logTitle}</h2>
-            <div style={styles.formRow3}>
-              <label style={styles.label}>
-                {T.from}
-                <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={fromPage}
-                  onChange={(e) => setFromPage(e.target.value)} placeholder={lastEntry ? String(Math.min(lastEntry.page + 1, TOTAL_PAGES)) : "1"} style={styles.input} />
-              </label>
-              <label style={styles.label}>
-                {T.to}
-                <input id="log-to" className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
-                  onChange={(e) => setPage(e.target.value)} placeholder="1–604" style={styles.input} required />
-              </label>
-              <label style={{ ...styles.label, flex: 1.6 }}>
-                {T.date}
-                <input className="qt-input" type="date" value={date}
-                  onChange={(e) => setDate(e.target.value)} style={styles.input} max={today} required />
-              </label>
+  return (
+    <div style={styles.page}>
+      <div style={styles.bgPattern} />
+      <div style={styles.container}>
+        {role === "owner" && (
+          <div style={styles.topBar}>
+            <div style={styles.syncPill} aria-live="polite">
+              <span style={{ ...styles.dot, background: syncState === "saved" ? "var(--bar)" : syncState === "saving" ? "var(--gold)" : "var(--danger)" }} />{syncLabel}
             </div>
-            <div style={styles.hint}>{T.fromHint}</div>
-            <label style={styles.label}>
-              <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
-              <textarea className="qt-textarea" value={note} onChange={(e) => setNote(e.target.value)}
-                placeholder={T.notePh} style={styles.textarea} rows={2} />
-            </label>
-            <button className="qt-btn" type="submit" style={styles.submitBtn}>{T.saveEntry}</button>
-            {(formError || saveError) && <div style={styles.errorText}>{formError || saveError}</div>}
-          </form>
+          </div>
         )}
 
+        {role === "viewer" && screen !== "settings" && (
+          <div style={styles.viewerBanner}>
+            <span style={{ flex: 1 }}>👁 {T.viewerBanner}</span>
+            <button className="qt-btn" onClick={() => { setLoginErr(""); setLoginOpen(true); }} style={styles.smallPrimary}>{T.iAmOwner}</button>
+          </div>
+        )}
+
+        {screen === "home" && (
+          <>
+            <header style={styles.header}>
+              <div style={styles.eyebrow}>وِرْد القُرْآن</div>
+              <h1 style={styles.title}>Quran Note</h1>
+              <div style={styles.todayLine}>
+                {parseIso(today).toLocaleDateString(T.locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                {fmtHijri(today, hOff, settings.lang) && <> · <span style={{ color: "var(--gold)" }}>{fmtHijri(today, hOff, settings.lang)}</span></>}
+              </div>
+            </header>
+
+            <div style={styles.mihrabWrap}>
+              <div style={styles.mihrab}>
+                <div style={styles.mihrabInner}>
+                  {lastEntry ? (
+                    <>
+                      <div style={styles.mihrabLabel}>{T.lastRead}</div>
+                      <a href={`https://quran.com/page/${lastEntry.page}`} target="_blank" rel="noopener noreferrer"
+                        style={styles.mihrabLink} aria-label={T.openQuran(lastEntry.page)}>
+                        <span style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></span>
+                        <span style={styles.openHint}>{T.openQuranShort} ↗</span>
+                      </a>
+                      <div style={styles.mihrabSurah}>{surahForPage(lastEntry.page)}</div>
+                      <div style={styles.mihrabMeta}>Juz' {juzForPage(lastEntry.page)} · {fmtDate(lastEntry.date)}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={styles.mihrabLabel}>{T.noEntries}</div>
+                      <div style={styles.mihrabMeta}>{T.startHint}</div>
+                    </>
+                  )}
+                  <div style={styles.streakRow}>
+                    <div style={styles.streakChip}><span style={styles.mono}>{streak}</span> {T.streak(streak)}</div>
+                    <div style={styles.streakChip}><span style={styles.mono}>{coveredCount}</span>/{TOTAL_PAGES} {T.pages}</div>
+                    <div style={styles.streakChip}><span style={styles.mono}>{khatamCount}</span>{T.khatamChip}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
+            <button className="qt-btn" type="button" onClick={() => setJuzOpen(!juzOpen)} aria-expanded={juzOpen} style={styles.progressBtn}>
+              <div style={styles.progressTrack}>
+                <div style={{ ...styles.progressFill, width: `${progressPct}%` }} />
+              </div>
+              <div style={styles.progressLabel}>
+                {T.through(progressPct)}{khatamCount > 0 ? ` · ${T.round(khatamCount + 1)}` : ""} · <span style={{ color: "var(--gold)" }}>{juzOpen ? T.juzHide : T.juzShow}</span>
+              </div>
+            </button>
+            {juzOpen && (
+              <div className="qt-fade">
+        <div style={styles.juzGrid}>
+          {juzFill.map((f, i) => {
+            const num = i + 1;
+            const pct = Math.round(f * 100);
+            const fillStyle = f >= 1 ? styles.juzMarkFilled
+              : f > 0 ? { background: `linear-gradient(0deg, #C9A94F ${pct}%, var(--muted) ${pct}%)`, color: "#16342B" } : {};
+            return (
+              <div key={num} title={`Juz' ${num} · ${pct}%`} style={{ ...styles.juzMark, ...fillStyle }}>
+                <span style={{ ...styles.mono, fontSize: 10 }}>{num}</span>
+              </div>
+            );
+          })}
+        </div>
+
+              </div>
+            )}
+
+            <PrayerCard T={T} lang={settings.lang} settings={settings} persistSettings={persistSettings} today={today}
+              available={role !== "local" && role !== "checking"} openSignal={prayerSignal} />
+
+            <div ref={carRef} className="qt-car" style={styles.carousel} onScroll={(e) => {
+              const el = e.currentTarget, first = el.firstElementChild;
+              if (first) setSlide(Math.round(el.scrollLeft / (first.offsetWidth + 10)));
+            }}>
+              {slides.map((content, i) => <section key={i} style={styles.slide}>{content}</section>)}
+            </div>
+            {slides.length > 1 && (
+              <div style={styles.dots} aria-hidden="true">
+                {slides.map((_, i) => <span key={i} style={{ ...styles.dotI, ...(i === slide ? styles.dotOn : {}) }} />)}
+              </div>
+            )}
+          </>
+        )}
+
+        {screen === "history" && (
+          <>
+            <h2 style={styles.screenTitle}>{T.navHistory}</h2>
+            <div style={styles.tabs} role="tablist">
+              {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal]].map(([key, label]) => (
+                <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => setTab(key)}
+                  style={{ ...styles.tab, ...(tab === key ? styles.tabOn : {}) }}>{label}</button>
+              ))}
+            </div>
+        {tab === "history" && (
+          <div style={styles.historySection}>
+            {months.length === 0 ? (
+              <div style={styles.emptyState}>{T.emptyHistory}</div>
+            ) : (
+              months.map((m) => {
+                const open = openMonths.has(m.key);
+                return (
+                  <div key={m.key} style={styles.monthBlock}>
+                    <button className="qt-btn" type="button" onClick={() => toggleMonth(m.key)} aria-expanded={open}
+                      style={{ ...styles.monthHead, ...(open ? styles.monthHeadOpen : {}) }}>
+                      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                        <div style={styles.monthName}>{fmtMonth(m.key)}</div>
+                        <div style={styles.monthMeta}>
+                          {T.monthSummary(m.days.length, m.pages)} · <span style={styles.mono}>{m.minP === m.maxP ? `p.${m.maxP}` : `p.${m.minP}–${m.maxP}`}</span>
+                        </div>
+                      </div>
+                      <span style={{ ...styles.chev, transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                    </button>
+                    {open && (
+                      <div className="qt-fade" style={styles.monthBody}>
+                        {m.days.map(([d, list]) => (
+                          <div key={d} style={styles.dayGroup}>
+                            <div style={styles.dayHeader}>{fmtDate(d)} <span style={{ opacity: 0.7, fontWeight: 400 }}>· {fmtHijriShort(d)}</span></div>
+                            {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {tab === "reflect" && (
+          <div style={styles.historySection}>
+            {notesList.length === 0 ? (
+              <div style={styles.emptyState}>{T.emptyReflect}</div>
+            ) : (
+              notesList.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: true })}</React.Fragment>)
+            )}
+          </div>
+        )}
+
+        {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
+
+          </>
+        )}
+
+        {screen === "stats" && (
+          <>
+            <h2 style={styles.screenTitle}>{T.navStats}</h2>
+            <YearSummary entries={entries} spans={spans} khatams={khatamsAsc} today={today} T={T} fmtMonth={fmtMonth} fmtLong={fmtLong} />
         {/* ----- Khatam (collapsible) ----- */}
         <section style={styles.collapseCard}>
           <button className="qt-btn" type="button" onClick={() => setKhatamOpen(!khatamOpen)} aria-expanded={khatamOpen} style={styles.collapseHead}>
@@ -1800,82 +1895,19 @@ function QuranTracker() {
           )}
         </section>
 
-        <div style={styles.tabs} role="tablist">
-          {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal], ["stats", T.tabStats]].map(([key, label]) => (
-            <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => setTab(key)}
-              style={{ ...styles.tab, ...(tab === key ? styles.tabOn : {}) }}>{label}</button>
-          ))}
-        </div>
-
-        {tab === "history" && (
-          <div style={styles.historySection}>
-            {months.length === 0 ? (
-              <div style={styles.emptyState}>{T.emptyHistory}</div>
-            ) : (
-              months.map((m) => {
-                const open = openMonths.has(m.key);
-                return (
-                  <div key={m.key} style={styles.monthBlock}>
-                    <button className="qt-btn" type="button" onClick={() => toggleMonth(m.key)} aria-expanded={open}
-                      style={{ ...styles.monthHead, ...(open ? styles.monthHeadOpen : {}) }}>
-                      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                        <div style={styles.monthName}>{fmtMonth(m.key)}</div>
-                        <div style={styles.monthMeta}>
-                          {T.monthSummary(m.days.length, m.pages)} · <span style={styles.mono}>{m.minP === m.maxP ? `p.${m.maxP}` : `p.${m.minP}–${m.maxP}`}</span>
-                        </div>
-                      </div>
-                      <span style={{ ...styles.chev, transform: open ? "rotate(90deg)" : "none" }}>›</span>
-                    </button>
-                    {open && (
-                      <div className="qt-fade" style={styles.monthBody}>
-                        {m.days.map(([d, list]) => (
-                          <div key={d} style={styles.dayGroup}>
-                            <div style={styles.dayHeader}>{fmtDate(d)} <span style={{ opacity: 0.7, fontWeight: 400 }}>· {fmtHijriShort(d)}</span></div>
-                            {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
-
-        {tab === "reflect" && (
-          <div style={styles.historySection}>
-            {notesList.length === 0 ? (
-              <div style={styles.emptyState}>{T.emptyReflect}</div>
-            ) : (
-              notesList.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: true })}</React.Fragment>)
-            )}
-          </div>
-        )}
-
-        {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} today={today} T={T} fmtLong={fmtLong} />}
-
-        {tab === "stats" && (
-          <>
-            <YearSummary entries={entries} spans={spans} khatams={khatamsAsc} today={today} T={T} fmtMonth={fmtMonth} fmtLong={fmtLong} />
             <Stats pagesByDate={pagesByDate} today={today} T={T} fmtMonth={fmtMonth}
               totalPages={totalPages} bestStreak={bestStreak} readingDays={readingDays} ayahsTotal={ayahsTotal} khatamCount={khatamCount} />
           </>
         )}
 
-        <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
-        {/* ----- Settings (collapsible, one row open at a time) ----- */}
-        <section style={styles.collapseCard}>
-          <button className="qt-btn" type="button" onClick={() => setSettingsOpen(!settingsOpen)} aria-expanded={settingsOpen} style={styles.collapseHead}>
-            <span style={styles.collapseTitle}>⚙️ {T.settings}</span>
-            <span style={{ ...styles.chev, transform: settingsOpen ? "rotate(90deg)" : "none" }}>›</span>
-          </button>
-          {settingsOpen && (
-            <div className="qt-fade" style={{ padding: "0 10px 10px" }}>
-              {settingRows.filter(Boolean).map((row) => {
+        {screen === "settings" && (
+          <>
+            <h2 style={styles.screenTitle}>{T.navSettings}</h2>
+            <section style={{ ...styles.collapseCard, padding: "4px 10px" }}>
+              {settingRows.filter(Boolean).map((row, idx) => {
                 const open = openSetting === row.key;
                 return (
-                  <div key={row.key} style={styles.setRowWrap}>
+                  <div key={row.key} style={{ ...styles.setRowWrap, ...(idx === 0 ? { borderTop: "none" } : {}) }}>
                     <button className="qt-btn" type="button" onClick={() => setOpenSetting(open ? null : row.key)} aria-expanded={open} style={styles.setRow}>
                       <span style={styles.setIcon} aria-hidden="true">{row.icon}</span>
                       <span style={{ flex: 1, textAlign: "left" }}>{row.title}</span>
@@ -1886,12 +1918,65 @@ function QuranTracker() {
                   </div>
                 );
               })}
-            </div>
-          )}
-        </section>
-
-        <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
+            </section>
+            <footer style={styles.footer}>{serverMode ? T.footerServer(TOTAL_PAGES) : T.footerLocal(TOTAL_PAGES)}</footer>
+          </>
+        )}
+        <input ref={fileRef} type="file" accept="application/json,.json" onChange={onImportFile} style={{ display: "none" }} />
       </div>
+
+      {toast && <div className="qt-fade" style={styles.toast} role="status">{toast}</div>}
+
+      <nav style={styles.nav} aria-label="Navigasi">
+        <div style={styles.navInner}>
+          {navItems.map(([key, icon, label]) => key === "log" ? (
+            <button key={key} className="qt-btn" type="button" onClick={openLog} aria-label={label} title={label} style={styles.fab}>+</button>
+          ) : (
+            <button key={key} className="qt-btn" type="button" onClick={() => go(key)} aria-current={screen === key ? "page" : undefined}
+              style={{ ...styles.navBtn, ...(screen === key ? styles.navBtnOn : {}) }}>
+              <span style={{ fontSize: 19, lineHeight: 1, filter: screen === key ? "none" : "grayscale(0.6)", opacity: screen === key ? 1 : 0.75 }}>{icon}</span>
+              <span style={styles.navLabel}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {sheetOpen && canEdit && (
+        <div style={styles.sheetWrap} onClick={(e) => { if (e.target === e.currentTarget) closeLog(); }}>
+          <form onSubmit={addEntry} style={styles.sheet} className="qt-sheet" role="dialog" aria-modal="true" aria-labelledby="log-title">
+            <div style={styles.sheetHandle} />
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+              <h2 id="log-title" style={{ ...styles.formTitle, margin: 0, flex: 1 }}>{T.logTitle}</h2>
+              <button className="qt-btn" type="button" onClick={closeLog} aria-label={T.close} style={styles.iconBtn}>✕</button>
+            </div>
+            <div style={styles.formRow3}>
+              <label style={styles.label}>
+                {T.from}
+                <input className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={fromPage}
+                  onChange={(e) => setFromPage(e.target.value)} placeholder={lastEntry ? String(Math.min(lastEntry.page + 1, TOTAL_PAGES)) : "1"} style={styles.input} />
+              </label>
+              <label style={styles.label}>
+                {T.to}
+                <input id="log-to" className="qt-input" type="number" min="1" max={TOTAL_PAGES} value={page}
+                  onChange={(e) => setPage(e.target.value)} placeholder="1–604" style={styles.input} required />
+              </label>
+              <label style={{ ...styles.label, flex: 1.6 }}>
+                {T.date}
+                <input className="qt-input" type="date" value={date}
+                  onChange={(e) => setDate(e.target.value)} style={styles.input} max={today} required />
+              </label>
+            </div>
+            <div style={styles.hint}>{T.fromHint}</div>
+            <label style={styles.label}>
+              <span>{T.note} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
+              <textarea className="qt-textarea" value={note} onChange={(e) => setNote(e.target.value)}
+                placeholder={T.notePh} style={styles.textarea} rows={2} />
+            </label>
+            <button className="qt-btn" type="submit" style={styles.submitBtn}>{T.saveEntry}</button>
+            {(formError || saveError) && <div style={styles.errorText}>{formError || saveError}</div>}
+          </form>
+        </div>
+      )}
 
       {doa && (
         <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setDoa(null); }}>
@@ -1989,8 +2074,10 @@ function Heatmap({ pagesByDate, today, T, fmtLong }) {
 }
 
 /* ---------- Prayer times card (JAKIM e-Solat via /api/solat) ---------- */
-function PrayerCard({ T, lang, settings, persistSettings, today, available }) {
+function PrayerCard({ T, lang, settings, persistSettings, today, available, openSignal }) {
   const [data, setData] = useState(() => readJson("quran-journal-solat", null));
+  const [open, setOpen] = useState(false);
+  useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
   const [status, setStatus] = useState("idle"); // idle | loading | locating | error | denied | outside
   const [zones, setZones] = useState(null);
   const [picking, setPicking] = useState(false);
@@ -2060,12 +2147,22 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available }) {
   const hijriLabel = td && td.hijri ? (() => { const m = td.hijri.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/); return m ? `${+m[3]} ${(HIJRI_MONTHS[lang] || HIJRI_MONTHS.ms)[+m[2] - 1]} ${m[1]}` : ""; })() : "";
   const msg = { locating: T.solatLocating, loading: T.solatLoading, error: T.solatError, denied: T.solatDenied, outside: T.solatOutside }[status];
 
+  const summary = !available ? T.solatServerOnly : !zone ? T.solatPickShort
+    : next ? `${T.solatNames[next.k]}${next.tomorrow ? ` (${T.solatTomorrow})` : ""} ${fmtT((next.tomorrow ? tm : td)[next.k])} · ${T.solatHM(Math.floor(next.mins / 60), next.mins % 60)}`
+    : status === "error" ? T.solatError : T.solatLoading;
+
   return (
-    <section id="solat" style={styles.estCard}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
-        <div style={{ ...styles.estLabel, flex: 1 }}>{T.solat}{zone ? ` · ${zone}` : ""}</div>
-        {hijriLabel && <div style={{ fontSize: 12, opacity: 0.75 }}>{hijriLabel}</div>}
-      </div>
+    <section id="solat" style={{ ...styles.estCard, padding: open ? "14px 18px 16px" : "12px 16px", marginBottom: 14 }}>
+      <button className="qt-btn" type="button" onClick={() => setOpen(!open)} aria-expanded={open} style={styles.solatHead}>
+        <span aria-hidden="true" style={{ fontSize: 17 }}>🕌</span>
+        <span style={{ flex: 1, textAlign: "left", minWidth: 0 }}>
+          <span style={{ ...styles.estLabel, display: "block" }}>{T.solat}{zone ? ` · ${zone}` : ""}</span>
+          {!open && <span style={styles.solatSummary}>{summary}</span>}
+          {open && hijriLabel && <span style={{ fontSize: 12, opacity: 0.75 }}>{hijriLabel}</span>}
+        </span>
+        <span style={{ ...styles.chev, fontSize: 20, transform: open ? "rotate(90deg)" : "none" }}>›</span>
+      </button>
+      {open && <div className="qt-fade" style={{ marginTop: 10 }}>
       {!available ? (
         <div style={styles.estSub}>{T.solatServerOnly}</div>
       ) : !zone ? (
@@ -2114,6 +2211,7 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available }) {
           ))}
         </select>
       )}
+      </div>}
     </section>
   );
 }
@@ -2366,18 +2464,18 @@ function Stats({ pagesByDate, today, T, fmtMonth, totalPages, bestStreak, readin
 const styles = {
   page: { minHeight: "100vh", background: "var(--bg)", color: "var(--ink)", fontFamily: "'Lora', serif", position: "relative", overflow: "hidden" },
   bgPattern: { position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.05, backgroundImage: "radial-gradient(circle at 20% 20%, #0F4C3A 0, transparent 45%), radial-gradient(circle at 80% 70%, #A8823C 0, transparent 45%)" },
-  container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "14px 20px 60px" },
-  topBar: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12, minHeight: 28 },
+  container: { position: "relative", maxWidth: 560, margin: "0 auto", padding: "calc(12px + env(safe-area-inset-top)) 18px calc(110px + env(safe-area-inset-bottom))" },
+  topBar: { display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 4, minHeight: 18 },
   syncPill: { display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--muted-ink)" },
   dot: { width: 7, height: 7, borderRadius: "50%", display: "inline-block" },
   langBtn: { background: "transparent", border: "1px solid var(--line3)", color: "var(--ink)", borderRadius: 999, padding: "3px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: "'IBM Plex Mono', monospace", minWidth: 34 },
   langBtnOn: { background: "var(--btn)", color: "var(--btn-ink)", borderColor: "var(--btn)" },
   viewerBanner: { display: "flex", alignItems: "center", gap: 10, background: "var(--banner)", border: "1px solid var(--line2)", borderRadius: 10, padding: "9px 12px", fontSize: 12.5, marginBottom: 16 },
-  header: { textAlign: "center", marginBottom: 28 },
-  eyebrow: { fontFamily: "'Amiri', serif", fontSize: 22, color: "var(--gold)", marginBottom: 6 },
-  title: { fontFamily: "'Amiri', serif", fontSize: 30, fontWeight: 700, margin: 0, color: "var(--ink)", letterSpacing: 0.2 },
+  header: { textAlign: "center", margin: "6px 0 18px" },
+  eyebrow: { fontFamily: "'Amiri', serif", fontSize: 17, color: "var(--gold)", marginBottom: 0 },
+  title: { fontFamily: "'Amiri', serif", fontSize: 26, fontWeight: 700, margin: 0, color: "var(--ink)", letterSpacing: 0.2, lineHeight: 1.2 },
   subtitle: { fontSize: 14, opacity: 0.65, marginTop: 6 },
-  mihrabWrap: { display: "flex", justifyContent: "center", marginBottom: 22 },
+  mihrabWrap: { display: "flex", justifyContent: "center", marginBottom: 16 },
   mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 22px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid rgba(168,130,60,0.33)" },
   mihrabInner: { textAlign: "center", color: "#F3ECD8" },
   mihrabLabel: { fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.75, marginBottom: 4 },
@@ -2476,12 +2574,31 @@ const styles = {
   modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
   modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+  solatHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
+  solatSummary: { display: "block", fontSize: 14.5, fontWeight: 600, color: "var(--title)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  screenTitle: { fontFamily: "'Amiri', serif", fontSize: 26, fontWeight: 700, color: "var(--title)", margin: "6px 2px 14px" },
+  progressBtn: { display: "block", width: "100%", background: "transparent", border: "none", padding: "2px 0", marginBottom: 14, cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif" },
+  carousel: { display: "flex", gap: 10, overflowX: "auto", scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 2 },
+  slide: { flex: "0 0 86%", scrollSnapAlign: "start", background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "16px 18px", boxShadow: "var(--shadow)", minHeight: 118 },
+  dots: { display: "flex", justifyContent: "center", gap: 6, margin: "10px 0 6px" },
+  dotI: { width: 6, height: 6, borderRadius: 3, background: "var(--line3)", transition: "all 0.2s" },
+  dotOn: { width: 16, background: "var(--gold)" },
+  nav: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, background: "var(--card)", borderTop: "1px solid var(--line2)", boxShadow: "0 -4px 18px rgba(0,0,0,0.08)", paddingBottom: "env(safe-area-inset-bottom)" },
+  navInner: { maxWidth: 560, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", alignItems: "end", height: 62 },
+  navBtn: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, height: 62, background: "transparent", border: "none", cursor: "pointer", color: "var(--muted-ink)", fontFamily: "'Lora', serif" },
+  navBtnOn: { color: "var(--title)", fontWeight: 600 },
+  navLabel: { fontSize: 10.5 },
+  fab: { justifySelf: "center", alignSelf: "center", width: 54, height: 54, marginTop: -26, borderRadius: "50%", border: "3px solid var(--bg)", background: "linear-gradient(180deg, #13664D, #0F4C3A)", color: "#F3ECD8", fontSize: 30, lineHeight: 1, cursor: "pointer", boxShadow: "0 6px 16px rgba(15,76,58,0.35)", display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: 3 },
+  sheetWrap: { position: "fixed", inset: 0, zIndex: 60, background: "rgba(5,20,15,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" },
+  sheet: { width: "100%", maxWidth: 560, background: "var(--card)", color: "var(--ink)", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: "8px 20px calc(20px + env(safe-area-inset-bottom))", boxShadow: "0 -10px 40px rgba(0,0,0,0.3)", maxHeight: "92vh", overflowY: "auto" },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, background: "var(--line3)", margin: "4px auto 12px" },
+  toast: { position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(80px + env(safe-area-inset-bottom))", zIndex: 70, background: "#0F4C3A", color: "#F3ECD8", padding: "10px 16px", borderRadius: 999, fontSize: 13.5, boxShadow: "0 6px 20px rgba(0,0,0,0.25)", whiteSpace: "nowrap" },
   setRowWrap: { borderTop: "1px solid var(--line)" },
   setRow: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "transparent", border: "none", padding: "12px 8px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 14 },
   setIcon: { width: 22, textAlign: "center", fontSize: 15 },
   setValue: { fontSize: 12.5, opacity: 0.6, maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   setBody: { padding: "2px 8px 14px 40px" },
-  todayLine: { fontSize: 12.5, opacity: 0.8, marginTop: 8 },
+  todayLine: { fontSize: 12.5, opacity: 0.85, marginTop: 4 },
   solatNext: { fontSize: 15, fontWeight: 600, color: "var(--title)", marginBottom: 10 },
   solatGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 },
   solatCell: { textAlign: "center", padding: "8px 2px", borderRadius: 8, background: "var(--input)", border: "1px solid var(--line)" },
