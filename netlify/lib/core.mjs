@@ -29,6 +29,7 @@ export function validKhatam(k) {
   return !!k && typeof k.id === "string" && k.id.length <= 80 && isIso(k.date) && typeof k.ts === "number" &&
     (k.note == null || (typeof k.note === "string" && k.note.length <= 500));
 }
+export function cleanName(v) { return String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 30); }
 export function cleanDoc(doc) {
   if (!doc || typeof doc !== "object") return null;
   const { entries, khatams } = doc;
@@ -46,6 +47,7 @@ export function cleanDoc(doc) {
       tz: typeof s.tz === "string" && s.tz.length < 64 ? s.tz : DEFAULT_TZ,
       reminderMode: s.reminderMode === "fixed" ? "fixed" : "smart",
       weeklyReport: s.weeklyReport !== false,
+      name: cleanName(s.name),
     },
   };
 }
@@ -230,7 +232,7 @@ export async function runReminder(store, webpush, now = new Date()) {
   const next = last ? Math.min(last.page + 1, TOTAL_PAGES) : 1;
   const result = await sendToAll(store, webpush, {
     title: "Quran Note 🌙",
-    body: `Hari ini belum dicatat lagi. Sambung dari muka surat ${next} — sedikit pun tak apa.`,
+    body: `${current.doc.settings?.name ? `${current.doc.settings.name}, hari` : "Hari"} ini belum dicatat lagi. Sambung dari muka surat ${next} — sedikit pun tak apa.`,
     url: "/",
   });
   await store.setJSON("reminder-log", { lastSent: today, at: now.toISOString(), ...result });
@@ -340,8 +342,9 @@ export async function runWeekly(store, webpush, now = new Date()) {
   const log = (await store.get("weekly-log", { type: "json" })) || {};
   if (log.lastSent === today) return { skipped: "already_sent" };
   const w = weeklySummary(current.doc, today);
+  const who = current.doc.settings?.name ? `${current.doc.settings.name}, minggu` : "Minggu";
   const body = w.pages > 0
-    ? `Minggu ini: ${w.pages} muka surat · ${w.days}/7 hari membaca${w.streak > 1 ? ` · streak ${w.streak} hari 🔥` : ""}. Teruskan minggu depan, insya-Allah.`
+    ? `${who} ini: ${w.pages} muka surat · ${w.days}/7 hari membaca${w.streak > 1 ? ` · streak ${w.streak} hari 🔥` : ""}. Teruskan minggu depan, insya-Allah.`
     : "Minggu ini belum ada bacaan direkodkan. Jom mulakan semula — satu muka surat pun memadai 🤍";
   const result = await sendToAll(store, webpush, { title: "Laporan mingguan · Quran Note", body, url: "/#stats" });
   await store.setJSON("weekly-log", { lastSent: today, ...w, ...result });
