@@ -189,6 +189,8 @@ const TEXT = {
     installed: "App sudah dipasang ✓",
     footer: (n) => `Disimpan secara peribadi dalam pelayar ini · Rujukan Mushaf ${n} muka surat`,
     invalidPage: "Muka surat mesti antara 1 dan 604.",
+    monthSummary: (d, p) => `${d} hari · ${p} muka surat`,
+    openQuran: (p) => `Buka muka surat ${p} di Quran.com`, openQuranShort: "Baca di Quran.com",
   },
   en: {
     locale: "en-GB",
@@ -228,6 +230,8 @@ const TEXT = {
     installed: "App installed ✓",
     footer: (n) => `Saved privately in this browser · ${n}-page Mushaf reference`,
     invalidPage: "Page must be between 1 and 604.",
+    monthSummary: (d, p) => `${d} day${d === 1 ? "" : "s"} · ${p} page${p === 1 ? "" : "s"}`,
+    openQuran: (p) => `Open page ${p} on Quran.com`, openQuranShort: "Read on Quran.com",
   },
 };
 
@@ -474,6 +478,33 @@ function QuranTracker() {
     }
     return [...map.entries()];
   }, [sorted]);
+
+  // Months (newest first), each holding its day groups.
+  const months = useMemo(() => {
+    const out = [];
+    for (const [d, list] of grouped) {
+      const key = d.slice(0, 7);
+      let m = out[out.length - 1];
+      if (!m || m.key !== key) { m = { key, days: [], pages: 0, minP: Infinity, maxP: 0 }; out.push(m); }
+      m.days.push([d, list]);
+      for (const en of list) {
+        const [a, b] = spans[en.id] || [en.page, en.page];
+        m.pages += b - a + 1;
+        m.minP = Math.min(m.minP, a);
+        m.maxP = Math.max(m.maxP, b);
+      }
+    }
+    return out;
+  }, [grouped, spans]);
+  const [openMonths, setOpenMonths] = useState(() => new Set());
+  function toggleMonth(key) {
+    setOpenMonths((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+  const fmtMonth = (key) => parseIso(key + "-01").toLocaleDateString(T.locale, { month: "long", year: "numeric" });
 
   const coveredPages = useMemo(() => {
     const s = new Set();
@@ -749,7 +780,11 @@ function QuranTracker() {
               {lastEntry ? (
                 <>
                   <div style={styles.mihrabLabel}>{T.lastRead}</div>
-                  <div style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></div>
+                  <a href={`https://quran.com/page/${lastEntry.page}`} target="_blank" rel="noopener noreferrer"
+                    style={styles.mihrabLink} aria-label={T.openQuran(lastEntry.page)}>
+                    <span style={styles.mihrabPage}><span style={styles.mono}>p. {lastEntry.page}</span></span>
+                    <span style={styles.openHint}>{T.openQuranShort} ↗</span>
+                  </a>
                   <div style={styles.mihrabSurah}>{surahForPage(lastEntry.page)}</div>
                   <div style={styles.mihrabMeta}>Juz' {juzForPage(lastEntry.page)} · {fmtDate(lastEntry.date)}</div>
                 </>
@@ -970,12 +1005,33 @@ function QuranTracker() {
             {grouped.length === 0 ? (
               <div style={styles.emptyState}>{T.emptyHistory}</div>
             ) : (
-              grouped.map(([d, list]) => (
-                <div key={d} className="qt-fade" style={styles.dayGroup}>
-                  <div style={styles.dayHeader}>{fmtDate(d)}</div>
-                  {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
-                </div>
-              ))
+              months.map((m) => {
+                const open = openMonths.has(m.key);
+                return (
+                  <div key={m.key} style={styles.monthBlock}>
+                    <button className="qt-btn" type="button" onClick={() => toggleMonth(m.key)} aria-expanded={open}
+                      style={{ ...styles.monthHead, ...(open ? styles.monthHeadOpen : {}) }}>
+                      <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                        <div style={styles.monthName}>{fmtMonth(m.key)}</div>
+                        <div style={styles.monthMeta}>
+                          {T.monthSummary(m.days.length, m.pages)} · <span style={styles.mono}>{m.minP === m.maxP ? `p.${m.maxP}` : `p.${m.minP}–${m.maxP}`}</span>
+                        </div>
+                      </div>
+                      <span style={{ ...styles.chev, transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                    </button>
+                    {open && (
+                      <div className="qt-fade" style={styles.monthBody}>
+                        {m.days.map(([d, list]) => (
+                          <div key={d} style={styles.dayGroup}>
+                            <div style={styles.dayHeader}>{fmtDate(d)}</div>
+                            {list.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: false })}</React.Fragment>)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         )}
@@ -1107,7 +1163,16 @@ const styles = {
   mihrab: { width: "100%", maxWidth: 420, background: "linear-gradient(180deg, #0F4C3A 0%, #0C3D2F 100%)", borderTopLeftRadius: 999, borderTopRightRadius: 999, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, padding: "36px 22px 24px", boxShadow: "0 8px 28px rgba(15,76,58,0.28)", border: "1px solid #A8823C55" },
   mihrabInner: { textAlign: "center", color: "#F3ECD8" },
   mihrabLabel: { fontSize: 12, letterSpacing: 1.2, textTransform: "uppercase", opacity: 0.75, marginBottom: 4 },
-  mihrabPage: { fontSize: 34, fontWeight: 600, color: "#D9BC7A" },
+  mihrabPage: { fontSize: 34, fontWeight: 600, color: "#D9BC7A", display: "block" },
+  mihrabLink: { display: "inline-flex", flexDirection: "column", alignItems: "center", textDecoration: "none", color: "inherit", borderRadius: 12, padding: "2px 14px 4px" },
+  openHint: { fontSize: 11, letterSpacing: 0.6, color: "#D9BC7A", opacity: 0.85, border: "1px solid #D9BC7A55", borderRadius: 999, padding: "2px 9px", marginTop: 2, marginBottom: 4 },
+  monthBlock: { marginBottom: 10 },
+  monthHead: { width: "100%", display: "flex", alignItems: "center", gap: 10, background: "#FBF7EA", border: "1px solid #A8823C33", borderRadius: 12, padding: "12px 14px", cursor: "pointer", fontFamily: "'Lora', serif", color: "#16342B", boxShadow: "0 1px 4px rgba(22,52,43,0.05)" },
+  monthHeadOpen: { background: "#0F4C3A", color: "#F3ECD8", borderColor: "#0F4C3A" },
+  monthName: { fontFamily: "'Amiri', serif", fontSize: 18, fontWeight: 700, lineHeight: 1.2 },
+  monthMeta: { fontSize: 12, opacity: 0.75, marginTop: 2 },
+  chev: { fontSize: 22, lineHeight: 1, transition: "transform 0.2s ease", opacity: 0.7 },
+  monthBody: { padding: "12px 2px 4px" },
   mihrabSurah: { fontFamily: "'Amiri', serif", fontSize: 18, color: "#F3ECD8", marginTop: 2 },
   mihrabMeta: { fontSize: 13, opacity: 0.8, marginTop: 2 },
   streakRow: { display: "flex", justifyContent: "center", gap: 8, marginTop: 16, flexWrap: "wrap" },
