@@ -435,7 +435,8 @@ const TEXT = {
     passkeyAdded: "Passkey didaftarkan ✓", passkeyFail: "Tak berjaya. Cuba lagi.", passkeyUnsupported: "Pelayar ini tak menyokong passkey.",
     passkeyLogin: "🔑 Masuk dengan passkey", passkeyOr: "atau guna PIN",
     mosqueNear: "🕌 Masjid & surau dalam 3 km", mosqueFinding: "Mencari masjid berdekatan…", mosqueNone: "Tiada masjid atau surau dijumpai dalam 3 km.",
-    mosqueErr: "Tak dapat ambil senarai masjid. Cuba lagi.", mosqueAll: "Semua", mosqueMasjid: "Masjid", mosqueSurau: "Surau",
+    mosqueErr: "Tak dapat ambil senarai masjid. Cuba lagi.", mosqueLocErr: "Lokasi tak dapat dikesan. Hidupkan lokasi (GPS) telefon dan benarkan untuk app ini, kemudian cuba lagi.",
+    mosqueBusy: "Pelayan peta sedang sibuk. Cuba lagi sebentar, atau guna Google Maps:", mosqueAll: "Semua", mosqueMasjid: "Masjid", mosqueSurau: "Surau",
     mosqueRoute: "Arah ↗", mosqueMaps: "Lihat di Google Maps ↗", mosqueSource: "Data © penyumbang OpenStreetMap", mosqueUnnamed: "(tiada nama)",
     holyTitle: "Hari kebesaran Islam", holyToday: "Hari ini", holyIn: (n) => `${n} hari lagi`,
     holyNote: "Anggaran ikut kalendar Hijrah; tarikh rasmi ikut pengumuman.",
@@ -550,7 +551,8 @@ const TEXT = {
     passkeyAdded: "Passkey registered ✓", passkeyFail: "That didn't work. Try again.", passkeyUnsupported: "This browser doesn't support passkeys.",
     passkeyLogin: "🔑 Sign in with passkey", passkeyOr: "or use the PIN",
     mosqueNear: "🕌 Mosques & surau within 3 km", mosqueFinding: "Finding mosques nearby…", mosqueNone: "No mosque or surau found within 3 km.",
-    mosqueErr: "Couldn't load mosques. Try again.", mosqueAll: "All", mosqueMasjid: "Mosque", mosqueSurau: "Surau",
+    mosqueErr: "Couldn't load mosques. Try again.", mosqueLocErr: "Couldn't get your location. Turn on location (GPS) and allow it for this app, then try again.",
+    mosqueBusy: "The map server is busy. Try again shortly, or use Google Maps:", mosqueAll: "All", mosqueMasjid: "Mosque", mosqueSurau: "Surau",
     mosqueRoute: "Directions ↗", mosqueMaps: "Open in Google Maps ↗", mosqueSource: "Data © OpenStreetMap contributors", mosqueUnnamed: "(unnamed)",
     holyTitle: "Islamic days", holyToday: "Today", holyIn: (n) => `in ${n} days`,
     holyNote: "Estimated from the Hijri calendar; official dates follow announcements.",
@@ -2281,7 +2283,13 @@ function distKm(a, b, c, d) {
   const h = Math.sin(toR(c - a) / 2) ** 2 + Math.cos(toR(a)) * Math.cos(toR(c)) * Math.sin(toR(d - b) / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-async function fetchMosques(lat, lon) {
+// Prefer the app's own server (cached, proper User-Agent, several Overpass servers); direct Overpass only without a server.
+async function fetchMosques(lat, lon, viaServer) {
+  if (viaServer) {
+    const r = await api(`masjid?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}`);
+    if (!r.ok || !r.body || !Array.isArray(r.body.places)) { const e = new Error("busy"); e.kind = "busy"; throw e; }
+    return r.body.places.map((m) => ({ ...m, km: distKm(lat, lon, m.lat, m.lon) })).filter((m) => m.km <= 3.05).sort((a, b) => a.km - b.km);
+  }
   const q = `[out:json][timeout:20];nwr["amenity"="place_of_worship"]["religion"="muslim"](around:3000,${lat},${lon});out center tags 80;`;
   let lastErr;
   for (const url of OVERPASS) {
@@ -2310,12 +2318,19 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
   useEffect(() => { if (openSignal) setOpen(true); }, [openSignal]);
   const [mq, setMq] = useState({ status: "idle", list: [], filter: "all" }); // idle | finding | ok | error
   function findMosques() {
-    if (!navigator.geolocation) { setMq({ ...mq, status: "error" }); return; }
-    setMq({ ...mq, status: "finding" });
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try { const list = await fetchMosques(pos.coords.latitude, pos.coords.longitude); setMq({ status: "ok", list, filter: "all" }); }
-      catch (e) { setMq((m) => ({ ...m, status: "error" })); }
-    }, () => setMq((m) => ({ ...m, status: "error" })), { enableHighAccuracy: true, timeout: 15000, maximumAge: 2 * 60 * 1000 });
+    setMq({ ...mq, status: "finding", err: "" });
+    const run = async (lat, lon) => {
+      try { const list = await fetchMosques(lat, lon, available); setMq({ status: "ok", list, filter: "all", err: "" }); }
+      catch (e) { setMq((m) => ({ ...m, status: "error", err: "busy" })); }
+    };
+    const fallback = () => {
+      const near = Array.isArray(settings.near) ? settings.near : null;
+      if (near) run(near[0], near[1]); else setMq((m) => ({ ...m, status: "error", err: "location" }));
+    };
+    if (!navigator.geolocation) { fallback(); return; }
+    // Network/Wi-Fi location is fast and plenty for a 3 km radius; fall back to the last known area if it fails.
+    navigator.geolocation.getCurrentPosition((pos) => run(pos.coords.latitude, pos.coords.longitude), fallback,
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 10 * 60 * 1000 });
   }
   const [status, setStatus] = useState("idle"); // idle | loading | locating | error | denied | outside
   const [zones, setZones] = useState(null);
@@ -2448,7 +2463,8 @@ function PrayerCard({ T, lang, settings, persistSettings, today, available, open
         disabled={mq.status === "finding"} style={{ ...styles.mosqueBtn, width: "100%", background: "transparent", cursor: "pointer", fontFamily: "'Lora', serif" }}>
         {mq.status === "finding" ? T.mosqueFinding : T.mosqueNear} {mq.status === "ok" ? "▴" : "▾"}
       </button>
-      {mq.status === "error" && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--danger)" }}>{T.mosqueErr}</div>}
+      {mq.status === "error" && <div style={{ fontSize: 12.5, marginTop: 8, color: "var(--danger)" }}>{mq.err === "location" ? T.mosqueLocErr : T.mosqueBusy}</div>}
+      {mq.status === "error" && <a href={mosqueUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 12.5, color: "var(--title)" }}>{T.mosqueMaps}</a>}
       {mq.status === "ok" && (
         <div className="qt-fade" style={{ marginTop: 10 }}>
           {mq.list.length === 0 ? (

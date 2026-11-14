@@ -435,3 +435,41 @@ export async function handlePasskey(req, store, wa) {
   }
   return json({ error: "unknown_action" }, 400);
 }
+
+/* ---------------- mosques nearby (OpenStreetMap via Overpass, cached) ---------------- */
+// Results are cached per ~1 km grid cell for 30 days, so the public Overpass servers are asked rarely.
+const OVERPASS_URLS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+export async function handleMasjid(req, store, fetchImpl = fetch, now = Date.now()) {
+  const url = new URL(req.url);
+  const lat = Number(url.searchParams.get("lat")), lon = Number(url.searchParams.get("lon"));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < 0.5 || lat > 7.6 || lon < 99 || lon > 119.5) return json({ error: "outside" }, 400);
+  const clat = Math.round(lat * 100) / 100, clon = Math.round(lon * 100) / 100;
+  const key = `masjid/${clat.toFixed(2)},${clon.toFixed(2)}`;
+  const cached = await store.get(key, { type: "json" });
+  if (cached && now - cached.at < 30 * 86400e3) return json({ places: cached.places, cached: true }, 200, { "cache-control": "public, max-age=3600" });
+  // 3.7 km around the cell centre covers 3 km around any point inside the cell.
+  const q = `[out:json][timeout:8];nwr["amenity"="place_of_worship"]["religion"="muslim"](around:3700,${clat},${clon});out center tags 120;`;
+  let lastStatus = 0;
+  for (const u of OVERPASS_URLS) {
+    try {
+      const res = await fetchImpl(u, {
+        method: "POST", body: "data=" + encodeURIComponent(q),
+        headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json",
+          "user-agent": "QuranNote/1.0 (prayer app; https://qurannote.netlify.app)", referer: "https://qurannote.netlify.app/" },
+        signal: AbortSignal.timeout(4500),
+      });
+      lastStatus = res.status;
+      if (!res.ok) continue;
+      const data = await res.json();
+      const places = (data.elements || []).map((e) => {
+        const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon, t = e.tags || {};
+        if (la == null || lo == null) return null;
+        const name = t["name:ms"] || t.name || t["name:en"] || "";
+        return { id: e.type[0] + e.id, name, lat: la, lon: lo, surau: /surau|musolla|musalla|musholla/i.test(name) || t.building === "musalla" };
+      }).filter(Boolean);
+      await store.setJSON(key, { at: now, places });
+      return json({ places, cached: false }, 200, { "cache-control": "public, max-age=3600" });
+    } catch (e) { lastStatus = lastStatus || -1; }
+  }
+  return json({ error: "busy", status: lastStatus }, 503);
+}
