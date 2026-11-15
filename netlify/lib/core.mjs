@@ -23,11 +23,13 @@ const isPage = (n) => Number.isInteger(n) && n >= 1 && n <= TOTAL_PAGES;
 export function validEntry(e) {
   return !!e && typeof e.id === "string" && e.id.length <= 80 && isPage(e.page) && isIso(e.date) &&
     typeof e.ts === "number" && (e.from == null || isPage(e.from)) &&
-    (e.note == null || (typeof e.note === "string" && e.note.length <= 2000));
+    (e.note == null || (typeof e.note === "string" && e.note.length <= 2000)) &&
+    (e.tag == null || (typeof e.tag === "string" && e.tag.length <= 60));
 }
 export function validKhatam(k) {
   return !!k && typeof k.id === "string" && k.id.length <= 80 && isIso(k.date) && typeof k.ts === "number" &&
-    (k.note == null || (typeof k.note === "string" && k.note.length <= 500));
+    (k.note == null || (typeof k.note === "string" && k.note.length <= 500)) &&
+    (k.letter == null || (typeof k.letter === "string" && k.letter.length <= 3000));
 }
 export function cleanName(v) { return String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 30); }
 export function cleanDoc(doc) {
@@ -39,8 +41,8 @@ export function cleanDoc(doc) {
   const ids = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === "string").slice(-5000) : []);
   const s = doc.settings || {};
   return {
-    entries: entries.map(({ id, page, from, note, date, ts }) => ({ id, page, from: from ?? null, note: note || "", date, ts })),
-    khatams: khatams.map(({ id, date, note, ts }) => ({ id, date, note: note || "", ts })),
+    entries: entries.map(({ id, page, from, note, date, ts, tag }) => ({ id, page, from: from ?? null, note: note || "", date, ts, ...(tag ? { tag } : {}) })),
+    khatams: khatams.map(({ id, date, note, ts, letter }) => ({ id, date, note: note || "", ts, ...(typeof letter === "string" ? { letter } : {}) })),
     deleted: { entries: ids(del.entries), khatams: ids(del.khatams) },
     settings: {
       targetDate: isIso(s.targetDate) ? s.targetDate : "",
@@ -109,7 +111,10 @@ export async function handleJournal(req, store) {
   const current = (await store.get("journal", { type: "json" })) || null;
   if (req.method === "GET") {
     const auth = await store.get("auth", { type: "json" });
-    return json({ doc: current ? current.doc : null, version: current ? current.version : 0, hasOwner: !!auth });
+    let doc = current ? current.doc : null;
+    // Khatam time-capsule letters are private: only the owner gets them.
+    if (doc && !(await isOwner(req, store))) doc = { ...doc, khatams: doc.khatams.map(({ letter, ...k }) => k) };
+    return json({ doc, version: current ? current.version : 0, hasOwner: !!auth });
   }
   if (req.method !== "PUT") return json({ error: "method" }, 405);
   if (!(await isOwner(req, store))) return json({ error: "unauthorized" }, 401);
@@ -121,6 +126,11 @@ export async function handleJournal(req, store) {
   if (body.baseVersion !== version) return json({ error: "conflict", doc: current ? current.doc : null, version }, 409);
   const doc = cleanDoc(body.doc);
   if (!doc) return json({ error: "invalid_doc" }, 400);
+  // A client that never received a letter (older app, or fetched without the owner token) must not erase it.
+  if (current && current.doc) {
+    const prev = new Map(current.doc.khatams.map((k) => [k.id, k]));
+    doc.khatams = doc.khatams.map((k) => (k.letter === undefined && prev.get(k.id)?.letter ? { ...k, letter: prev.get(k.id).letter } : k));
+  }
   const next = { doc, version: version + 1, updatedAt: Date.now() };
   await store.setJSON("journal", next);
   return json({ version: next.version });

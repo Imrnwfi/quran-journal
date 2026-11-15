@@ -76,6 +76,9 @@
   [data-theme="dark"][data-accent="biru"]  { --bg: #0B1420; --card: #121E2C; --input: #0E1824; --muted: #1E2A38; --tabbg: #16212E; }
   [data-theme="dark"][data-accent="ungu"]  { --bg: #140F1A; --card: #1E1726; --input: #18121F; --muted: #2A2133; --tabbg: #221A2A; }
   [data-theme="dark"][data-accent="kurma"] { --bg: #17110C; --card: #221A13; --input: #1B140E; --muted: #2E241B; --tabbg: #261D15; }
+  @keyframes qtTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+  .qt-timer { animation: qtTimer 10s linear forwards; }
+  .qt-scrollx::-webkit-scrollbar { display: none; }
   /* Screen transitions */
   @keyframes qtFromRight { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
   @keyframes qtFromLeft { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
@@ -362,6 +365,46 @@ const STORAGE_KEY = PERSONAL ? "qn-personal-entries" : "quran-journal-entries";
 // Ayat hari ini: [surah, ayah, Uthmani text (quranenc.com), Malay (Abdullah Basmeih, tanzil.net), English (Saheeh International)]
 const AYAT = [[3, 31, "قُلۡ إِن كُنتُمۡ تُحِبُّونَ ٱللَّهَ فَٱتَّبِعُونِي يُحۡبِبۡكُمُ ٱللَّهُ وَيَغۡفِرۡ لَكُمۡ ذُنُوبَكُمۡۚ وَٱللَّهُ غَفُورٞ رَّحِيمٞ", "Katakanlah (wahai Muhammad): \"Jika benar kamu mengasihi Allah maka ikutilah daku, nescaya Allah mengasihi kamu serta mengampunkan dosa-dosa kamu. Dan (ingatlah), Allah Maha Pengampun, lagi Maha Mengasihani.\"", "Say, [O Muhammad], \"If you should love Allah, then follow me, [so] Allah will love you and forgive you your sins. And Allah is Forgiving and Merciful.\""], [25, 74, "وَٱلَّذِينَ يَقُولُونَ رَبَّنَا هَبۡ لَنَا مِنۡ أَزۡوَٰجِنَا وَذُرِّيَّـٰتِنَا قُرَّةَ أَعۡيُنٖ وَٱجۡعَلۡنَا لِلۡمُتَّقِينَ إِمَامًا", "Dan juga mereka (yang diredhai Allah itu ialah orang-orang) yang berdoa dengan berkata: \"Wahai Tuhan kami, berilah kami beroleh dari isteri-isteri dan zuriat keturunan kami: perkara-perkara yang menyukakan hati melihatnya, dan jadikanlah kami imam ikutan bagi orang-orang yang (mahu) bertaqwa.\"", "And those who say, \"Our Lord, grant us from among our wives and offspring comfort to our eyes and make us an example for the righteous.\""], [103, 2, "إِنَّ ٱلۡإِنسَٰنَ لَفِي خُسۡرٍ", "Sesungguhnya manusia itu dalam kerugian.", "Indeed, mankind is in loss."], [35, 29, "إِنَّ ٱلَّذِينَ يَتۡلُونَ كِتَٰبَ ٱللَّهِ وَأَقَامُواْ ٱلصَّلَوٰةَ وَأَنفَقُواْ مِمَّا رَزَقۡنَٰهُمۡ سِرّٗا وَعَلَانِيَةٗ يَرۡجُونَ تِجَٰرَةٗ لَّن تَبُورَ", "Sesungguhnya orang-orang yang selalu membaca Kitab Allah dan tetap mendirikan sembahyang serta mendermakan dari apa yang Kami kurniakan kepada mereka, secara bersembunyi atau secara terbuka, mereka (dengan amalan yang demikian) mengharapkan sejenis perniagaan yang tidak akan mengalami kerugian.", "Indeed, those who recite the Book of Allah and establish prayer and spend [in His cause] out of what We have provided them, secretly and publicly, [can] expect a profit that will never perish."], [103, 3, "إِلَّا ٱلَّذِينَ ءَامَنُواْ وَعَمِلُواْ ٱلصَّـٰلِحَٰتِ وَتَوَاصَوۡاْ بِٱلۡحَقِّ وَتَوَاصَوۡاْ بِٱلصَّبۡرِ", "Kecuali orang-orang yang beriman dan beramal soleh, dan mereka pula berpesan-pesan dengan kebenaran serta berpesan-pesan dengan sabar.", "Except for those who have believed and done righteous deeds and advised each other to truth and advised each other to patience."], [54, 17, "وَلَقَدۡ يَسَّرۡنَا ٱلۡقُرۡءَانَ لِلذِّكۡرِ فَهَلۡ مِن مُّدَّكِرٖ", "Dan demi sesungguhnya! Kami telah mudahkan Al-Quran untuk menjadi peringatan dan pengajaran, maka adakah sesiapa yang mahu mengambil peringatan dan pelajaran (daripadanya).", "And We have certainly made the Qur'an easy for remembrance, so is there any who will remember."], [12, 86, "قَالَ إِنَّمَآ أَشۡكُواْ بَثِّي وَحُزۡنِيٓ إِلَى ٱللَّهِ وَأَعۡلَمُ مِنَ ٱللَّهِ مَا لَا تَعۡلَمُونَ", "(Nabi Yaakub) menjawab: \"Sesungguhnya aku hanyalah mengadukan kesusahan dan dukacitaku kepada Allah dan aku mengetahui (dengan perantaraan wahyu) dari Allah, apa yang kamu tidak mengetahuinya.\"", "He said, \"I only complain of my suffering and my grief to Allah, and I know from Allah that which you do not know.\""], [39, 53, "۞قُلۡ يَٰعِبَادِيَ ٱلَّذِينَ أَسۡرَفُواْ عَلَىٰٓ أَنفُسِهِمۡ لَا تَقۡنَطُواْ مِن رَّحۡمَةِ ٱللَّهِۚ إِنَّ ٱللَّهَ يَغۡفِرُ ٱلذُّنُوبَ جَمِيعًاۚ إِنَّهُۥ هُوَ ٱلۡغَفُورُ ٱلرَّحِيمُ", "Katakanlah (wahai Muhammad): \"Wahai hamba-hambaKu yang telah melampaui batas terhadap diri mereka sendiri (dengan perbuatan-perbuatan maksiat), janganlah kamu berputus asa dari rahmat Allah, kerana sesungguhnya Allah mengampunkan segala dosa; sesungguhnya Dia lah jua Yang Maha Pengampun, lagi Maha Mengasihani.\"", "Say, \"O My servants who have transgressed against themselves [by sinning], do not despair of the mercy of Allah. Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.\""], [20, 132, "وَأۡمُرۡ أَهۡلَكَ بِٱلصَّلَوٰةِ وَٱصۡطَبِرۡ عَلَيۡهَاۖ لَا نَسۡـَٔلُكَ رِزۡقٗاۖ نَّحۡنُ نَرۡزُقُكَۗ وَٱلۡعَٰقِبَةُ لِلتَّقۡوَىٰ", "Dan perintahkanlah keluargamu serta umatmu mengerjakan sembahyang, dan hendaklah engkau tekun bersabar menunaikannya. Kami tidak meminta rezeki kepadamu, (bahkan) Kamilah yang memberi rezeki kepadamu. Dan (ingatlah) kesudahan yang baik adalah bagi orang-orang yang bertaqwa.", "And enjoin prayer upon your family [and people] and be steadfast therein. We ask you not for provision; We provide for you, and the [best] outcome is for [those of] righteousness."], [3, 134, "ٱلَّذِينَ يُنفِقُونَ فِي ٱلسَّرَّآءِ وَٱلضَّرَّآءِ وَٱلۡكَٰظِمِينَ ٱلۡغَيۡظَ وَٱلۡعَافِينَ عَنِ ٱلنَّاسِۗ وَٱللَّهُ يُحِبُّ ٱلۡمُحۡسِنِينَ", "Iaitu orang-orang yang mendermakan hartanya pada masa senang dan susah, dan orang-orang yang menahan kemarahannya, dan orang-orang yang memaafkan kesalahan orang. Dan (ingatlah), Allah mengasihi orang-orang yang berbuat perkara-perkara yang baik.", "Who spend [in the cause of Allah] during ease and hardship and who restrain anger and who pardon the people - and Allah loves the doers of good."], [94, 7, "فَإِذَا فَرَغۡتَ فَٱنصَبۡ", "Kemudian apabila engkau telah selesai (daripada sesuatu amal soleh), maka bersungguh-sungguhlah engkau berusaha (mengerjakan amal soleh yang lain).", "So when you have finished [your duties], then stand up [for worship]."], [16, 128, "إِنَّ ٱللَّهَ مَعَ ٱلَّذِينَ ٱتَّقَواْ وَّٱلَّذِينَ هُم مُّحۡسِنُونَ", "Sesungguhnya Allah beserta orang-orang yang bertaqwa, dan orang-orang yang berusaha memperbaiki amalannya.", "Indeed, Allah is with those who fear Him and those who are doers of good."], [64, 16, "فَٱتَّقُواْ ٱللَّهَ مَا ٱسۡتَطَعۡتُمۡ وَٱسۡمَعُواْ وَأَطِيعُواْ وَأَنفِقُواْ خَيۡرٗا لِّأَنفُسِكُمۡۗ وَمَن يُوقَ شُحَّ نَفۡسِهِۦ فَأُوْلَـٰٓئِكَ هُمُ ٱلۡمُفۡلِحُونَ", "Oleh itu bertaqwalah kamu kepada Allah sedaya supaya kamu; dan dengarlah (akan pengajaran-pengajaranNya) serta taatlah (akan perintah-perintahNya); dan belanjakanlah harta kamu (serta buatlah) kebajikan untuk diri kamu. Dan (ingatlah), sesiapa yang menjaga serta memelihara dirinya daripada dipengaruhi oleh tabiat bakhilnya, maka merekalah orang-orang yang berjaya.", "So fear Allah as much as you are able and listen and obey and spend [in the way of Allah]; it is better for your selves. And whoever is protected from the stinginess of his soul - it is those who will be the successful."], [89, 28, "ٱرۡجِعِيٓ إِلَىٰ رَبِّكِ رَاضِيَةٗ مَّرۡضِيَّةٗ", "Kembalilah kepada Tuhanmu dengan keadaan engkau berpuas hati (dengan segala nikmat yang diberikan) lagi diredhai (di sisi Tuhanmu).", "Return to your Lord, well-pleased and pleasing [to Him]."], [2, 155, "وَلَنَبۡلُوَنَّكُم بِشَيۡءٖ مِّنَ ٱلۡخَوۡفِ وَٱلۡجُوعِ وَنَقۡصٖ مِّنَ ٱلۡأَمۡوَٰلِ وَٱلۡأَنفُسِ وَٱلثَّمَرَٰتِۗ وَبَشِّرِ ٱلصَّـٰبِرِينَ", "Demi sesungguhnya! Kami akan menguji kamu dengan sedikit perasaan takut (kepada musuh) dan (dengan merasai) kelaparan, dan (dengan berlakunya) kekurangan dari harta benda dan jiwa serta hasil tanaman. Dan berilah khabar gembira kepada orang-orang yang sabar.", "And We will surely test you with something of fear and hunger and a loss of wealth and lives and fruits, but give good tidings to the patient."], [93, 4, "وَلَلۡأٓخِرَةُ خَيۡرٞ لَّكَ مِنَ ٱلۡأُولَىٰ", "Dan sesungguhnya kesudahan keaadaanmu adalah lebih baik bagimu daripada permulaannya.", "And the Hereafter is better for you than the first [life]."], [2, 110, "وَأَقِيمُواْ ٱلصَّلَوٰةَ وَءَاتُواْ ٱلزَّكَوٰةَۚ وَمَا تُقَدِّمُواْ لِأَنفُسِكُم مِّنۡ خَيۡرٖ تَجِدُوهُ عِندَ ٱللَّهِۗ إِنَّ ٱللَّهَ بِمَا تَعۡمَلُونَ بَصِيرٞ", "Dan dirikanlah oleh kamu akan sembahyang dan tunaikanlah zakat dan apa jua yang kamu dahulukan dari kebaikan untuk diri kamu, tentulah kamu akan mendapat balasan pahalanya di sisi Allah. Sesungguhnya Allah sentiasa Melihat segala yang kamu kerjakan.", "And establish prayer and give zakah, and whatever good you put forward for yourselves - you will find it with Allah. Indeed, Allah of what you do, is Seeing."], [10, 57, "يَـٰٓأَيُّهَا ٱلنَّاسُ قَدۡ جَآءَتۡكُم مَّوۡعِظَةٞ مِّن رَّبِّكُمۡ وَشِفَآءٞ لِّمَا فِي ٱلصُّدُورِ وَهُدٗى وَرَحۡمَةٞ لِّلۡمُؤۡمِنِينَ", "Wahai umat manusia! Sesungguhnya telah datang kepada kamu Al-Quran yang menjadi nasihat pengajaran dari Tuhan kamu, dan yang menjadi penawar bagi penyakit-penyakit batin yang ada di dalam dada kamu, dan juga menjadi hidayah petunjuk untuk keselamatan, serta membawa rahmat bagi orang-orang yang beriman.", "O mankind, there has to come to you instruction from your Lord and healing for what is in the breasts and guidance and mercy for the believers."], [47, 24, "أَفَلَا يَتَدَبَّرُونَ ٱلۡقُرۡءَانَ أَمۡ عَلَىٰ قُلُوبٍ أَقۡفَالُهَآ", "(Setelah diterangkan yang demikian) maka adakah mereka sengaja tidak berusaha memahami serta memikirkan isi Al-Quran? Atau telah ada di atas hati mereka kunci penutup (yang menghalangnya daripada menerima ajaran Al-Quran).", "Then do they not reflect upon the Qur'an, or are there locks upon [their] hearts."], [13, 28, "ٱلَّذِينَ ءَامَنُواْ وَتَطۡمَئِنُّ قُلُوبُهُم بِذِكۡرِ ٱللَّهِۗ أَلَا بِذِكۡرِ ٱللَّهِ تَطۡمَئِنُّ ٱلۡقُلُوبُ", "(Iaitu) orang-orang yang beriman dan tenang tenteram hati mereka dengan zikrullah. Ketahuilah dengan \"zikrullah\" itu, tenang tenteramlah hati manusia.", "Those who have believed and whose hearts are assured by the remembrance of Allah. Unquestionably, by the remembrance of Allah hearts are assured."], [67, 2, "ٱلَّذِي خَلَقَ ٱلۡمَوۡتَ وَٱلۡحَيَوٰةَ لِيَبۡلُوَكُمۡ أَيُّكُمۡ أَحۡسَنُ عَمَلٗاۚ وَهُوَ ٱلۡعَزِيزُ ٱلۡغَفُورُ", "Dia lah yang telah mentakdirkan adanya mati dan hidup (kamu) - untuk menguji dan menzahirkan keadaan kamu: siapakah di antara kamu yang lebih baik amalnya; dan Ia Maha Kuasa (membalas amal kamu), lagi Maha Pengampun, (bagi orang-orang yang bertaubat).", "[He] who created death and life to test you [as to] which of you is best in deed - and He is the Exalted in Might, the Forgiving."], [14, 7, "وَإِذۡ تَأَذَّنَ رَبُّكُمۡ لَئِن شَكَرۡتُمۡ لَأَزِيدَنَّكُمۡۖ وَلَئِن كَفَرۡتُمۡ إِنَّ عَذَابِي لَشَدِيدٞ", "Dan (ingatlah) ketika Tuhan kamu memberitahu: \"Demi sesungguhnya! Jika kamu bersyukur nescaya Aku akan tambahi nikmatKu kepada kamu, dan demi sesungguhnya, jika kamu kufur ingkar sesungguhnya azabKu amatlah keras.\"", "And [remember] when your Lord proclaimed, 'If you are grateful, I will surely increase you [in favor]; but if you deny, indeed, My punishment is severe.'"], [18, 46, "ٱلۡمَالُ وَٱلۡبَنُونَ زِينَةُ ٱلۡحَيَوٰةِ ٱلدُّنۡيَاۖ وَٱلۡبَٰقِيَٰتُ ٱلصَّـٰلِحَٰتُ خَيۡرٌ عِندَ رَبِّكَ ثَوَابٗا وَخَيۡرٌ أَمَلٗا", "Harta benda dan anak pinak itu, ialah perhiasan hidup di dunia; dan amal-amal soleh yang kekal faedahnya itu lebih baik pada sisi Tuhanmu sebagai pahala balasan, dan lebih baik sebagai asas yang memberi harapan.", "Wealth and children are [but] adornment of the worldly life. But the enduring good deeds are better to your Lord for reward and better for [one's] hope."], [7, 23, "قَالَا رَبَّنَا ظَلَمۡنَآ أَنفُسَنَا وَإِن لَّمۡ تَغۡفِرۡ لَنَا وَتَرۡحَمۡنَا لَنَكُونَنَّ مِنَ ٱلۡخَٰسِرِينَ", "Mereka berdua merayu: \"Wahai Tuhan kami, kami telah menganiaya diri kami sendiri, dan kalau Engkau tidak mengampunkan kami dan memberi rahmat kepada kami, nescaya menjadilah kami dari orang-orang yang rugi.\"", "They said, \"Our Lord, we have wronged ourselves, and if You do not forgive us and have mercy upon us, we will surely be among the losers.\""], [2, 152, "فَٱذۡكُرُونِيٓ أَذۡكُرۡكُمۡ وَٱشۡكُرُواْ لِي وَلَا تَكۡفُرُونِ", "Oleh itu ingatlah kamu kepadaKu (dengan mematuhi hukum dan undang-undangKu), supaya Aku membalas kamu dengan kebaikan; dan bersyukurlah kamu kepadaKu dan janganlah kamu kufur (akan nikmatKu).", "So remember Me; I will remember you. And be grateful to Me and do not deny Me."], [96, 1, "ٱقۡرَأۡ بِٱسۡمِ رَبِّكَ ٱلَّذِي خَلَقَ", "Bacalah (wahai Muhammad) dengan nama Tuhanmu yang menciptakan (sekalian makhluk).", "Recite in the name of your Lord who created."], [28, 24, "فَسَقَىٰ لَهُمَا ثُمَّ تَوَلَّىٰٓ إِلَى ٱلظِّلِّ فَقَالَ رَبِّ إِنِّي لِمَآ أَنزَلۡتَ إِلَيَّ مِنۡ خَيۡرٖ فَقِيرٞ", "Maka Musa pun memberi minum kepada binatang-binatang ternak mereka, kemudian ia pergi ke tempat teduh lalu berdoa dengan berkata: \"Wahai Tuhanku, sesungguhnya aku sangat berhajat kepada sebarang rezeki pemberian yang Engkau berikan.\"", "So he watered [their flocks] for them; then he went back to the shade and said, \"My Lord, indeed I am, for whatever good You would send down to me, in need.\""], [59, 18, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱتَّقُواْ ٱللَّهَ وَلۡتَنظُرۡ نَفۡسٞ مَّا قَدَّمَتۡ لِغَدٖۖ وَٱتَّقُواْ ٱللَّهَۚ إِنَّ ٱللَّهَ خَبِيرُۢ بِمَا تَعۡمَلُونَ", "Wahai orang-orang yang beriman! Bertaqwalah kepada Allah (dengan mengerjakan suruhanNya dan meninggalkan laranganNya); dan hendaklah tiap-tiap diri melihat dan memerhatikan apa yang ia telah sediakan (dari amal-amalnya) untuk hari esok (hari akhirat). Dan (sekali lagi diingatkan): Bertaqwalah kepada Allah, sesungguhnya Allah Amat Meliputi PengetahuanNya akan segala yang kamu kerjakan.", "O you who have believed, fear Allah. And let every soul look to what it has put forth for tomorrow - and fear Allah. Indeed, Allah is Acquainted with what you do."], [6, 162, "قُلۡ إِنَّ صَلَاتِي وَنُسُكِي وَمَحۡيَايَ وَمَمَاتِي لِلَّهِ رَبِّ ٱلۡعَٰلَمِينَ", "Katakanlah: \"Sesungguhnya sembahyangku dan ibadatku, hidupku dan matiku, hanyalah untuk Allah Tuhan yang memelihara dan mentadbirkan sekalian alam.\"", "Say, \"Indeed, my prayer, my rites of sacrifice, my living and my dying are for Allah, Lord of the worlds.\""], [17, 9, "إِنَّ هَٰذَا ٱلۡقُرۡءَانَ يَهۡدِي لِلَّتِي هِيَ أَقۡوَمُ وَيُبَشِّرُ ٱلۡمُؤۡمِنِينَ ٱلَّذِينَ يَعۡمَلُونَ ٱلصَّـٰلِحَٰتِ أَنَّ لَهُمۡ أَجۡرٗا كَبِيرٗا", "Sesungguhnya Al-Quran ini memberi petunjuk ke jalan yang amat betul (ugama Islam), dan memberikan berita yang mengembirakan orang-orang yang beriman yang mengerjakan amal-amal soleh, bahawa mereka beroleh pahala yang besar.", "Indeed, this Qur'an guides to that which is most suitable and gives good tidings to the believers who do righteous deeds that they will have a great reward."], [94, 8, "وَإِلَىٰ رَبِّكَ فَٱرۡغَب", "Dan kepada Tuhanmu sahaja hendaklah engkau memohon (apa yang engkau gemar dan ingini).", "And to your Lord direct [your] longing."], [31, 17, "يَٰبُنَيَّ أَقِمِ ٱلصَّلَوٰةَ وَأۡمُرۡ بِٱلۡمَعۡرُوفِ وَٱنۡهَ عَنِ ٱلۡمُنكَرِ وَٱصۡبِرۡ عَلَىٰ مَآ أَصَابَكَۖ إِنَّ ذَٰلِكَ مِنۡ عَزۡمِ ٱلۡأُمُورِ", "Wahai anak kesayanganku, dirikanlah sembahyang, dan suruhlah berbuat kebaikan, serta laranglah daripada melakukan perbuatan yang mungkar, dan bersabarlah atas segala bala bencana yang menimpamu. Sesungguhnya yang demikian itu adalah dari perkara-perkara yang dikehendaki diambil berat melakukannya.", "O my son, establish prayer, enjoin what is right, forbid what is wrong, and be patient over what befalls you. Indeed, [all] that is of the matters [requiring] determination."], [38, 29, "كِتَٰبٌ أَنزَلۡنَٰهُ إِلَيۡكَ مُبَٰرَكٞ لِّيَدَّبَّرُوٓاْ ءَايَٰتِهِۦ وَلِيَتَذَكَّرَ أُوْلُواْ ٱلۡأَلۡبَٰبِ", "(Al-Quran ini) sebuah Kitab yang Kami turunkan kepadamu (dan umatmu wahai Muhammad), -Kitab yang banyak faedah-faedah dan manfaatnya, untuk mereka memahami dengan teliti kandungan ayat-ayatnya, dan untuk orang-orang yang berakal sempurna beringat mengambil iktibar.", "[This is] a blessed Book which We have revealed to you, [O Muhammad], that they might reflect upon its verses and that those of understanding would be reminded."], [71, 10, "فَقُلۡتُ ٱسۡتَغۡفِرُواْ رَبَّكُمۡ إِنَّهُۥ كَانَ غَفَّارٗا", "Sehingga aku berkata (kepada mereka): \"Pohonkanlah ampun kepada Tuhan kamu, sesungguhnya adalah Ia Maha Pengampun.\"", "And said, 'Ask forgiveness of your Lord. Indeed, He is ever a Perpetual Forgiver.'"], [40, 60, "وَقَالَ رَبُّكُمُ ٱدۡعُونِيٓ أَسۡتَجِبۡ لَكُمۡۚ إِنَّ ٱلَّذِينَ يَسۡتَكۡبِرُونَ عَنۡ عِبَادَتِي سَيَدۡخُلُونَ جَهَنَّمَ دَاخِرِينَ", "Dan Tuhan kamu berfirman: \"Berdoalah kamu kepadaKu nescaya Aku perkenankan doa permohonan kamu. Sesungguhnya orang-orang yang sombong takbur daripada beribadat dan berdoa kepadaKu, akan masuk neraka Jahannam dalam keadaan hina.\"", "And your Lord says, \"Call upon Me; I will respond to you.\" Indeed, those who disdain My worship will enter Hell [rendered] contemptible."], [2, 45, "وَٱسۡتَعِينُواْ بِٱلصَّبۡرِ وَٱلصَّلَوٰةِۚ وَإِنَّهَا لَكَبِيرَةٌ إِلَّا عَلَى ٱلۡخَٰشِعِينَ", "Dan mintalah pertolongan (kepada Allah) dengan jalan sabar dan mengerjakan sembahyang; dan sesungguhnya sembahyang itu amatlah berat kecuali kepada orang-orang yang khusyuk.", "And seek help through patience and prayer, and indeed, it is difficult except for the humbly submissive [to Allah]."], [9, 51, "قُل لَّن يُصِيبَنَآ إِلَّا مَا كَتَبَ ٱللَّهُ لَنَا هُوَ مَوۡلَىٰنَاۚ وَعَلَى ٱللَّهِ فَلۡيَتَوَكَّلِ ٱلۡمُؤۡمِنُونَ", "Katakanlah (wahai Muhammad): \"Tidak sekali-kali akan menimpa kami sesuatu pun melainkan apa yang telah ditetapkan Allah bagi kami. Dia lah Pelindung yang menyelamatkan kami, dan (dengan kepercayaan itu) maka kepada Allah jualah hendaknya orang-orang yang beriman bertawakal.\"", "Say, \"Never will we be struck except by what Allah has decreed for us; He is our protector.\" And upon Allah let the believers rely."], [20, 114, "فَتَعَٰلَى ٱللَّهُ ٱلۡمَلِكُ ٱلۡحَقُّۗ وَلَا تَعۡجَلۡ بِٱلۡقُرۡءَانِ مِن قَبۡلِ أَن يُقۡضَىٰٓ إِلَيۡكَ وَحۡيُهُۥۖ وَقُل رَّبِّ زِدۡنِي عِلۡمٗا", "Maka Maha Tinggilah Allah, yang Menguasai seluruh alam, lagi Yang Benar (pada segala-galanya). Dan janganlah engkau (wahai Muhammad) tergesa-gesa membaca Al-Quran sebelum selesai dibacakan oleh Jibril kepadamu, dan berdoalah dengan berkata: \"Wahai Tuhanku, tambahilah ilmuku.\"", "So high [above all] is Allah, the Sovereign, the Truth. And, [O Muhammad], do not hasten with [recitation of] the Qur'an before its revelation is completed to you, and say, \"My Lord, increase me in knowledge.\""], [2, 186, "وَإِذَا سَأَلَكَ عِبَادِي عَنِّي فَإِنِّي قَرِيبٌۖ أُجِيبُ دَعۡوَةَ ٱلدَّاعِ إِذَا دَعَانِۖ فَلۡيَسۡتَجِيبُواْ لِي وَلۡيُؤۡمِنُواْ بِي لَعَلَّهُمۡ يَرۡشُدُونَ", "Dan apabila hamba-hambaKu bertanya kepadamu mengenai Aku maka (beritahu kepada mereka): sesungguhnya Aku (Allah) sentiasa hampir (kepada mereka); Aku perkenankan permohonan orang yang berdoa apabila ia berdoa kepadaKu. Maka hendaklah mereka menyahut seruanku (dengan mematuhi perintahKu), dan hendaklah mereka beriman kepadaKu supaya mereka menjadi baik serta betul.", "And when My servants ask you, [O Muhammad], concerning Me - indeed I am near. I respond to the invocation of the supplicant when he calls upon Me. So let them respond to Me [by obedience] and believe in Me that they may be [rightly] guided."], [3, 190, "إِنَّ فِي خَلۡقِ ٱلسَّمَٰوَٰتِ وَٱلۡأَرۡضِ وَٱخۡتِلَٰفِ ٱلَّيۡلِ وَٱلنَّهَارِ لَأٓيَٰتٖ لِّأُوْلِي ٱلۡأَلۡبَٰبِ", "Sesungguhnya pada kejadian langit dan bumi, dan pada pertukaran malam dan siang, ada tanda-tanda (kekuasaan, kebijaksanaan, dan keluasan rahmat Allah) bagi orang-orang yang berakal.", "Indeed, in the creation of the heavens and the earth and the alternation of the night and the day are signs for those of understanding."], [14, 40, "رَبِّ ٱجۡعَلۡنِي مُقِيمَ ٱلصَّلَوٰةِ وَمِن ذُرِّيَّتِيۚ رَبَّنَا وَتَقَبَّلۡ دُعَآءِ", "Wahai Tuhanku! Jadikanlah daku orang yang mendirikan sembahyang dan demikianlah juga zuriat keturunanku. Wahai Tuhan kami, perkenankanlah doa permohonanku.", "My Lord, make me an establisher of prayer, and [many] from my descendants. Our Lord, and accept my supplication."], [55, 13, "فَبِأَيِّ ءَالَآءِ رَبِّكُمَا تُكَذِّبَانِ", "Maka yang mana satu di antara nikmat-nikmat Tuhan kamu, yang kamu hendak dustakan (wahai umat manusia dan jin).", "So which of the favors of your Lord would you deny."], [26, 62, "قَالَ كَلَّآۖ إِنَّ مَعِيَ رَبِّي سَيَهۡدِينِ", "Nabi Musa menjawab: \"Tidak! Jangan fikir (akan berlaku yang demikian)! Sesungguhnya aku sentiasa disertai oleh Tuhanku (dengan pemuliharaan dan pertolonganNya), Ia akan menunjuk jalan kepadaku.\"", "[Moses] said, \"No! Indeed, with me is my Lord; He will guide me.\""], [93, 5, "وَلَسَوۡفَ يُعۡطِيكَ رَبُّكَ فَتَرۡضَىٰٓ", "Dan sesungguhnya Tuhanmu akan memberikanmu (kejayaan dan kebahagiaan di dunia dan di akhirat) sehingga engkau reda - berpuas hati.", "And your Lord is going to give you, and you will be satisfied."], [7, 56, "وَلَا تُفۡسِدُواْ فِي ٱلۡأَرۡضِ بَعۡدَ إِصۡلَٰحِهَا وَٱدۡعُوهُ خَوۡفٗا وَطَمَعًاۚ إِنَّ رَحۡمَتَ ٱللَّهِ قَرِيبٞ مِّنَ ٱلۡمُحۡسِنِينَ", "Dan janganlah kamu berbuat kerosakan di bumi sesudah Allah menyediakan segala yang membawa kebaikan padanya, dan berdoalah kepadaNya dengan perasaan bimbang (kalau-kalau tidak diterima) dan juga dengan perasaan terlalu mengharapkan (supaya makbul). Sesungguhnya rahmat Allah itu dekat kepada orang-orang yang memperbaiki amalannya.", "And cause not corruption upon the earth after its reformation. And invoke Him in fear and aspiration. Indeed, the mercy of Allah is near to the doers of good."], [93, 3, "مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ", "(Bahawa) Tuhanmu (wahai Muhammad) tidak meninggalkanmu, dan Ia tidak benci (kepadamu, sebagaimana yang dituduh oleh kaum musyrik).", "Your Lord has not taken leave of you, [O Muhammad], nor has He detested [you]."], [29, 69, "وَٱلَّذِينَ جَٰهَدُواْ فِينَا لَنَهۡدِيَنَّهُمۡ سُبُلَنَاۚ وَإِنَّ ٱللَّهَ لَمَعَ ٱلۡمُحۡسِنِينَ", "Dan orang-orang yang berusaha dengan bersungguh-sungguh kerana memenuhi kehendak ugama Kami, sesungguhnya Kami akan memimpin mereka ke jalan-jalan Kami (yang menjadikan mereka bergembira serta beroleh keredaan); dan sesungguhnya (pertolongan dan bantuan) Allah adalah berserta orang-orang yang berusaha membaiki amalannya.", "And those who strive for Us - We will surely guide them to Our ways. And indeed, Allah is with the doers of good."], [3, 139, "وَلَا تَهِنُواْ وَلَا تَحۡزَنُواْ وَأَنتُمُ ٱلۡأَعۡلَوۡنَ إِن كُنتُم مُّؤۡمِنِينَ", "Dan janganlah kamu merasa lemah (dalam perjuangan mempertahan dan menegakkan Islam), dan janganlah kamu berdukacita (terhadap apa yang akan menimpa kamu), padahal kamulah orang-orang yang tertinggi (mengatasi musuh dengan mencapai kemenangan) jika kamu orang-orang yang (sungguh-sungguh) beriman.", "So do not weaken and do not grieve, and you will be superior if you are [true] believers."], [23, 1, "قَدۡ أَفۡلَحَ ٱلۡمُؤۡمِنُونَ", "Sesungguhnya berjayalah orang-orang yang beriman.", "Certainly will the believers have succeeded."], [94, 6, "إِنَّ مَعَ ٱلۡعُسۡرِ يُسۡرٗا", "(Sekali lagi ditegaskan): bahawa sesungguhnya tiap-tiap kesukaran disertai kemudahan.", "Indeed, with hardship [will be] ease."], [42, 19, "ٱللَّهُ لَطِيفُۢ بِعِبَادِهِۦ يَرۡزُقُ مَن يَشَآءُۖ وَهُوَ ٱلۡقَوِيُّ ٱلۡعَزِيزُ", "Allah Maha Lembut tadbirNya (serta melimpah-limpah kebaikan dan belas kasihanNya) kepada hamba-hambaNya; Ia memberi rezeki kepada sesiapa yang dikehendakiNya (menurut peraturan yang telah ditetapkan), dan Dia lah Yang Maha Kuat, lagi Maha Kuasa.", "Allah is Subtle with His servants; He gives provisions to whom He wills. And He is the Powerful, the Exalted in Might."], [87, 14, "قَدۡ أَفۡلَحَ مَن تَزَكَّىٰ", "Sesungguhnya berjayalah orang yang - setelah menerima peringatan itu - berusaha membersihkan dirinya (dengan taat dan amal yang soleh).", "He has certainly succeeded who purifies himself."], [20, 25, "قَالَ رَبِّ ٱشۡرَحۡ لِي صَدۡرِي", "Nabi Musa berdoa dengan berkata: \"Wahai Tuhanku, lapangkanlah bagiku, dadaku.\"", "[Moses] said, \"My Lord, expand for me my breast [with assurance].\""], [18, 10, "إِذۡ أَوَى ٱلۡفِتۡيَةُ إِلَى ٱلۡكَهۡفِ فَقَالُواْ رَبَّنَآ ءَاتِنَا مِن لَّدُنكَ رَحۡمَةٗ وَهَيِّئۡ لَنَا مِنۡ أَمۡرِنَا رَشَدٗا", "(Ingatkanlah peristiwa) ketika serombongan orang-orang muda pergi ke gua, lalu mereka berdoa: \"Wahai Tuhan kami! Kurniakanlah kami rahmat dari sisiMu, dan berilah kemudahan-kemudahan serta pimpinan kepada kami untuk keselamatan ugama kami.\"", "[Mention] when the youths retreated to the cave and said, \"Our Lord, grant us from Yourself mercy and prepare for us from our affair right guidance.\""], [33, 41, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱذۡكُرُواْ ٱللَّهَ ذِكۡرٗا كَثِيرٗا", "Wahai orang-orang yang beriman, (untuk bersyukur kepada Allah) ingatlah serta sebutlah nama Allah dengan ingatan serta sebutan yang sebanyak-banyaknya.", "O you who have believed, remember Allah with much remembrance."], [51, 56, "وَمَا خَلَقۡتُ ٱلۡجِنَّ وَٱلۡإِنسَ إِلَّا لِيَعۡبُدُونِ", "Dan (ingatlah) Aku tidak menciptakan jin dan manusia melainkan untuk mereka menyembah dan beribadat kepadaKu.", "And I did not create the jinn and mankind except to worship Me."], [17, 82, "وَنُنَزِّلُ مِنَ ٱلۡقُرۡءَانِ مَا هُوَ شِفَآءٞ وَرَحۡمَةٞ لِّلۡمُؤۡمِنِينَ وَلَا يَزِيدُ ٱلظَّـٰلِمِينَ إِلَّا خَسَارٗا", "Dan Kami turunkan dengan beransur-ansur dari Al-Quran Aya-ayat Suci yang menjadi ubat penawar dan rahmat bagi orang-orang yang beriman kepadanya; dan (sebaliknya) Al-Quran tidak menambahkan orang-orang yang zalim (disebabkan keingkaran mereka) melainkan kerugian jua.", "And We send down of the Qur'an that which is healing and mercy for the believers, but it does not increase the wrongdoers except in loss."], [94, 5, "فَإِنَّ مَعَ ٱلۡعُسۡرِ يُسۡرًا", "Oleh itu, maka (tetapkanlah kepercayaanmu) bahawa sesungguhnya tiap-tiap kesukaran disertai kemudahan.", "For indeed, with hardship [will be] ease."], [11, 6, "۞وَمَا مِن دَآبَّةٖ فِي ٱلۡأَرۡضِ إِلَّا عَلَى ٱللَّهِ رِزۡقُهَا وَيَعۡلَمُ مُسۡتَقَرَّهَا وَمُسۡتَوۡدَعَهَاۚ كُلّٞ فِي كِتَٰبٖ مُّبِينٖ", "Dan tiadalah sesuatupun dari makhluk-makhluk yang bergerak di bumi melainkan Allah jualah yang menanggung rezekinya dan mengetahui tempat kediamannya dan tempat ia disimpan. Semuanya itu tersurat di dalam Kitab (Lauh mahfuz) yang nyata (kepada malaikat-malaikat yang berkenaan).", "And there is no creature on earth but that upon Allah is its provision, and He knows its place of dwelling and place of storage. All is in a clear register."], [12, 87, "يَٰبَنِيَّ ٱذۡهَبُواْ فَتَحَسَّسُواْ مِن يُوسُفَ وَأَخِيهِ وَلَا تَاْيۡـَٔسُواْ مِن رَّوۡحِ ٱللَّهِۖ إِنَّهُۥ لَا يَاْيۡـَٔسُ مِن رَّوۡحِ ٱللَّهِ إِلَّا ٱلۡقَوۡمُ ٱلۡكَٰفِرُونَ", "Wahai anak-anakku! Pergilah dan intiplah khabar berita mengenai Yusuf dan saudaranya (Bunyamin), dan janganlah kamu berputus asa dari rahmat serta pertolongan Allah. Sesungguhnya tidak berputus asa dari rahmat dan pertolongan Allah itu melainkan kaum yang kafir.", "O my sons, go and find out about Joseph and his brother and despair not of relief from Allah. Indeed, no one despairs of relief from Allah except the disbelieving people."], [3, 92, "لَن تَنَالُواْ ٱلۡبِرَّ حَتَّىٰ تُنفِقُواْ مِمَّا تُحِبُّونَۚ وَمَا تُنفِقُواْ مِن شَيۡءٖ فَإِنَّ ٱللَّهَ بِهِۦ عَلِيمٞ", "Kamu tidak sekali-kali akan dapat mencapai (hakikat) kebajikan dan kebaktian (yang sempurna) sebelum kamu dermakan sebahagian dari apa yang kamu sayangi. Dan sesuatu apa jua yang kamu dermakan maka sesungguhnya Allah mengetahuinya.", "Never will you attain the good [reward] until you spend [in the way of Allah] from that which you love. And whatever you spend - indeed, Allah is Knowing of it."], [49, 10, "إِنَّمَا ٱلۡمُؤۡمِنُونَ إِخۡوَةٞ فَأَصۡلِحُواْ بَيۡنَ أَخَوَيۡكُمۡۚ وَٱتَّقُواْ ٱللَّهَ لَعَلَّكُمۡ تُرۡحَمُونَ", "Sebenarnya orang-orang yang beriman itu adalah bersaudara, maka damaikanlah di antara dua saudara kamu (yang bertelingkah) itu; dan bertaqwalah kepada Allah supaya kamu beroleh rahmat.", "The believers are but brothers, so make settlement between your brothers. And fear Allah that you may receive mercy."], [4, 28, "يُرِيدُ ٱللَّهُ أَن يُخَفِّفَ عَنكُمۡۚ وَخُلِقَ ٱلۡإِنسَٰنُ ضَعِيفٗا", "Allah (sentiasa) hendak meringankan (beban hukumnya) daripada kamu, kerana manusia itu dijadikan berkeadaan lemah.", "And Allah wants to lighten for you [your difficulties]; and mankind was created weak."], [3, 8, "رَبَّنَا لَا تُزِغۡ قُلُوبَنَا بَعۡدَ إِذۡ هَدَيۡتَنَا وَهَبۡ لَنَا مِن لَّدُنكَ رَحۡمَةًۚ إِنَّكَ أَنتَ ٱلۡوَهَّابُ", "(Mereka berdoa dengan berkata): \"Wahai Tuhan kami! Janganlah Engkau memesongkan hati kami sesudah Engkau beri petunjuk kepada kami, dan kurniakanlah kepada kami limpah rahmat dari sisiMu; sesungguhnya Engkau jualah Tuhan Yang melimpah-limpah pemberianNya.\"", "[Who say], \"Our Lord, let not our hearts deviate after You have guided us and grant us from Yourself mercy. Indeed, You are the Bestower.\""], [2, 153, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱسۡتَعِينُواْ بِٱلصَّبۡرِ وَٱلصَّلَوٰةِۚ إِنَّ ٱللَّهَ مَعَ ٱلصَّـٰبِرِينَ", "Wahai sekalian orang-orang yang beriman! Mintalah pertolongan (untuk menghadapi susah payah dalam menyempurnakan sesuatu perintah Tuhan) dengan bersabar dan dengan (mengerjakan) sembahyang; kerana sesungguhnya Allah menyertai (menolong) orang-orang yang sabar.", "O you who have believed, seek help through patience and prayer. Indeed, Allah is with the patient."], [50, 16, "وَلَقَدۡ خَلَقۡنَا ٱلۡإِنسَٰنَ وَنَعۡلَمُ مَا تُوَسۡوِسُ بِهِۦ نَفۡسُهُۥۖ وَنَحۡنُ أَقۡرَبُ إِلَيۡهِ مِنۡ حَبۡلِ ٱلۡوَرِيدِ", "Dan demi sesungguhnya, Kami telah mencipta manusia dan Kami sedia mengetahui apa yang dibisikkan oleh hatinya, sedang (pengetahuan) Kami lebih dekat kepadanya daripada urat lehernya.", "And We have already created man and know what his soul whispers to him, and We are closer to him than [his] jugular vein."], [3, 200, "يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُواْ ٱصۡبِرُواْ وَصَابِرُواْ وَرَابِطُواْ وَٱتَّقُواْ ٱللَّهَ لَعَلَّكُمۡ تُفۡلِحُونَ", "Wahai orang-orang yang beriman! Bersabarlah kamu (menghadapi segala kesukaran dalam mengerjakan perkara-perkara yang berkebajikan), dan kuatkanlah kesabaran kamu lebih daripada kesabaran musuh, di medan perjuangan), dan bersedialah (dengan kekuatan pertahanan di daerah-daerah sempadan) serta bertaqwalah kamu kepada Allah supaya, kamu berjaya (mencapai kemenangan).", "O you who have believed, persevere and endure and remain stationed and fear Allah that you may be successful."], [8, 2, "إِنَّمَا ٱلۡمُؤۡمِنُونَ ٱلَّذِينَ إِذَا ذُكِرَ ٱللَّهُ وَجِلَتۡ قُلُوبُهُمۡ وَإِذَا تُلِيَتۡ عَلَيۡهِمۡ ءَايَٰتُهُۥ زَادَتۡهُمۡ إِيمَٰنٗا وَعَلَىٰ رَبِّهِمۡ يَتَوَكَّلُونَ", "Sesungguhnya orang-orang yang beriman itu (yang sempurna imannya) ialah mereka yang apabila disebut nama Allah (dan sifat-sifatNya) gementarlah hati mereka; dan apabila dibacakan kepada mereka ayat-ayatNya, menjadikan mereka bertambah iman, dan kepada Tuhan mereka jualah mereka berserah.", "The believers are only those who, when Allah is mentioned, their hearts become fearful, and when His verses are recited to them, it increases them in faith; and upon their Lord they rely."], [20, 46, "قَالَ لَا تَخَافَآۖ إِنَّنِي مَعَكُمَآ أَسۡمَعُ وَأَرَىٰ", "Allah berfirman: \"Janganlah kamu takut, sesungguhnya Aku ada bersama-sama kamu; Aku mendengar dan melihat segala-galanya.\"", "[Allah] said, \"Fear not. Indeed, I am with you both; I hear and I see.\""], [2, 201, "وَمِنۡهُم مَّن يَقُولُ رَبَّنَآ ءَاتِنَا فِي ٱلدُّنۡيَا حَسَنَةٗ وَفِي ٱلۡأٓخِرَةِ حَسَنَةٗ وَقِنَا عَذَابَ ٱلنَّارِ", "Dan di antara mereka pula ada yang (berdoa dengan) berkata: \"Wahai Tuhan kami, berilah kami kebaikan di dunia dan kebaikan di akhirat, dan peliharalah kami dari azab neraka.\"", "But among them is he who says, \"Our Lord, give us in this world [that which is] good and in the Hereafter [that which is] good and protect us from the punishment of the Fire.\""], [16, 97, "مَنۡ عَمِلَ صَٰلِحٗا مِّن ذَكَرٍ أَوۡ أُنثَىٰ وَهُوَ مُؤۡمِنٞ فَلَنُحۡيِيَنَّهُۥ حَيَوٰةٗ طَيِّبَةٗۖ وَلَنَجۡزِيَنَّهُمۡ أَجۡرَهُم بِأَحۡسَنِ مَا كَانُواْ يَعۡمَلُونَ", "Sesiapa yang beramal soleh, dari lelaki atau perempuan, sedang ia beriman, maka sesungguhnya Kami akan menghidupkan dia dengan kehidupan yang baik; dan sesungguhnya kami akan membalas mereka, dengan memberikan pahala yang lebih dari apa yang mereka telah kerjakan.", "Whoever does righteousness, whether male or female, while he is a believer - We will surely cause him to live a good life, and We will surely give them their reward [in the Hereafter] according to the best of what they used to do."], [65, 3, "وَيَرۡزُقۡهُ مِنۡ حَيۡثُ لَا يَحۡتَسِبُۚ وَمَن يَتَوَكَّلۡ عَلَى ٱللَّهِ فَهُوَ حَسۡبُهُۥٓۚ إِنَّ ٱللَّهَ بَٰلِغُ أَمۡرِهِۦۚ قَدۡ جَعَلَ ٱللَّهُ لِكُلِّ شَيۡءٖ قَدۡرٗا", "Serta memberinya rezeki dari jalan yang tidak terlintas di hatinya. Dan (Ingatlah), sesiapa berserah diri bulat-bulat kepada Allah, maka Allah cukuplah baginya (untuk menolong dan menyelamatkannya). Sesungguhnya Allah tetap melakukan segala perkara yang dikehendakiNya. Allah telahpun menentukan kadar dan masa bagi berlakunya tiap-tiap sesuatu.", "And will provide for him from where he does not expect. And whoever relies upon Allah - then He is sufficient for him. Indeed, Allah will accomplish His purpose. Allah has already set for everything a [decreed] extent."]];
 const AL_KAHF = [293, 304];
+// Life events a reading can be tagged with. Custom tags are stored as "~text".
+const EVENT_TAGS = [
+  ["exam", "📝", "Peperiksaan", "Exams"], ["sick", "🤒", "Sakit", "Illness"], ["baby", "👶", "Kelahiran", "New baby"],
+  ["loss", "🕊️", "Kehilangan", "Loss"], ["travel", "✈️", "Musafir", "Travel"], ["wed", "💍", "Perkahwinan", "Wedding"],
+  ["work", "💼", "Kerja baharu", "New job"], ["trial", "🤲", "Ujian hidup", "Hard times"],
+];
+function tagInfo(tag, lang) {
+  if (!tag) return null;
+  const t = EVENT_TAGS.find((x) => x[0] === tag);
+  if (t) return { emoji: t[1], label: lang === "en" ? t[3] : t[2] };
+  return { emoji: "🏷️", label: String(tag).replace(/^~/, "") };
+}
+// Quiz: Arabic text per page, split into files of 20 pages (/quran/p-00.json … p-30.json)
+const quranFiles = new Map();
+function loadQuranPages(page) {
+  const f = String(Math.floor((page - 1) / 20)).padStart(2, "0");
+  if (!quranFiles.has(f)) {
+    quranFiles.set(f, fetch(`/quran/p-${f}.json`).then((r) => { if (!r.ok) throw new Error("quran"); return r.json(); })
+      .catch((e) => { quranFiles.delete(f); throw e; }));
+  }
+  return quranFiles.get(f);
+}
+async function makeQuiz(a, b) {
+  const page = a + Math.floor(Math.random() * (b - a + 1));
+  const pages = await loadQuranPages(page);
+  const list = pages[page] || [];
+  if (!list.length) return null;
+  const good = list.filter((x) => x[2].length >= 25 && x[2].length <= 190);
+  const [s, ay, ar] = (good.length ? good : list)[Math.floor(Math.random() * (good.length ? good.length : list.length))];
+  // distractors: other surahs in what was read, then neighbours
+  const pool = [];
+  for (let p = a; p <= b && pool.length < 12; p++) {
+    const name = surahForPage(p), idx = SURAH_NAMES.indexOf(name) + 1;
+    if (idx !== s && !pool.includes(idx)) pool.push(idx);
+  }
+  for (const d of [1, -1, 2, -2, 3, -3, 4]) { const n = s + d; if (n >= 1 && n <= 114 && n !== s && !pool.includes(n)) pool.push(n); }
+  const others = pool.sort(() => Math.random() - 0.5).slice(0, 2);
+  const options = [s, ...others].sort(() => Math.random() - 0.5);
+  return { s, a: ay, ar, page, options, id: Date.now() };
+}
 const REPAIR_PER_MONTH = 2;
 function ayatForDay(iso) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -454,6 +497,23 @@ const TEXT = {
     openQuran: (p) => `Buka muka surat ${p} di Quran.com`, openQuranShort: "Baca di Quran.com",
     // sync & owner
     viewerBannerName: (n) => `Anda sedang melihat jurnal ${n} (lihat sahaja).`,
+    tabMushaf: "Mushaf", mpSummary: (n, t) => `${n} daripada ${t} muka surat pernah dicatat. Ketik mana-mana petak.`,
+    mpCell: (p, c) => `Muka surat ${p}: ${c ? `dibaca ${c} kali` : "belum dicatat"}`, mpNone: "Belum",
+    mpNever: "Muka surat ini belum pernah dicatat.", mpRead: (c) => `Dibaca ${c} kali`, mpLast: (d, ago) => `terakhir ${d} (${ago})`,
+    mpAgo: (n) => `${n} hari lalu`, mpNotes: "Nota & peristiwa di sini", mpOpen: "Buka muka surat ini",
+    tagLabel: "Peristiwa hidup", tagOther: "Lain", tagOtherPh: "Contoh: Temuduga kerja", tagCarried: "Diteruskan dari catatan lepas. Ketik untuk buang.",
+    epTitle: "Peristiwa hidup", epEmpty: "Tandakan peristiwa (peperiksaan, sakit, musafir…) semasa catat bacaan. Nanti anda boleh lihat semula apa yang dibaca pada saat itu.",
+    epMeta: (n, p) => `${n} catatan · ${p} muka surat`,
+    letterTitle: "Kapsul masa khatam", letterHint: (n) => `Surat ini akan dimeterai dan hanya boleh dibuka bila anda khatam kali ke-${n}. Tulis harapan, doa atau pesanan untuk diri anda nanti.`,
+    letterPh: "Assalamualaikum diri saya di khatam akan datang…", letterSeal: "Meterai surat", letterSaved: (n) => `Surat dimeterai 🔒 Akan dibuka bila khatam ke-${n}`,
+    letterSealed: (n) => `Kapsul masa dimeterai. Dibuka bila khatam ke-${n}`, letterRead: "Baca kapsul masa", letterHide: "Tutup surat",
+    letterWrite: "Tulis kapsul masa", letterWriteNext: "Tulis surat untuk diri anda di khatam akan datang",
+    letterFrom: (n, d) => `Ada surat dari diri anda semasa khatam ke-${n} (${d})`, letterOpen: "Buka surat",
+    quizTitle: "Kuiz 10 saat", quizQ: "Ayat ini dari surah apa?", quizSkip: "Langkau", quizOff: "Matikan kuiz",
+    quizRight: "Betul! MasyaAllah.", quizWrong: "Hampir!", quizTimeout: "Masa tamat.",
+    quizAns: (n, s, a, p) => `Ayat ini dari Surah ${n} (${s}:${a}), muka surat ${p}.`, quizScore: (r, n) => `Skor anda: ${r}/${n}`,
+    quizSetting: "Kuiz 10 saat", quizSettingHint: (q) => `Satu soalan ringkas sehari, dari muka surat yang baru dicatat.${q.n ? ` Skor setakat ini: ${q.r}/${q.n}.` : ""}`,
+    quizOffToast: "Kuiz dimatikan. Boleh hidupkan semula di Tetapan.",
     shareApp: "Kongsi app", shareKindInvite: "Jemput guna app", shareKindJournal: "Kongsi jurnal saya",
     shareInviteHint: "Penerima terus dapat jurnal bacaan sendiri dalam telefon mereka. Percuma dan tak perlu daftar.",
     shareJournalHint: "Penerima boleh lihat bacaan anda sahaja dan tak boleh ubah apa-apa.",
@@ -617,6 +677,23 @@ const TEXT = {
     monthSummary: (d, p) => `${d} day${d === 1 ? "" : "s"} · ${p} page${p === 1 ? "" : "s"}`,
     openQuran: (p) => `Open page ${p} on Quran.com`, openQuranShort: "Read on Quran.com",
     viewerBannerName: (n) => `You're viewing ${n}'s journal (view only).`,
+    tabMushaf: "Mushaf", mpSummary: (n, t) => `${n} of ${t} pages logged so far. Tap any square.`,
+    mpCell: (p, c) => `Page ${p}: ${c ? `read ${c} time${c === 1 ? "" : "s"}` : "not logged yet"}`, mpNone: "None",
+    mpNever: "This page hasn't been logged yet.", mpRead: (c) => `Read ${c} time${c === 1 ? "" : "s"}`, mpLast: (d, ago) => `last on ${d} (${ago})`,
+    mpAgo: (n) => `${n} days ago`, mpNotes: "Notes & events here", mpOpen: "Open this page",
+    tagLabel: "Life event", tagOther: "Other", tagOtherPh: "e.g. Job interview", tagCarried: "Carried over from your last entry. Tap to remove.",
+    epTitle: "Life events", epEmpty: "Tag an event (exams, illness, travel…) when you log. Later you can look back at what you read during that time.",
+    epMeta: (n, p) => `${n} entr${n === 1 ? "y" : "ies"} · ${p} pages`,
+    letterTitle: "Khatam time capsule", letterHint: (n) => `This letter is sealed and can only be opened when you complete khatam no. ${n}. Write a hope, a prayer or a reminder for your future self.`,
+    letterPh: "Assalamualaikum, me at my next khatam…", letterSeal: "Seal the letter", letterSaved: (n) => `Letter sealed 🔒 Opens at khatam no. ${n}`,
+    letterSealed: (n) => `Time capsule sealed. Opens at khatam no. ${n}`, letterRead: "Read time capsule", letterHide: "Close letter",
+    letterWrite: "Write a time capsule", letterWriteNext: "Write a letter to yourself for your next khatam",
+    letterFrom: (n, d) => `A letter from you at khatam no. ${n} (${d})`, letterOpen: "Open the letter",
+    quizTitle: "10-second quiz", quizQ: "Which surah is this verse from?", quizSkip: "Skip", quizOff: "Turn off quiz",
+    quizRight: "Correct! MashaAllah.", quizWrong: "Close!", quizTimeout: "Time's up.",
+    quizAns: (n, s, a, p) => `It's from Surah ${n} (${s}:${a}), page ${p}.`, quizScore: (r, n) => `Your score: ${r}/${n}`,
+    quizSetting: "10-second quiz", quizSettingHint: (q) => `One quick question a day, from the pages you just logged.${q.n ? ` Score so far: ${q.r}/${q.n}.` : ""}`,
+    quizOffToast: "Quiz turned off. You can turn it back on in Settings.",
     shareApp: "Share app", shareKindInvite: "Invite to the app", shareKindJournal: "Share my journal",
     shareInviteHint: "They get their own reading journal on their phone. Free, no sign-up.",
     shareJournalHint: "They can only view your reading and can't change anything.",
@@ -973,6 +1050,8 @@ const ICON_PATHS = {
   calendar: <><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></>,
   close: <path d="M6 6l12 12M18 6 6 18" />,
   share: <><circle cx="6" cy="12" r="2.5" /><circle cx="17.5" cy="6" r="2.5" /><circle cx="17.5" cy="18" r="2.5" /><path d="m8.2 10.8 7.1-3.6M8.2 13.2l7.1 3.6" /></>,
+  bulb: <><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3z" /></>,
+  letter: <><rect x="3" y="5.5" width="18" height="13" rx="2" /><path d="m3.5 7 8.5 6 8.5-6" /></>,
   idcard: <><rect x="3" y="5" width="18" height="14" rx="2.5" /><circle cx="8.8" cy="11" r="2.2" /><path d="M5.6 16.3c.6-1.5 1.8-2.3 3.2-2.3s2.6.8 3.2 2.3M14.5 10h3.8M14.5 13.5h3.8" /></>,
   external: <><path d="M14 4h6v6" /><path d="M20 4 11 13" /><path d="M18 14v5.5H4.5V6H10" /></>,
 };
@@ -1027,6 +1106,15 @@ function QuranTracker() {
   const [fromPage, setFromPage] = useState("");
   const [page, setPage] = useState("");
   const [note, setNote] = useState("");
+  const [tag, setTag] = useState("");
+  const [tagCarried, setTagCarried] = useState(false);
+  const [quiz, setQuiz] = useState(null);
+  const [quizPending, setQuizPending] = useState(null);
+  const [letterFor, setLetterFor] = useState(null);
+  const [letterDraft, setLetterDraft] = useState("");
+  const [openLetters, setOpenLetters] = useState(() => new Set());
+  const [doaLetterOpen, setDoaLetterOpen] = useState(false);
+  const [openEpisode, setOpenEpisode] = useState(null);
   const [date, setDate] = useState(todayStr());
   const [formError, setFormError] = useState("");
 
@@ -1101,6 +1189,9 @@ function QuranTracker() {
     haptic(10);
     if (!canEdit) { setLoginErr(""); setLoginOpen(true); return; }
     setFormError(""); setDate(todayStr());
+    const recent = [...stateRef.current.entries].sort((x, y) => (y.ts || 0) - (x.ts || 0))[0];
+    const carry = recent && recent.tag && Date.now() - (recent.ts || 0) < 3 * 86400000 ? recent.tag : "";
+    setTag(carry); setTagCarried(!!carry);
     try { history.pushState({ sheet: 1 }, "", location.href); } catch (e) {}
     setSheetOpen(true);
     setTimeout(() => { const el = document.getElementById("log-to"); if (el) el.focus(); }, 320);
@@ -1245,7 +1336,7 @@ function QuranTracker() {
   }
   async function pullFromServer() {
     try {
-      const r = await api("journal");
+      const r = await api("journal", {}, tokenRef.current);
       if (!r.ok || !r.body || typeof r.body.version !== "number") return;
       setHasOwner(!!r.body.hasOwner);
       if (r.body.doc && r.body.version > versionRef.current && !readStr(DIRTY_KEY)) {
@@ -1260,7 +1351,7 @@ function QuranTracker() {
     if (PERSONAL) { setRole("personal"); return; }
     (async () => {
       let r = null;
-      if (/^https?:$/.test(location.protocol)) { try { r = await api("journal"); } catch (e) { r = null; } }
+      if (/^https?:$/.test(location.protocol)) { try { r = await api("journal", {}, tokenRef.current); } catch (e) { r = null; } }
       if (cancelled) return;
       if (!r || !r.body || typeof r.body.version !== "number") {
         if (readStr(MODE_KEY) === "server" && /^https?:$/.test(location.protocol)) {
@@ -1382,7 +1473,7 @@ function QuranTracker() {
     tokenRef.current = token; writeStr(TOKEN_KEY, token);
     setHasOwner(true);
     setLoginOpen(false); setPin(""); setPin2("");
-    const j = await api("journal");
+    const j = await api("journal", {}, token);
     if (j.ok && j.body && j.body.doc) {
       applyState(docToState(j.body.doc)); setVersion(j.body.version); setRole("owner"); setSyncState("saved");
     } else {
@@ -1631,6 +1722,29 @@ function QuranTracker() {
 
   const notesList = useMemo(() => sorted.filter((e) => e.note), [sorted]);
   // Search by surah name, note text, page number ("220" or "p.220") or date text
+  const episodes = useMemo(() => {
+    const tagged = entries.filter((e) => e.tag).sort((x, y) => x.date.localeCompare(y.date) || (x.ts || 0) - (y.ts || 0));
+    const byTag = {};
+    for (const e of tagged) (byTag[e.tag] = byTag[e.tag] || []).push(e);
+    const eps = [];
+    for (const [tg, list] of Object.entries(byTag)) {
+      let cur = null;
+      for (const e of list) {
+        if (cur && daysBetween(cur.end, e.date) <= 7) { cur.items.push(e); cur.end = e.date; }
+        else { cur = { tag: tg, start: e.date, end: e.date, items: [e] }; eps.push(cur); }
+      }
+    }
+    return eps.map((ep) => {
+      let pages = 0; const surahs = [];
+      for (const e of ep.items) {
+        const [a, b] = spans[e.id] || [e.page, e.page];
+        pages += b - a + 1;
+        for (let p = a; p <= b; p++) { const n = surahForPage(p); if (!surahs.includes(n)) surahs.push(n); }
+      }
+      return { ...ep, key: ep.tag + ep.start, pages, surahs, items: [...ep.items].reverse() };
+    }).sort((x, y) => y.end.localeCompare(x.end));
+  }, [entries, spans]);
+
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase().replace(/^p\.?\s*/, "");
     if (!q) return [];
@@ -1642,6 +1756,7 @@ function QuranTracker() {
       const surahs = new Set([surahForPage(a), surahForPage(b), surahForPage(en.page)]);
       for (const sname of surahs) if (norm(sname).includes(qn)) return true;
       if (en.note && norm(en.note).includes(qn)) return true;
+      if (en.tag && norm(tagInfo(en.tag, settings.lang).label).includes(qn)) return true;
       return norm(fmtLong(en.date)).includes(qn);
     });
   }, [query, sorted, spans, settings.lang]);
@@ -1693,6 +1808,12 @@ function QuranTracker() {
     if (msgs.length) celebrate(msgs.slice(0, 3));
   }, [juzFill, streak, bestStreak, khatamCount, badges, repair.total]);
 
+  useEffect(() => {
+    if (!quizPending || celebration || sheetOpen || doa || letterFor) return;
+    const t = setTimeout(() => { setQuiz(quizPending); setQuizPending(null); }, 700);
+    return () => clearTimeout(t);
+  }, [quizPending, celebration, sheetOpen, doa, letterFor]);
+
   /* ----- actions ----- */
   function addKhatam(kDate, kNote, ts) {
     const k = { id: makeId("k"), date: kDate, note: (kNote || "").trim(), ts };
@@ -1714,11 +1835,17 @@ function QuranTracker() {
     const from = parsePageInput(fromPage);
     if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setFormError(T.invalidPage); return; }
     setFormError("");
-    const entry = { id: makeId("e"), page: to, from: from && from !== to ? from : null, note: note.trim(), date, ts: Date.now() };
+    const entry = { id: makeId("e"), page: to, from: from && from !== to ? from : null, note: note.trim(), date, ts: Date.now(), ...(tag ? { tag } : {}) };
     celebrateArmed.current = true;
+    const prevPage = lastEntry ? lastEntry.page : 0;
     persist([entry, ...entries]);
+    if (settings.quiz !== false && readStr("qn-quiz-day") !== todayStr()) {
+      writeStr("qn-quiz-day", todayStr());
+      const qa = from || (prevPage && prevPage < to ? prevPage + 1 : to), qb = to;
+      makeQuiz(Math.min(qa, qb), Math.max(qa, qb)).then((q) => q && setQuizPending(q)).catch(() => {});
+    }
     if (to === TOTAL_PAGES) addKhatam(date, "", entry.ts + 1);
-    setPage(""); setFromPage(""); setNote("");
+    setPage(""); setFromPage(""); setNote(""); setTag(""); setTagCarried(false);
     closeLog();
     haptic(15);
     showToast(T.savedToast(rangeLabel(entry)));
@@ -1740,7 +1867,7 @@ function QuranTracker() {
   function startEdit(en) {
     setConfirmDeleteId(null);
     setEditId(en.id);
-    setEditDraft({ from: en.from ? String(en.from) : "", page: String(en.page), date: en.date, note: en.note || "", err: "" });
+    setEditDraft({ from: en.from ? String(en.from) : "", page: String(en.page), date: en.date, note: en.note || "", tag: en.tag || "", err: "" });
   }
   function saveEdit(e) {
     e.preventDefault();
@@ -1749,7 +1876,7 @@ function QuranTracker() {
     if (to == null || Number.isNaN(to) || Number.isNaN(from)) { setEditDraft({ ...editDraft, err: T.invalidPage }); return; }
     celebrateArmed.current = true;
     persist(entries.map((en) => en.id === editId
-      ? { ...en, page: to, from: from && from !== to ? from : null, date: editDraft.date, note: editDraft.note.trim() }
+      ? (({ tag: _t, ...rest }) => ({ ...rest, page: to, from: from && from !== to ? from : null, date: editDraft.date, note: editDraft.note.trim(), ...(editDraft.tag ? { tag: editDraft.tag } : {}) }))(en)
       : en));
     setEditId(null); setEditDraft(null);
   }
@@ -1866,6 +1993,9 @@ function QuranTracker() {
           <textarea className="qt-textarea" rows={2} value={editDraft.note}
             onChange={(e) => setEditDraft({ ...editDraft, note: e.target.value })} style={styles.textarea} />
         </label>
+        <div style={{ ...styles.label, marginBottom: 10 }}>{T.tagLabel}
+          <TagPicker value={editDraft.tag} onChange={(v) => setEditDraft({ ...editDraft, tag: v })} T={T} lang={settings.lang} />
+        </div>
         {editDraft.err && <div style={{ ...styles.errorText, marginTop: -6, marginBottom: 8 }}>{editDraft.err}</div>}
         <div style={{ display: "flex", gap: 8 }}>
           <button className="qt-btn" type="submit" style={styles.smallPrimary}>{T.save}</button>
@@ -1886,6 +2016,7 @@ function QuranTracker() {
           <span style={styles.entryJuz}>{surahForPage(en.page)} · Juz' {juzForPage(en.page)}</span>
         </div>
         {showDate && <div style={styles.entryDate}>{fmtLong(en.date)}</div>}
+        {en.tag && (() => { const ti = tagInfo(en.tag, settings.lang); return <div style={{ marginTop: 5 }}><span style={styles.tagPill}>{ti.emoji} {ti.label}</span></div>; })()}
         {en.note && <div style={styles.entryNote}>{en.note}</div>}
       </>
     );
@@ -1935,6 +2066,17 @@ function QuranTracker() {
         })}
       </div>
     ) },
+    ...(canEdit ? [{ key: "quiz", icon: "bulb", title: T.quizSetting, value: settings.quiz === false ? T.soundOff : T.soundOn, body: (
+      <div>
+        <div style={styles.segment}>
+          {[[true, T.soundOn], [false, T.soundOff]].map(([v, l]) => (
+            <button key={l} className="qt-btn" type="button" onClick={() => persistSettings({ quiz: v })} aria-pressed={(settings.quiz !== false) === v}
+              style={{ ...styles.segBtn, ...((settings.quiz !== false) === v ? styles.segBtnOn : {}) }}>{l}</button>
+          ))}
+        </div>
+        <div style={{ ...styles.hint, marginBottom: 0 }}>{T.quizSettingHint(quizScore())}</div>
+      </div>
+    ) }] : []),
     { key: "shareapp", icon: "share", title: T.shareApp, value: "", body: <ShareApp T={T} name={canEdit ? jname : ""} canJournal={role === "owner" && !PERSONAL} onCopied={() => showToast(T.shareCopied)} /> },
     { key: "lang", icon: "globe", title: T.language, value: settings.lang === "en" ? "English" : "Bahasa Melayu", body: (
       <div style={styles.segment}>
@@ -2325,7 +2467,7 @@ function QuranTracker() {
               </div>
             ) : (<>
             <div style={styles.tabs} role="tablist">
-              {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal]].map(([key, label]) => (
+              {[["history", T.tabHistory], ["reflect", `${T.tabReflect} (${notesList.length})`], ["calendar", T.tabCal], ["mushaf", T.tabMushaf]].map(([key, label]) => (
                 <button key={key} role="tab" aria-selected={tab === key} className="qt-btn" onClick={() => { haptic(6); setTab(key); }}
                   style={{ ...styles.tab, ...(tab === key ? styles.tabOn : {}) }}>{label}</button>
               ))}
@@ -2368,6 +2510,35 @@ function QuranTracker() {
 
         {tab === "reflect" && (
           <div style={styles.historySection}>
+            <div style={styles.secLabel}>{T.epTitle}</div>
+            {episodes.length === 0 ? (
+              <div style={{ ...styles.hint, marginTop: 0, marginBottom: 14 }}>{T.epEmpty}</div>
+            ) : (
+              <div style={{ display: "grid", gap: 8, marginBottom: 18 }}>
+                {episodes.map((ep) => {
+                  const ti = tagInfo(ep.tag, settings.lang), open = openEpisode === ep.key;
+                  return (
+                    <div key={ep.key} style={styles.epCard}>
+                      <button className="qt-btn" type="button" onClick={() => { haptic(6); setOpenEpisode(open ? null : ep.key); }} aria-expanded={open} style={styles.epHead}>
+                        <span style={{ fontSize: 22 }}>{ti.emoji}</span>
+                        <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                          <span style={{ display: "block", fontWeight: 600, color: "var(--title)" }}>{ti.label}</span>
+                          <span style={{ display: "block", fontSize: 12, opacity: 0.75 }}>
+                            {ep.start === ep.end ? fmtLong(ep.start) : `${fmtDate(ep.start)} – ${fmtLong(ep.end)}`} · {T.epMeta(ep.items.length, ep.pages)}
+                          </span>
+                          <span style={{ display: "block", fontSize: 12, color: "var(--gold)", marginTop: 2 }}>
+                            {ep.surahs.slice(0, 4).join(", ")}{ep.surahs.length > 4 ? ` +${ep.surahs.length - 4}` : ""}
+                          </span>
+                        </span>
+                        <span style={{ ...styles.chev, transform: open ? "rotate(90deg)" : "none" }}>›</span>
+                      </button>
+                      {open && <div className="qt-fade" style={{ padding: "0 10px 6px" }}>{ep.items.map((en) => <React.Fragment key={en.id}>{EntryCard({ en, showDate: true })}</React.Fragment>)}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <div style={styles.secLabel}>{T.tabReflect}</div>
             {notesList.length === 0 ? (
               <div style={styles.emptyState}>{T.emptyReflect}</div>
             ) : (
@@ -2376,6 +2547,7 @@ function QuranTracker() {
           </div>
         )}
 
+        {tab === "mushaf" && <MushafMap entries={entries} spans={spans} today={today} T={T} lang={settings.lang} fmtLong={fmtLong} fmtDate={fmtDate} start={lastEntry ? lastEntry.page : 1} />}
         {tab === "calendar" && <Heatmap pagesByDate={pagesByDate} covered={repair.covered} today={today} T={T} fmtLong={fmtLong} />}
             </>)}
 
@@ -2434,9 +2606,28 @@ function QuranTracker() {
                         </div>
                       </div>
                     );
-                    return canEdit ? (
-                      <SwipeRow key={k.id} flat onTap={() => { haptic(8); startEditKhatam(k); }} onSwipe={() => deleteKhatam(k.id)} label={`${T.edit} ${T.khatamN(n)}`} delLabel={T.del}>{row}</SwipeRow>
-                    ) : <div key={k.id} style={styles.khatamRow}>{row}</div>;
+                    const latest = n === khatamsAsc.length, lOpen = openLetters.has(k.id);
+                    const letterUi = !canEdit ? null : k.letter ? (
+                      latest ? <div style={styles.letterLine}>🔒 {T.letterSealed(n + 1)}</div> : (
+                        <div style={{ margin: "0 0 10px 38px" }}>
+                          <button className="qt-btn" type="button" onClick={() => { haptic(8); const s2 = new Set(openLetters); lOpen ? s2.delete(k.id) : s2.add(k.id); setOpenLetters(s2); }}
+                            aria-expanded={lOpen} style={styles.letterBtn}>📜 {lOpen ? T.letterHide : T.letterRead}</button>
+                          {lOpen && <div className="qt-fade" style={styles.letterText}>{k.letter}</div>}
+                        </div>
+                      )
+                    ) : latest ? (
+                      <div style={{ margin: "0 0 10px 38px" }}>
+                        <button className="qt-btn" type="button" onClick={() => { haptic(8); setLetterDraft(""); setLetterFor(k.id); }} style={styles.letterBtn}>✉️ {T.letterWrite}</button>
+                      </div>
+                    ) : null;
+                    return (
+                      <div key={k.id}>
+                        {canEdit ? (
+                          <SwipeRow flat onTap={() => { haptic(8); startEditKhatam(k); }} onSwipe={() => deleteKhatam(k.id)} label={`${T.edit} ${T.khatamN(n)}`} delLabel={T.del}>{row}</SwipeRow>
+                        ) : <div style={styles.khatamRow}>{row}</div>}
+                        {letterUi}
+                      </div>
+                    );
                   })}
                 </div>
               )}
@@ -2599,6 +2790,11 @@ function QuranTracker() {
               <textarea className="qt-textarea" value={note} onChange={(e) => setNote(e.target.value)}
                 placeholder={T.notePh} style={styles.textarea} rows={2} />
             </label>
+            <div style={{ ...styles.label, marginBottom: 12 }}>
+              <span>{T.tagLabel} <span style={{ fontWeight: 400, opacity: 0.6 }}>{T.optional}</span></span>
+              <TagPicker value={tag} onChange={(v) => { setTag(v); setTagCarried(false); }} T={T} lang={settings.lang} />
+              {tagCarried && tag && <div style={{ ...styles.hint, margin: "6px 0 0" }}>{T.tagCarried}</div>}
+            </div>
             <button className="qt-btn" type="submit" style={styles.submitBtn}>{T.saveEntry}</button>
             {(formError || saveError) && <div style={styles.errorText}>{formError || saveError}</div>}
           </form>
@@ -2611,14 +2807,54 @@ function QuranTracker() {
         <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setDoa(null); }}>
           <div style={{ ...styles.modal, maxWidth: 440, maxHeight: "86vh", overflowY: "auto" }} className="qt-fade" role="dialog" aria-modal="true" aria-labelledby="doa-title">
             {doa.n > 0 && <div style={styles.doaCongrats}>{T.doaCongrats(doa.n)}{jname && <div style={{ fontSize: 12.5, opacity: 0.9, marginTop: 4 }}>{T.doaAccept(jname)}</div>}</div>}
+            {doa.n > 1 && canEdit && khatamsAsc[doa.n - 2] && khatamsAsc[doa.n - 2].letter && (
+              <div style={styles.letterBox}>
+                <div style={{ fontWeight: 600, color: "var(--title)" }}>📜 {T.letterFrom(doa.n - 1, fmtLong(khatamsAsc[doa.n - 2].date))}</div>
+                {doaLetterOpen ? <div className="qt-fade" style={{ ...styles.letterText, marginLeft: 0 }}>{khatamsAsc[doa.n - 2].letter}</div>
+                  : <button className="qt-btn" type="button" onClick={() => { haptic([10, 30, 10]); setDoaLetterOpen(true); }} style={{ ...styles.letterBtn, marginTop: 8 }}>{T.letterOpen}</button>}
+              </div>
+            )}
+            {doa.n > 0 && canEdit && khatamsAsc[doa.n - 1] && !khatamsAsc[doa.n - 1].letter && doa.n === khatamsAsc.length && (
+              <button className="qt-btn" type="button" onClick={() => { const id = khatamsAsc[doa.n - 1].id; setDoa(null); setLetterDraft(""); setLetterFor(id); }}
+                style={{ ...styles.khatamAddBtn, borderStyle: "dashed", margin: "0 0 14px" }}>✉️ {T.letterWriteNext}</button>
+            )}
             <h2 id="doa-title" style={{ ...styles.formTitle, textAlign: "center" }}>{T.doaTitle}</h2>
             <p lang="ar" dir="rtl" style={styles.doaAr}>{DOA_KHATAM.ar}</p>
             <div style={styles.estLabel}>{T.doaMeaning}</div>
             <p style={styles.doaTr}>{settings.lang === "en" ? DOA_KHATAM.en : DOA_KHATAM.ms}</p>
-            <button className="qt-btn" type="button" onClick={() => setDoa(null)} style={styles.submitBtn} autoFocus>{T.close}</button>
+            <button className="qt-btn" type="button" onClick={() => { setDoa(null); setDoaLetterOpen(false); }} style={styles.submitBtn} autoFocus>{T.close}</button>
           </div>
         </div>
       )}
+
+      {letterFor && (() => {
+        const n = khatamsAsc.findIndex((k) => k.id === letterFor) + 1;
+        return (
+          <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setLetterFor(null); }}>
+            <form className="qt-fade" role="dialog" aria-modal="true" aria-labelledby="letter-title" style={{ ...styles.modal, maxWidth: 460 }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                const txt = letterDraft.trim().slice(0, 3000);
+                if (!txt) return;
+                persistKhatams(stateRef.current.khatams.map((k) => (k.id === letterFor ? { ...k, letter: txt } : k)));
+                setLetterFor(null); haptic([10, 40, 10]); showToast(T.letterSaved(n + 1), 4000);
+              }}>
+              <h2 id="letter-title" style={styles.formTitle}>✉️ {T.letterTitle}</h2>
+              <div style={{ ...styles.hint, marginTop: 0 }}>{T.letterHint(n + 1)}</div>
+              <textarea className="qt-textarea" autoFocus rows={8} maxLength={3000} value={letterDraft} onChange={(e) => setLetterDraft(e.target.value)}
+                placeholder={T.letterPh} style={{ ...styles.textarea, fontSize: 15, lineHeight: 1.6 }} />
+              <div style={{ fontSize: 11.5, opacity: 0.6, textAlign: "right", margin: "4px 0 12px" }}>{letterDraft.length}/3000</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="qt-btn" type="button" onClick={() => setLetterFor(null)} style={{ ...styles.cancelBtn, padding: "0 16px" }}>{T.cancel}</button>
+                <button className="qt-btn" type="submit" disabled={!letterDraft.trim()} style={{ ...styles.submitBtn, flex: 1, margin: 0, opacity: letterDraft.trim() ? 1 : 0.5 }}>🔒 {T.letterSeal}</button>
+              </div>
+            </form>
+          </div>
+        );
+      })()}
+
+      {quiz && <QuizCard quiz={quiz} T={T} onClose={() => setQuiz(null)}
+        onOff={() => { persistSettings({ quiz: false }); setQuiz(null); showToast(T.quizOffToast, 4500); }} />}
 
       {loginOpen && (
         <div style={styles.modalWrap} onClick={(e) => { if (e.target === e.currentTarget) setLoginOpen(false); }}>
@@ -2798,6 +3034,179 @@ function Confetti() {
 
 /* ---------- Prayer times card (JAKIM e-Solat via /api/solat) ---------- */
 function haptic(pattern = 10) { try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} }
+function quizScore() { const q = readJson("qn-quiz", null); return q && q.n ? q : { r: 0, n: 0 }; }
+
+function TagPicker({ value, onChange, T, lang }) {
+  const isCustom = !!value && value.startsWith("~");
+  const [custom, setCustom] = useState(isCustom ? value.slice(1) : "");
+  const [showCustom, setShowCustom] = useState(isCustom);
+  useEffect(() => { if (value && !value.startsWith("~")) setShowCustom(false); }, [value]);
+  return (
+    <div style={{ fontWeight: 400 }}>
+      <div className="qt-scrollx" style={styles.tagRow}>
+        {EVENT_TAGS.map(([k, e, ms, en]) => (
+          <button key={k} type="button" className="qt-btn" aria-pressed={value === k} onClick={() => { haptic(6); onChange(value === k ? "" : k); }}
+            style={{ ...styles.chip, ...(value === k ? styles.chipOn : {}), flexShrink: 0, padding: "6px 11px", fontSize: 12.5 }}>{e} {lang === "en" ? en : ms}</button>
+        ))}
+        <button type="button" className="qt-btn" aria-pressed={showCustom} onClick={() => { haptic(6); const nx = !showCustom; setShowCustom(nx); onChange(nx && custom.trim() ? "~" + custom.trim() : nx ? value : (isCustom ? "" : value)); }}
+          style={{ ...styles.chip, ...(showCustom ? styles.chipOn : {}), flexShrink: 0, padding: "6px 11px", fontSize: 12.5 }}>🏷️ {T.tagOther}</button>
+      </div>
+      {showCustom && (
+        <input className="qt-input" value={custom} maxLength={40} placeholder={T.tagOtherPh} aria-label={T.tagOther}
+          onChange={(e) => { setCustom(e.target.value); onChange(e.target.value.trim() ? "~" + e.target.value.trim() : ""); }}
+          style={{ ...styles.input, fontFamily: "'Lora', serif", marginTop: 8 }} />
+      )}
+    </div>
+  );
+}
+
+function QuizCard({ quiz, T, onClose, onOff }) {
+  const [picked, setPicked] = useState(null);
+  const [timedOut, setTimedOut] = useState(false);
+  const [score, setScore] = useState(quizScore);
+  useEffect(() => {
+    const t = setTimeout(() => setTimedOut(true), 10000);
+    return () => clearTimeout(t);
+  }, [quiz.id]);
+  const done = picked != null || timedOut;
+  function pick(s) {
+    if (done) return;
+    const right = s === quiz.s;
+    haptic(right ? [12, 40, 12] : 30);
+    setPicked(s);
+    const sc = { r: score.r + (right ? 1 : 0), n: score.n + 1 };
+    setScore(sc); writeJson("qn-quiz", sc);
+  }
+  const right = picked === quiz.s;
+  return (
+    <div style={styles.sheetWrap} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="qt-sheet" role="dialog" aria-modal="true" aria-labelledby="quiz-title" style={{ ...styles.sheet, paddingBottom: 22 }}>
+        <div style={styles.sheetHandle} />
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+          <h2 id="quiz-title" style={{ ...styles.formTitle, margin: 0, flex: 1, fontSize: 19 }}>⏱️ {T.quizTitle}</h2>
+          <button className="qt-btn" type="button" onClick={onClose} aria-label={T.close} style={styles.iconBtn}>✕</button>
+        </div>
+        <div style={styles.quizTrack} aria-hidden="true">
+          <div key={quiz.id} className="qt-timer" style={{ ...styles.quizBar, animationPlayState: done ? "paused" : "running" }} />
+        </div>
+        <div lang="ar" dir="rtl" style={styles.quizAr}>{quiz.ar}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, margin: "4px 0 10px", color: "var(--title)" }}>{T.quizQ}</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {quiz.options.map((s) => {
+            const isRight = s === quiz.s, isPicked = s === picked;
+            const st = !done ? {} : isRight ? styles.quizRight : isPicked ? styles.quizWrong : { opacity: 0.55 };
+            return (
+              <button key={s} className="qt-btn" type="button" onClick={() => pick(s)} disabled={done && !isRight && !isPicked}
+                style={{ ...styles.quizOpt, ...st }}>
+                <span style={{ flex: 1, textAlign: "left" }}>{SURAH_NAMES[s - 1]}</span>
+                {done && isRight && <span aria-hidden="true">✓</span>}
+                {done && isPicked && !isRight && <span aria-hidden="true">✕</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div aria-live="polite" style={{ minHeight: 42, marginTop: 10, fontSize: 13.5, lineHeight: 1.5 }}>
+          {done && (
+            <>
+              <b style={{ color: picked == null ? "var(--gold)" : right ? "var(--bar)" : "var(--danger)" }}>
+                {picked == null ? T.quizTimeout : right ? T.quizRight : T.quizWrong}
+              </b>{" "}
+              {T.quizAns(SURAH_NAMES[quiz.s - 1], quiz.s, quiz.a, quiz.page)}
+            </>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+          <span style={{ fontSize: 12, opacity: 0.7, flex: 1 }}>{score.n ? T.quizScore(score.r, score.n) : ""}</span>
+          <button className="qt-btn" type="button" onClick={onOff} style={{ ...styles.greetBtn, fontSize: 12, opacity: 0.8 }}>{T.quizOff}</button>
+          <button className="qt-btn" type="button" onClick={onClose} style={{ ...styles.smallPrimary, padding: "0 18px" }}>{done ? T.close : T.quizSkip}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MushafMap({ entries, spans, today, T, lang, fmtLong, fmtDate, start }) {
+  const [sel, setSel] = useState(start || 1);
+  const data = useMemo(() => {
+    const count = new Array(TOTAL_PAGES + 1).fill(0), dates = Array.from({ length: TOTAL_PAGES + 1 }, () => []);
+    for (const en of entries) {
+      const [a, b] = spans[en.id] || [en.page, en.page];
+      for (let p = a; p <= b; p++) { count[p]++; dates[p].push(en.date); }
+    }
+    dates.forEach((d) => d.sort().reverse());
+    return { count, dates, read: count.filter((c, i) => i > 0 && c > 0).length };
+  }, [entries, spans]);
+  const fill = (c) => (c === 0 ? "var(--muted)" : c === 1 ? "color-mix(in srgb, var(--btn) 38%, var(--card))" : c === 2 ? "color-mix(in srgb, var(--btn) 68%, var(--card))" : "var(--btn)");
+  const c = data.count[sel], ds = data.dates[sel];
+  const notes = useMemo(() => entries.filter((en) => {
+    if (!en.note && !en.tag) return false;
+    const [a, b] = spans[en.id] || [en.page, en.page];
+    return sel >= a && sel <= b;
+  }).sort((x, y) => y.date.localeCompare(x.date)), [entries, spans, sel]);
+  const ago = (d) => { const n = daysBetween(d, today); return n <= 0 ? T.today.toLowerCase() : n === 1 ? T.yesterday.toLowerCase() : T.mpAgo(n); };
+  return (
+    <div style={styles.historySection}>
+      <div style={{ fontSize: 13, opacity: 0.8, margin: "0 2px 10px" }}>{T.mpSummary(data.read, TOTAL_PAGES)}</div>
+      <div role="grid" aria-label={T.tabMushaf} style={{ display: "grid", gap: 3 }}>
+        {JUZ_START_PAGES.map((_, i) => {
+          const [a, b] = juzRange(i + 1);
+          const pages = []; for (let p = a; p <= b; p++) pages.push(p);
+          return (
+            <div key={i} role="row" style={{ display: "grid", gridTemplateColumns: "20px 1fr", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 9.5, opacity: 0.6, textAlign: "right", fontFamily: "'IBM Plex Mono', monospace" }}>{i + 1}</span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(25, 1fr)", gap: 2 }}>
+                {pages.map((p) => (
+                  <button key={p} type="button" role="gridcell" aria-label={T.mpCell(p, data.count[p])} aria-selected={sel === p}
+                    onClick={() => { haptic(5); setSel(p); }}
+                    style={{ aspectRatio: "1 / 1.25", minWidth: 0, padding: 0, border: "none", borderRadius: 2, cursor: "pointer", background: fill(data.count[p]),
+                      outline: sel === p ? "2px solid var(--gold)" : "none", outlineOffset: 1 }} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "center", fontSize: 11, opacity: 0.8, margin: "10px 0 12px" }}>
+        {[[0, T.mpNone], [1, "1×"], [2, "2×"], [3, "3×+"]].map(([n, l]) => (
+          <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span style={{ width: 11, height: 11, borderRadius: 2, background: fill(n) }} />{l}</span>
+        ))}
+      </div>
+      <div className="qt-fade" key={sel} aria-live="polite" style={styles.mpDetail}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ ...styles.mono, fontSize: 22, color: "var(--title)", fontWeight: 600 }}>p. {sel}</span>
+          <span style={{ fontSize: 13, opacity: 0.8 }}>{surahForPage(sel)} · Juz' {juzForPage(sel)}</span>
+        </div>
+        <div style={{ fontSize: 13.5, marginTop: 6 }}>
+          {c === 0 ? T.mpNever : <>{T.mpRead(c)} · {T.mpLast(fmtLong(ds[0]), ago(ds[0]))}</>}
+        </div>
+        {ds.length > 1 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+            {ds.slice(0, 8).map((d, i) => <span key={d + i} style={styles.tagPill}>{fmtDate(d)} {d.slice(0, 4) !== today.slice(0, 4) ? d.slice(0, 4) : ""}</span>)}
+            {ds.length > 8 && <span style={{ fontSize: 12, opacity: 0.6 }}>+{ds.length - 8}</span>}
+          </div>
+        )}
+        {notes.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={styles.estLabel}>{T.mpNotes}</div>
+            {notes.slice(0, 6).map((en) => {
+              const ti = tagInfo(en.tag, lang);
+              return (
+                <div key={en.id} style={{ borderLeft: "2px solid var(--gold)", padding: "2px 0 2px 10px", margin: "6px 0" }}>
+                  <div style={{ fontSize: 11.5, color: "var(--gold)", fontWeight: 600 }}>{fmtLong(en.date)}{ti ? ` · ${ti.emoji} ${ti.label}` : ""}</div>
+                  {en.note && <div style={{ fontSize: 13, fontStyle: "italic", lineHeight: 1.5 }}>{en.note}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <a className="qt-btn" href={`https://quran.com/page/${sel}`} target="_blank" rel="noopener" style={{ ...styles.ayatBtn, marginTop: 10, display: "inline-flex" }}>
+          {T.mpOpen}<Icon name="external" size={13} />
+        </a>
+      </div>
+    </div>
+  );
+}
+
 let qrLib = null;
 function loadQr() {
   if (window.qrcode) return Promise.resolve(window.qrcode);
@@ -3484,6 +3893,22 @@ const styles = {
   modalWrap: { position: "fixed", inset: 0, background: "rgba(5,20,15,0.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 50 },
   modal: { width: "100%", maxWidth: 380, background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 16, padding: 20, boxShadow: "0 18px 50px rgba(0,0,0,0.35)", color: "var(--ink)" },
   footer: { textAlign: "center", fontSize: 11.5, opacity: 0.5, marginTop: 12 },
+  tagRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginTop: 6, scrollbarWidth: "none" },
+  tagPill: { display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, padding: "2px 9px", borderRadius: 999, background: "var(--muted)", color: "var(--ink)", fontWeight: 600 },
+  secLabel: { fontSize: 11, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--gold)", fontWeight: 700, margin: "2px 2px 8px" },
+  epCard: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 12, overflow: "hidden" },
+  epHead: { display: "flex", alignItems: "center", gap: 12, width: "100%", background: "transparent", border: "none", padding: "11px 12px", cursor: "pointer", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 14 },
+  letterLine: { margin: "0 0 10px 38px", fontSize: 12.5, opacity: 0.75, fontStyle: "italic" },
+  letterBtn: { background: "transparent", border: "1px solid var(--line3)", borderRadius: 999, padding: "5px 12px", fontSize: 12.5, color: "var(--title)", fontFamily: "'Lora', serif", fontWeight: 600, cursor: "pointer" },
+  letterText: { whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.65, fontStyle: "italic", background: "var(--input)", borderLeft: "3px solid var(--gold)", borderRadius: 8, padding: "10px 12px", marginTop: 8 },
+  letterBox: { background: "var(--input)", border: "1px solid var(--line2)", borderRadius: 12, padding: "12px 14px", margin: "0 0 14px" },
+  quizTrack: { height: 4, borderRadius: 999, background: "var(--muted)", overflow: "hidden", marginBottom: 12 },
+  quizBar: { height: "100%", background: "var(--gold)", transformOrigin: "left center" },
+  quizAr: { fontFamily: "'Amiri', serif", fontSize: 22, lineHeight: 1.95, color: "var(--title)", textAlign: "right", maxHeight: "34vh", overflowY: "auto", margin: "0 0 6px" },
+  quizOpt: { display: "flex", alignItems: "center", gap: 8, width: "100%", border: "1.5px solid var(--line3)", background: "var(--input)", borderRadius: 10, padding: "11px 14px", fontSize: 15, fontFamily: "'Lora', serif", fontWeight: 600, color: "var(--ink)", cursor: "pointer" },
+  quizRight: { borderColor: "var(--bar)", background: "color-mix(in srgb, var(--bar) 16%, var(--card))" },
+  quizWrong: { borderColor: "var(--danger)", background: "color-mix(in srgb, var(--danger) 14%, var(--card))" },
+  mpDetail: { background: "var(--card)", border: "1px solid var(--line2)", borderRadius: 14, padding: "14px 16px" },
   shareLink: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5, padding: "9px 10px", borderRadius: 8, background: "var(--input)", border: "1px solid var(--line2)", wordBreak: "break-all", color: "var(--title)" },
   shareAlt: { display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 8, border: "1px solid var(--line3)", background: "transparent", color: "var(--ink)", fontFamily: "'Lora', serif", fontSize: 13.5, fontWeight: 600, padding: "10px 6px", textDecoration: "none", cursor: "pointer" },
   qrBox: { display: "inline-block", width: 190, height: 190, padding: 8, background: "#fff", borderRadius: 12, lineHeight: 0 },
