@@ -1,7 +1,7 @@
 // Offline support + push notifications.
 // The page itself is network-first (so updates show straight away); CDN libraries and fonts are cache-first.
 // /api/ requests always go to the network and are never cached.
-const CACHE = "quran-journal-v21";
+const CACHE = "quran-journal-v22";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "splash-mark.png"];
 
 self.addEventListener("install", (event) => {
