@@ -243,7 +243,7 @@ export async function runReminder(store, webpush, now = new Date()) {
   const result = await sendToAll(store, webpush, {
     title: "Quran Note 🌙",
     body: `${current.doc.settings?.name ? `${current.doc.settings.name}, hari` : "Hari"} ini belum dicatat lagi. Sambung dari muka surat ${next} — sedikit pun tak apa.`,
-    url: "/",
+    url: "/?action=log",
   });
   await store.setJSON("reminder-log", { lastSent: today, at: now.toISOString(), ...result });
   return { today, ...result };

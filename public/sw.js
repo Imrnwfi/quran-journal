@@ -1,7 +1,7 @@
 // Offline support + push notifications.
 // The page itself is network-first (so updates show straight away); CDN libraries and fonts are cache-first.
 // /api/ requests always go to the network and are never cached.
-const CACHE = "quran-journal-v23";
+const CACHE = "quran-journal-v24";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "splash-mark.png"];
 
 self.addEventListener("install", (event) => {
@@ -57,17 +57,26 @@ self.addEventListener("push", (event) => {
       tag: "daily-reminder",
       renotify: true,
       data: { url: data.url || "./" },
+      actions: data.url && data.url.includes("action=log") ? [{ action: "log", title: "Catat bacaan" }] : [],
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = new URL((event.notification.data && event.notification.data.url) || "./", self.registration.scope).href;
+  const url = (event.notification.data && event.notification.data.url) || "./";
+  const target = new URL(url, self.registration.scope);
+  const action = target.searchParams.get("action");
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) return c.focus();
-      return self.clients.openWindow(target);
+      for (const c of list) {
+        if (c.url.startsWith(self.registration.scope) && "focus" in c) {
+          // The app is already open: bring it forward and tell it what to show.
+          c.postMessage({ type: "qn-open", action, hash: target.hash ? target.hash.slice(1) : "" });
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(target.href);
     })
   );
 });
