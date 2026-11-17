@@ -340,6 +340,67 @@ export async function handleTransfer(req, store, now = Date.now()) {
   return json({ error: "method" }, 405);
 }
 
+// Family challenge: a small group that sees each member's pages this week. Only names + weekly totals are shared.
+const GROUP_MAX = 15;
+const hashKey = (k) => crypto.createHash("sha256").update(String(k)).digest("hex");
+const gName = (v, n = 30) => String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, n);
+const isWeek = (w) => typeof w === "string" && /^\d{4}-\d{2}-\d{2}$/.test(w);
+function publicGroup(g) {
+  return { name: g.name, goal: g.goal, created: g.created, members: g.members.map(({ key, ...m }) => m) };
+}
+export async function handleGroup(req, store, now = Date.now()) {
+  const url = new URL(req.url);
+  const norm = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (req.method === "GET") {
+    const code = norm(url.searchParams.get("code"));
+    if (code.length !== 6) return json({ error: "bad_code" }, 400);
+    const g = await store.get(`group/${code}`, { type: "json" });
+    return g ? json({ code, group: publicGroup(g) }) : json({ error: "not_found" }, 404);
+  }
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  let b; try { b = await req.json(); } catch (e) { return json({ error: "bad_json" }, 400); }
+  const me = b && b.me;
+  const id = me && /^[a-z0-9]{8,24}$/.test(me.id) ? me.id : null;
+  const key = me && typeof me.key === "string" && me.key.length >= 16 && me.key.length <= 64 ? me.key : null;
+  if (!id || !key) return json({ error: "bad_member" }, 400);
+  const name = gName(me.name) || "—";
+  const stats = (m) => {
+    if (isWeek(b.week)) { m.week = b.week; m.pages = Math.max(0, Math.min(5000, Math.floor(+b.pages || 0))); m.days = Math.max(0, Math.min(7, Math.floor(+b.days || 0))); }
+    m.name = name; m.ts = now; return m;
+  };
+  if (b.op === "create") {
+    let code = "";
+    for (let t = 0; t < 5; t++) {
+      code = ""; for (let i = 0; i < 6; i++) code += CODE_ABC[crypto.getRandomValues(new Uint8Array(1))[0] % CODE_ABC.length];
+      if (!(await store.get(`group/${code}`, { type: "json" }))) break;
+    }
+    const g = { name: gName(b.name, 40) || "Keluarga", goal: Math.max(0, Math.min(5000, Math.floor(+b.goal || 0))), created: now, members: [stats({ id, key: hashKey(key) })] };
+    await store.setJSON(`group/${code}`, g);
+    return json({ code, group: publicGroup(g) });
+  }
+  const code = norm(b.code);
+  if (code.length !== 6) return json({ error: "bad_code" }, 400);
+  const g = await store.get(`group/${code}`, { type: "json" });
+  if (!g) return json({ error: "not_found" }, 404);
+  const i = g.members.findIndex((m) => m.id === id);
+  const mine = i >= 0 && g.members[i].key === hashKey(key);
+  if (i >= 0 && !mine) return json({ error: "forbidden" }, 403);
+  if (b.op === "join" || b.op === "update") {
+    if (i < 0) {
+      if (b.op === "update") return json({ error: "not_member" }, 403);
+      if (g.members.length >= GROUP_MAX) return json({ error: "full" }, 409);
+      g.members.push(stats({ id, key: hashKey(key) }));
+    } else stats(g.members[i]);
+    if (b.goal !== undefined) g.goal = Math.max(0, Math.min(5000, Math.floor(+b.goal || 0)));
+    if (b.name !== undefined && b.op === "update" && b.groupName) g.name = gName(b.groupName, 40) || g.name;
+  } else if (b.op === "leave") {
+    if (i >= 0) g.members.splice(i, 1);
+    if (!g.members.length) { await store.delete(`group/${code}`); return json({ code, group: null }); }
+  } else return json({ error: "op" }, 400);
+  await store.setJSON(`group/${code}`, g);
+  return json({ code, group: publicGroup(g) });
+}
+
 export async function handleSolat(req, store, fetchImpl = fetch, now = new Date()) {
   const url = new URL(req.url);
   const zone = (url.searchParams.get("zone") || "").toUpperCase();
