@@ -31,6 +31,35 @@ export function validKhatam(k) {
     (k.note == null || (typeof k.note === "string" && k.note.length <= 500)) &&
     (k.letter == null || (typeof k.letter === "string" && k.letter.length <= 3000));
 }
+// Learning data synced for the owner: tajwid stats per rule and the quiz history.
+export function cleanLearn(l) {
+  if (!l || typeof l !== "object") return undefined;
+  const tj = {};
+  if (l.tj && typeof l.tj === "object") {
+    for (const [k, v] of Object.entries(l.tj).slice(0, 40)) {
+      if (!/^[a-z0-9_]{1,30}$/.test(k) || !v || typeof v !== "object") continue;
+      const n = Math.min(1e5, Math.max(0, Math.floor(+v.n || 0))), r = Math.min(n, Math.max(0, Math.floor(+v.r || 0)));
+      const h = Array.isArray(v.h) ? v.h.slice(-10).map((x) => (x ? 1 : 0)) : [];
+      tj[k] = { n, r, h };
+    }
+  }
+  const log = [];
+  if (Array.isArray(l.log)) {
+    for (const x of l.log.slice(0, 300)) {
+      if (!x || !["surah", "tajwid", "makna"].includes(x.k)) continue;
+      const s = Math.floor(+x.s), a = Math.floor(+x.a), ts = Math.floor(+x.ts);
+      if (!(s >= 1 && s <= 114 && a >= 1 && a <= 286 && ts > 0)) continue;
+      const it = { k: x.k, s, a, ts, ok: !!x.ok };
+      if (x.p != null) { const pg = Math.floor(+x.p); if (pg >= 1 && pg <= 604) it.p = pg; }
+      if (typeof x.rule === "string" && /^[a-z0-9_]{1,30}$/.test(x.rule)) it.rule = x.rule;
+      if (x.pick === null || x.pick === undefined) it.pick = null;
+      else if (typeof x.pick === "number" && x.pick >= 1 && x.pick <= 114) it.pick = Math.floor(x.pick);
+      else if (typeof x.pick === "string" && /^[a-z0-9_:]{1,30}$/.test(x.pick)) it.pick = x.pick;
+      log.push(it);
+    }
+  }
+  return { tj, log };
+}
 export function cleanName(v) { return String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 30); }
 export function cleanDoc(doc) {
   if (!doc || typeof doc !== "object") return null;
@@ -51,6 +80,7 @@ export function cleanDoc(doc) {
       weeklyReport: s.weeklyReport !== false,
       name: cleanName(s.name),
     },
+    ...(doc.learn !== undefined ? { learn: cleanLearn(doc.learn) } : {}),
   };
 }
 
@@ -113,7 +143,7 @@ export async function handleJournal(req, store) {
     const auth = await store.get("auth", { type: "json" });
     let doc = current ? current.doc : null;
     // Khatam time-capsule letters are private: only the owner gets them.
-    if (doc && !(await isOwner(req, store))) doc = { ...doc, khatams: doc.khatams.map(({ letter, ...k }) => k) };
+    if (doc && !(await isOwner(req, store))) { const { learn, ...rest } = doc; doc = { ...rest, khatams: doc.khatams.map(({ letter, ...k }) => k) }; }
     return json({ doc, version: current ? current.version : 0, hasOwner: !!auth });
   }
   if (req.method !== "PUT") return json({ error: "method" }, 405);
@@ -130,6 +160,7 @@ export async function handleJournal(req, store) {
   if (current && current.doc) {
     const prev = new Map(current.doc.khatams.map((k) => [k.id, k]));
     doc.khatams = doc.khatams.map((k) => (k.letter === undefined && prev.get(k.id)?.letter ? { ...k, letter: prev.get(k.id).letter } : k));
+    if (doc.learn === undefined && current.doc.learn) doc.learn = current.doc.learn;
   }
   const next = { doc, version: version + 1, updatedAt: Date.now() };
   await store.setJSON("journal", next);
@@ -281,6 +312,32 @@ export function parseWaktuSolatApp(json) {
     return { date, hijri: typeof p.hijri === "string" ? p.hijri : null, imsak: p.imsak ? t(p.imsak) : null, fajr: t(p.fajr), syuruk: t(p.syuruk), dhuhr: t(p.dhuhr), asr: t(p.asr), maghrib: t(p.maghrib), isha: t(p.isha) };
   }).filter((d) => d.date && d.fajr && d.maghrib && d.isha);
   return days.length ? days : null;
+}
+
+const CODE_ABC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+export async function handleTransfer(req, store, now = Date.now()) {
+  const url = new URL(req.url);
+  if (req.method === "POST") {
+    let body; try { body = await req.json(); } catch (e) { return json({ error: "bad_json" }, 400); }
+    const data = body && body.data;
+    const raw = JSON.stringify(data || null);
+    if (!data || !Array.isArray(data.entries) || raw.length > 400000) return json({ error: "invalid" }, 400);
+    if (!data.entries.every(validEntry) || !(data.khatams || []).every(validKhatam)) return json({ error: "invalid" }, 400);
+    let code = "";
+    for (let i = 0; i < 8; i++) code += CODE_ABC[crypto.getRandomValues(new Uint8Array(1))[0] % CODE_ABC.length];
+    const exp = now + 24 * 3600 * 1000;
+    await store.setJSON(`transfer/${code}`, { data, exp });
+    return json({ code, exp });
+  }
+  if (req.method === "GET") {
+    const code = String(url.searchParams.get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (code.length !== 8) return json({ error: "bad_code" }, 400);
+    const item = await store.get(`transfer/${code}`, { type: "json" });
+    if (!item || item.exp < now) { if (item) await store.delete(`transfer/${code}`); return json({ error: "not_found" }, 404); }
+    await store.delete(`transfer/${code}`); // one use only
+    return json({ data: item.data });
+  }
+  return json({ error: "method" }, 405);
 }
 
 export async function handleSolat(req, store, fetchImpl = fetch, now = new Date()) {
