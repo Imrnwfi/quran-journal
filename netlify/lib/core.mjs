@@ -50,6 +50,7 @@ export function cleanLearn(l) {
       const s = Math.floor(+x.s), a = Math.floor(+x.a), ts = Math.floor(+x.ts);
       if (!(s >= 1 && s <= 114 && a >= 1 && a <= 286 && ts > 0)) continue;
       const it = { k: x.k, s, a, ts, ok: !!x.ok };
+      if (x.h) it.h = 1;
       if (x.p != null) { const pg = Math.floor(+x.p); if (pg >= 1 && pg <= 604) it.p = pg; }
       if (typeof x.rule === "string" && /^[a-z0-9_]{1,30}$/.test(x.rule)) it.rule = x.rule;
       if (x.pick === null || x.pick === undefined) it.pick = null;
