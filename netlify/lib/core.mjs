@@ -316,8 +316,21 @@ export function parseWaktuSolatApp(json) {
 }
 
 const CODE_ABC = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+// Simple per-device limit (by hashed IP) so codes can't be guessed in bulk.
+const ipOf = (req) => (req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "anon").split(",")[0].trim().slice(0, 64);
+export async function rateLimit(req, store, bucket, max, windowMs, now = Date.now()) {
+  const key = `rl/${bucket}/${crypto.createHash("sha256").update(ipOf(req)).digest("hex").slice(0, 24)}`;
+  let r = null;
+  try { r = await store.get(key, { type: "json" }); } catch (e) {}
+  if (!r || !(r.reset > now)) r = { n: 0, reset: now + windowMs };
+  r.n++;
+  await store.setJSON(key, r);
+  return r.n > max ? json({ error: "rate_limited", retryAfter: Math.ceil((r.reset - now) / 1000) }, 429) : null;
+}
 export async function handleTransfer(req, store, now = Date.now()) {
   const url = new URL(req.url);
+  const limited = req.method === "POST" ? await rateLimit(req, store, "xfer-make", 10, 3600e3, now) : await rateLimit(req, store, "xfer-get", 20, 3600e3, now);
+  if (limited) return limited;
   if (req.method === "POST") {
     let body; try { body = await req.json(); } catch (e) { return json({ error: "bad_json" }, 400); }
     const data = body && body.data;
@@ -353,6 +366,8 @@ export async function handleGroup(req, store, now = Date.now()) {
   const url = new URL(req.url);
   const norm = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (req.method === "GET") {
+    const limited = await rateLimit(req, store, "group-get", 120, 3600e3, now);
+    if (limited) return limited;
     const code = norm(url.searchParams.get("code"));
     if (code.length !== 6) return json({ error: "bad_code" }, 400);
     const g = await store.get(`group/${code}`, { type: "json" });
@@ -369,6 +384,10 @@ export async function handleGroup(req, store, now = Date.now()) {
     if (isWeek(b.week)) { m.week = b.week; m.pages = Math.max(0, Math.min(5000, Math.floor(+b.pages || 0))); m.days = Math.max(0, Math.min(7, Math.floor(+b.days || 0))); }
     m.name = name; m.ts = now; return m;
   };
+  if (b.op === "create" || b.op === "join") {
+    const limited = await rateLimit(req, store, "group-" + b.op, b.op === "create" ? 10 : 20, 3600e3, now);
+    if (limited) return limited;
+  }
   if (b.op === "create") {
     let code = "";
     for (let t = 0; t < 5; t++) {
@@ -400,6 +419,34 @@ export async function handleGroup(req, store, now = Date.now()) {
   } else return json({ error: "op" }, 400);
   await store.setJSON(`group/${code}`, g);
   return json({ code, group: publicGroup(g) });
+}
+
+// Feedback from users (error in a text, suggestion, problem). Anyone can send; only the owner can read or delete.
+const FB_KINDS = ["teks", "cadangan", "masalah", "lain"];
+export async function handleFeedback(req, store, now = Date.now()) {
+  const url = new URL(req.url);
+  if (req.method === "POST") {
+    const limited = await rateLimit(req, store, "feedback", 5, 3600e3, now);
+    if (limited) return limited;
+    let b; try { b = await req.json(); } catch (e) { return json({ error: "bad_json" }, 400); }
+    const clip = (v, n) => String(v || "").replace(/[\u0000-\u0008\u000b-\u001f<>]/g, "").trim().slice(0, n);
+    const msg = clip(b && b.msg, 1000);
+    if (!b || !FB_KINDS.includes(b.kind) || msg.length < 3) return json({ error: "invalid" }, 400);
+    const item = { id: now.toString(36) + crypto.randomBytes(3).toString("hex"), ts: now, kind: b.kind, msg, name: clip(b.name, 40), ctx: clip(b.ctx, 80), ver: clip(b.ver, 12), lang: b.lang === "en" ? "en" : "ms" };
+    const all = (await store.get("feedback/all", { type: "json" })) || [];
+    await store.setJSON("feedback/all", [item, ...all].slice(0, 300));
+    return json({ ok: true });
+  }
+  if (!(await isOwner(req, store))) return json({ error: "forbidden" }, 403);
+  const all = (await store.get("feedback/all", { type: "json" })) || [];
+  if (req.method === "GET") return json({ items: all });
+  if (req.method === "DELETE") {
+    const id = String(url.searchParams.get("id") || "");
+    const left = id === "all" ? [] : all.filter((x) => x.id !== id);
+    await store.setJSON("feedback/all", left);
+    return json({ items: left });
+  }
+  return json({ error: "method" }, 405);
 }
 
 export async function handleSolat(req, store, fetchImpl = fetch, now = new Date()) {

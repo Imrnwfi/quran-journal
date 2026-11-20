@@ -1,8 +1,8 @@
 // Offline support + push notifications.
 // The page itself is network-first (so updates show straight away); CDN libraries and fonts are cache-first.
 // /api/ requests always go to the network and are never cached.
-const CACHE = "quran-journal-v34";
-const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "splash-mark.png"];
+const CACHE = "quran-journal-v35";
+const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "splash-mark.png", "vendor/react-18.3.1.min.js", "vendor/react-dom-18.3.1.min.js", "vendor/simplewebauthn-13.3.0.min.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
