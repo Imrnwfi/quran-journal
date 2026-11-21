@@ -46,7 +46,15 @@ export function cleanLearn(l) {
   const log = [];
   if (Array.isArray(l.log)) {
     for (const x of l.log.slice(0, 300)) {
-      if (!x || !["surah", "tajwid", "makna"].includes(x.k)) continue;
+      if (!x) continue;
+      if (["asma", "kata", "sirah", "hadis"].includes(x.k)) {
+        const ts = Math.floor(+x.ts), id = String(x.id || "");
+        if (!(ts > 0) || !/^[a-z0-9_-]{1,30}$/.test(id)) continue;
+        const it = { k: x.k, id, ts, ok: !!x.ok, pick: typeof x.pick === "string" && /^[a-z0-9_-]{1,30}$/.test(x.pick) ? x.pick : null };
+        if (x.h) it.h = 1;
+        log.push(it); continue;
+      }
+      if (!["surah", "tajwid", "makna"].includes(x.k)) continue;
       const s = Math.floor(+x.s), a = Math.floor(+x.a), ts = Math.floor(+x.ts);
       if (!(s >= 1 && s <= 114 && a >= 1 && a <= 286 && ts > 0)) continue;
       const it = { k: x.k, s, a, ts, ok: !!x.ok };
