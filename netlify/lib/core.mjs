@@ -449,6 +449,150 @@ export async function handleFeedback(req, store, now = Date.now()) {
   return json({ error: "method" }, 405);
 }
 
+/* ---------------- personal accounts (passkey) ----------------
+   Anyone can keep their own journal in the cloud, signed in with a passkey (fingerprint / Face ID).
+   acct/u/<uid> user · acct/c/<credId> → uid · acct/r/<hash(recovery)> → uid · acct/s/<hash(token)> session · acct/d/<uid> journal */
+const sha = (v) => crypto.createHash("sha256").update(String(v)).digest("hex");
+const ACCT_SESSION_DAYS = 400;
+function recoveryCode() {
+  let c = ""; for (let i = 0; i < 16; i++) c += CODE_ABC[crypto.randomBytes(1)[0] % CODE_ABC.length];
+  return c.match(/.{4}/g).join("-");
+}
+const normRecovery = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+async function newSession(store, user, now) {
+  const token = crypto.randomBytes(32).toString("base64url"), h = sha(token);
+  await store.setJSON(`acct/s/${h}`, { uid: user.uid, exp: now + ACCT_SESSION_DAYS * 86400e3 });
+  user.sess = [...(user.sess || []), h].slice(-20);
+  return token;
+}
+async function acctSession(req, store, now = Date.now()) {
+  const m = /^Bearer (.+)$/.exec(req.headers.get("authorization") || "");
+  if (!m || m[1].length > 100) return null;
+  const s = await store.get(`acct/s/${sha(m[1])}`, { type: "json" });
+  if (!s || s.exp < now) return null;
+  const user = await store.get(`acct/u/${s.uid}`, { type: "json" });
+  return user ? { user, hash: sha(m[1]) } : null;
+}
+const acctName = (v) => String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 40);
+export async function handleAccount(req, store, wa, now = Date.now()) {
+  if (req.method === "GET" || req.method === "PUT") {
+    const ses = await acctSession(req, store, now);
+    if (!ses) return json({ error: "unauthorized" }, 401);
+    const uid = ses.user.uid, current = (await store.get(`acct/d/${uid}`, { type: "json" })) || null;
+    if (req.method === "GET") return json({ doc: current ? current.doc : null, version: current ? current.version : 0, name: ses.user.name, passkeys: ses.user.creds.length });
+    const raw = await req.text();
+    if (raw.length > MAX_DOC_BYTES) return json({ error: "too_large" }, 413);
+    let body; try { body = JSON.parse(raw); } catch { return json({ error: "bad_json" }, 400); }
+    const version = current ? current.version : 0;
+    if (body.baseVersion !== version) return json({ error: "conflict", doc: current ? current.doc : null, version }, 409);
+    const doc = cleanDoc(body.doc);
+    if (!doc) return json({ error: "invalid_doc" }, 400);
+    if (current && current.doc && doc.learn === undefined && current.doc.learn) doc.learn = current.doc.learn;
+    await store.setJSON(`acct/d/${uid}`, { doc, version: version + 1, updatedAt: now });
+    return json({ version: version + 1 });
+  }
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  let body; try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
+  const act = body && body.action;
+  if (act === "logout" || act === "delete" || act === "status" || act === "rename") {
+    const ses = await acctSession(req, store, now);
+    if (!ses) return json({ error: "unauthorized" }, 401);
+    const u = ses.user;
+    if (act === "status") return json({ name: u.name, passkeys: u.creds.length, created: u.created });
+    if (act === "rename") { u.name = acctName(body.name); await store.setJSON(`acct/u/${u.uid}`, u); return json({ ok: true, name: u.name }); }
+    if (act === "logout") { await store.delete(`acct/s/${ses.hash}`); u.sess = (u.sess || []).filter((h) => h !== ses.hash); await store.setJSON(`acct/u/${u.uid}`, u); return json({ ok: true }); }
+    // delete: the account, its passkeys, recovery code, sessions and cloud journal
+    for (const c of u.creds) await store.delete(`acct/c/${sha(c.id)}`);
+    for (const h of u.sess || []) await store.delete(`acct/s/${h}`);
+    if (u.rec) await store.delete(`acct/r/${u.rec}`);
+    await store.delete(`acct/d/${u.uid}`); await store.delete(`acct/u/${u.uid}`);
+    return json({ ok: true, deleted: true });
+  }
+  if (act === "recover") {
+    const limited = await rateLimit(req, store, "acct-recover", 10, 3600e3, now);
+    if (limited) return limited;
+    const code = normRecovery(body.code);
+    if (code.length !== 16) return json({ error: "bad_code" }, 400);
+    const map = await store.get(`acct/r/${sha(code)}`, { type: "json" });
+    const user = map && (await store.get(`acct/u/${map.uid}`, { type: "json" }));
+    if (!user) return json({ error: "not_found" }, 404);
+    const token = await newSession(store, user, now);
+    await store.setJSON(`acct/u/${user.uid}`, user);
+    return json({ token, name: user.name, passkeys: user.creds.length });
+  }
+  const rp = rpFrom(req);
+  if (!rp) return json({ error: "bad_origin" }, 400);
+  if (act === "register-options") {
+    const limited = await rateLimit(req, store, "acct-reg", 20, 3600e3, now);
+    if (limited) return limited;
+    const ses = await acctSession(req, store, now); // signed in: add another passkey to this account
+    const uid = ses ? ses.user.uid : crypto.randomBytes(16).toString("hex");
+    const name = ses ? ses.user.name : acctName(body.name);
+    const options = await wa.generateRegistrationOptions({
+      rpName: "Quran Note", rpID: rp.rpID, userName: name || "Jurnal Quran Note", userDisplayName: name || "Jurnal Quran Note",
+      userID: new TextEncoder().encode(uid), attestationType: "none",
+      authenticatorSelection: { residentKey: "required", userVerification: "preferred" },
+      excludeCredentials: ses ? ses.user.creds.map((c) => ({ id: c.id, transports: c.transports })) : [],
+    });
+    const cid = await putChallenge(store, { type: "acct-reg", challenge: options.challenge, uid, name, add: !!ses });
+    return json({ options, cid });
+  }
+  if (act === "register-verify") {
+    const ch = await takeChallenge(store, body.cid, "acct-reg");
+    if (!ch) return json({ error: "expired" }, 400);
+    let v;
+    try { v = await wa.verifyRegistrationResponse({ response: body.response, expectedChallenge: ch.challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: false }); }
+    catch (e) { return json({ error: "verify_failed" }, 400); }
+    if (!v.verified || !v.registrationInfo) return json({ error: "verify_failed" }, 400);
+    const c = v.registrationInfo.credential;
+    const cred = { id: c.id, publicKey: b64u(c.publicKey), counter: c.counter, transports: c.transports || [], createdAt: now, rpID: rp.rpID };
+    let user = await store.get(`acct/u/${ch.uid}`, { type: "json" }), recovery = null;
+    if (ch.add) {
+      const ses = await acctSession(req, store, now);
+      if (!ses || ses.user.uid !== ch.uid || !user) return json({ error: "unauthorized" }, 401);
+      user.creds = [...user.creds.filter((x) => x.id !== cred.id), cred].slice(-10);
+      await store.setJSON(`acct/c/${sha(cred.id)}`, { uid: user.uid });
+      await store.setJSON(`acct/u/${user.uid}`, user);
+      return json({ ok: true, passkeys: user.creds.length });
+    }
+    if (user) return json({ error: "exists" }, 409);
+    recovery = recoveryCode();
+    user = { uid: ch.uid, name: ch.name || "", created: now, creds: [cred], rec: sha(normRecovery(recovery)), sess: [] };
+    await store.setJSON(`acct/r/${user.rec}`, { uid: user.uid });
+    await store.setJSON(`acct/c/${sha(cred.id)}`, { uid: user.uid });
+    const token = await newSession(store, user, now);
+    await store.setJSON(`acct/u/${user.uid}`, user);
+    return json({ token, recovery, name: user.name, passkeys: 1 });
+  }
+  if (act === "login-options") {
+    const limited = await rateLimit(req, store, "acct-login", 60, 3600e3, now);
+    if (limited) return limited;
+    const options = await wa.generateAuthenticationOptions({ rpID: rp.rpID, userVerification: "preferred" });
+    const cid = await putChallenge(store, { type: "acct-auth", challenge: options.challenge });
+    return json({ options, cid });
+  }
+  if (act === "login-verify") {
+    const ch = await takeChallenge(store, body.cid, "acct-auth");
+    if (!ch) return json({ error: "expired" }, 400);
+    const id = body.response && typeof body.response.id === "string" ? body.response.id : "";
+    const map = id && (await store.get(`acct/c/${sha(id)}`, { type: "json" }));
+    const user = map && (await store.get(`acct/u/${map.uid}`, { type: "json" }));
+    const cred = user && user.creds.find((c) => c.id === id);
+    if (!cred) return json({ error: "unknown_passkey" }, 401);
+    let v;
+    try {
+      v = await wa.verifyAuthenticationResponse({ response: body.response, expectedChallenge: ch.challenge, expectedOrigin: rp.origin, expectedRPID: rp.rpID, requireUserVerification: false,
+        credential: { id: cred.id, publicKey: unb64u(cred.publicKey), counter: cred.counter, transports: cred.transports } });
+    } catch (e) { return json({ error: "verify_failed" }, 401); }
+    if (!v.verified) return json({ error: "verify_failed" }, 401);
+    cred.counter = v.authenticationInfo.newCounter;
+    const token = await newSession(store, user, now);
+    await store.setJSON(`acct/u/${user.uid}`, user);
+    return json({ token, name: user.name, passkeys: user.creds.length });
+  }
+  return json({ error: "action" }, 400);
+}
+
 export async function handleSolat(req, store, fetchImpl = fetch, now = new Date()) {
   const url = new URL(req.url);
   const zone = (url.searchParams.get("zone") || "").toUpperCase();
