@@ -67,7 +67,22 @@ export function cleanLearn(l) {
       log.push(it);
     }
   }
-  return { tj, log };
+  const out = { tj, log };
+  if (Array.isArray(l.notes)) {
+    const notes = [];
+    for (const x of l.notes.slice(0, 400)) {
+      if (!x || typeof x.id !== "string" || !/^[a-z0-9-]{4,40}$/.test(x.id)) continue;
+      const s = Math.floor(+x.s), a = Math.floor(+x.a), ts = Math.floor(+x.ts);
+      if (!(s >= 1 && s <= 114 && a >= 1 && a <= 286 && ts > 0)) continue;
+      if (x.del) { notes.push({ id: x.id, s, a, ts, del: 1 }); continue; }
+      const t = String(x.t || "").replace(/[\u0000-\u0008\u000b-\u001f]/g, "").slice(0, 1000);
+      const c = Math.floor(+x.c);
+      if (t.trim()) notes.push({ id: x.id, s, a, ts, t, ...(c > 0 ? { c } : {}) });
+    }
+    out.notes = notes;
+  }
+  if (Array.isArray(l.sfav)) out.sfav = [...new Set(l.sfav.map((n) => Math.floor(+n)).filter((n) => n >= 1 && n <= 114))].slice(0, 114);
+  return out;
 }
 export function cleanName(v) { return String(v || "").replace(/[\u0000-\u001f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 30); }
 export function cleanDoc(doc) {
@@ -287,6 +302,108 @@ export async function runReminder(store, webpush, now = new Date()) {
   });
   await store.setJSON("reminder-log", { lastSent: today, at: now.toISOString(), ...result });
   return { today, ...result };
+}
+
+/* ---------------- reminders for every user (one record per device) ----------------
+ * rs/<hash(endpoint)> = { sub, tz, lang, daily: hour|null, waqiah: hour|null, mulk: hour|null,
+ *                         lastRead: "YYYY-MM-DD", done: { "56": date, "67": date }, sent: { daily, waqiah, mulk }, upd }
+ * The device sends its own smart hour (worked out from its log) and its last reading day,
+ * so the server never needs the journal itself. */
+const rsKey = (endpoint) => "rs/" + crypto.createHash("sha256").update(endpoint).digest("hex").slice(0, 40);
+const okHour = (h, lo = 0, hi = 23) => (Number.isInteger(h) && h >= lo && h <= hi ? h : null);
+const okDate = (d) => (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null);
+function okTz(tz) { try { if (typeof tz === "string" && tz.length < 60) { new Intl.DateTimeFormat("en", { timeZone: tz }); return tz; } } catch {} return DEFAULT_TZ; }
+function cleanDone(d) { const o = {}; if (d && typeof d === "object") for (const k of ["56", "67"]) if (okDate(d[k])) o[k] = d[k]; return o; }
+const RS_TEXT = {
+  ms: {
+    daily: { title: "Quran Note 🌙", body: "Hari ini belum dicatat lagi. Sedikit pun tak apa.", url: "/?action=log" },
+    waqiah: { title: "Al-Waqi'ah pagi ini 🌅", body: "Luangkan beberapa minit untuk Surah Al-Waqi'ah. Tekan untuk baca.", url: "/?surah=56" },
+    mulk: { title: "Al-Mulk sebelum tidur 🌙", body: "Surah Al-Mulk, 30 ayat. Tekan untuk baca.", url: "/?surah=67" },
+    test: { title: "Quran Note", body: "Notifikasi berfungsi ✓", url: "/" },
+  },
+  en: {
+    daily: { title: "Quran Note 🌙", body: "Nothing logged yet today. A little is fine.", url: "/?action=log" },
+    waqiah: { title: "Al-Waqi'ah this morning 🌅", body: "Take a few minutes for Surah Al-Waqi'ah. Tap to read.", url: "/?surah=56" },
+    mulk: { title: "Al-Mulk before sleep 🌙", body: "Surah Al-Mulk, 30 verses. Tap to read.", url: "/?surah=67" },
+    test: { title: "Quran Note", body: "Notifications work ✓", url: "/" },
+  },
+};
+export async function handleRemind(req, store, webpush, now = Date.now()) {
+  if (req.method === "GET") {
+    const keys = await vapidKeys(store, webpush);
+    return json({ publicKey: keys.publicKey });
+  }
+  let body;
+  try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
+  if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+  if (req.method === "DELETE") {
+    if (typeof body.endpoint !== "string" || body.endpoint.length > 1000) return json({ error: "invalid" }, 400);
+    await store.delete(rsKey(body.endpoint));
+    return json({ ok: true });
+  }
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  const rl = await rateLimit(req, store, "remind", 60, 10 * 60 * 1000, now); if (rl) return rl;
+  if (body.action === "test") {
+    const rl2 = await rateLimit(req, store, "remind-test", 5, 60 * 60 * 1000, now); if (rl2) return rl2;
+    const rec = typeof body.endpoint === "string" ? await store.get(rsKey(body.endpoint), { type: "json" }) : null;
+    if (!rec) return json({ error: "not_found" }, 404);
+    const keys = await vapidKeys(store, webpush);
+    webpush.setVapidDetails("mailto:noreply@quran-journal.app", keys.publicKey, keys.privateKey);
+    try { await webpush.sendNotification(rec.sub, JSON.stringify({ ...RS_TEXT[rec.lang === "en" ? "en" : "ms"].test, tag: "test" }), { TTL: 600 }); return json({ ok: true, sent: 1 }); }
+    catch { return json({ error: "send_failed" }, 502); }
+  }
+  if (!validSub(body.subscription)) return json({ error: "invalid_subscription" }, 400);
+  const { endpoint, keys } = body.subscription;
+  const old = (await store.get(rsKey(endpoint), { type: "json" })) || {};
+  const rec = {
+    sub: { endpoint, keys: { p256dh: keys.p256dh, auth: keys.auth } },
+    tz: okTz(body.tz), lang: body.lang === "en" ? "en" : "ms",
+    daily: okHour(body.daily, 5, 23), waqiah: okHour(body.waqiah, 4, 11), mulk: okHour(body.mulk, 18, 23),
+    lastRead: okDate(body.lastRead) || old.lastRead || null,
+    done: { ...cleanDone(old.done), ...cleanDone(body.done) },
+    sent: old.sent && typeof old.sent === "object" ? old.sent : {},
+    upd: now,
+  };
+  if (rec.daily == null && rec.waqiah == null && rec.mulk == null) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
+  await store.setJSON(rsKey(endpoint), rec);
+  return json({ ok: true });
+}
+// Which reminders are due for one device right now (each is sent at most once a day, and not late into the day).
+export function dueReminders(rec, now = new Date()) {
+  const tz = okTz(rec.tz), today = localDate(now, tz), h = Math.floor(localHour(now, tz)), sent = rec.sent || {}, done = rec.done || {};
+  const due = [];
+  if (rec.daily != null && rec.lastRead !== today && sent.daily !== today && h >= rec.daily && h <= 23) due.push("daily");
+  if (rec.waqiah != null && done["56"] !== today && sent.waqiah !== today && h >= rec.waqiah && h < 12) due.push("waqiah");
+  if (rec.mulk != null && done["67"] !== today && sent.mulk !== today && h >= rec.mulk && h <= 23) due.push("mulk");
+  return { today, due };
+}
+export async function runDeviceReminders(store, webpush, now = new Date()) {
+  const { blobs } = await store.list({ prefix: "rs/" });
+  if (!blobs.length) return { devices: 0 };
+  const keys = await vapidKeys(store, webpush);
+  webpush.setVapidDetails("mailto:noreply@quran-journal.app", keys.publicKey, keys.privateKey);
+  let sent = 0, removed = 0, failed = 0;
+  const one = async (b) => {
+    const rec = await store.get(b.key, { type: "json" });
+    if (!rec || !rec.sub) return;
+    if (now.getTime() - (rec.upd || 0) > 180 * 86400000) { await store.delete(b.key); removed++; return; } // device gone quiet for 6 months
+    const { today, due } = dueReminders(rec, now);
+    if (!due.length) return;
+    const text = RS_TEXT[rec.lang === "en" ? "en" : "ms"];
+    rec.sent = { ...(rec.sent || {}) };
+    for (const k of due) {
+      try {
+        await webpush.sendNotification(rec.sub, JSON.stringify({ ...text[k], tag: k }), { TTL: 3 * 3600, urgency: "normal" });
+        sent++; rec.sent[k] = today;
+      } catch (err) {
+        if (err && (err.statusCode === 404 || err.statusCode === 410)) { await store.delete(b.key); removed++; return; }
+        failed++;
+      }
+    }
+    await store.setJSON(b.key, rec);
+  };
+  for (let i = 0; i < blobs.length; i += 10) await Promise.all(blobs.slice(i, i + 10).map(one));
+  return { devices: blobs.length, sent, removed, failed };
 }
 
 /* ---------------- prayer times (JAKIM e-Solat) ---------------- */
