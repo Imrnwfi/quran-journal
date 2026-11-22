@@ -320,14 +320,38 @@ const RS_TEXT = {
     waqiah: { title: "Al-Waqi'ah pagi ini 🌅", body: "Luangkan beberapa minit untuk Surah Al-Waqi'ah. Tekan untuk baca.", url: "/?surah=56" },
     mulk: { title: "Al-Mulk sebelum tidur 🌙", body: "Surah Al-Mulk, 30 ayat. Tekan untuk baca.", url: "/?surah=67" },
     test: { title: "Quran Note", body: "Notifikasi berfungsi ✓", url: "/" },
+    fast: { title: "Puasa sunat esok 🌙", body: (l) => `Esok: ${l}. Jangan lupa niat dan bersahur.`, url: "/" },
+    yasin: { title: "Malam Jumaat 🌙", body: "Malam ini malam Jumaat. Jom baca Surah Yasin.", url: "/?surah=36" },
+    jumaat: { title: "Petang Jumaat ✨", body: "Sejam sebelum Maghrib: antara waktu yang diharapkan doa dimakbulkan.", url: "/" },
+    night: { title: "Sepertiga malam terakhir ✨", body: "Waktu yang baik untuk tahajjud, istighfar dan berdoa.", url: "/" },
+    labels: { isnin: "puasa sunat Isnin", khamis: "puasa sunat Khamis", bidh: "puasa Ayyamul Bidh", arafah: "puasa Hari Arafah", tasua: "puasa Tasu'a (9 Muharam)", asyura: "puasa Asyura (10 Muharam)" },
   },
   en: {
     daily: { title: "Quran Note 🌙", body: "Nothing logged yet today. A little is fine.", url: "/?action=log" },
     waqiah: { title: "Al-Waqi'ah this morning 🌅", body: "Take a few minutes for Surah Al-Waqi'ah. Tap to read.", url: "/?surah=56" },
     mulk: { title: "Al-Mulk before sleep 🌙", body: "Surah Al-Mulk, 30 verses. Tap to read.", url: "/?surah=67" },
     test: { title: "Quran Note", body: "Notifications work ✓", url: "/" },
+    fast: { title: "Sunnah fast tomorrow 🌙", body: (l) => `Tomorrow: ${l}. Remember your intention and suhoor.`, url: "/" },
+    yasin: { title: "Friday night 🌙", body: "Tonight is the night before Friday. Let's read Surah Yasin.", url: "/?surah=36" },
+    jumaat: { title: "Friday afternoon ✨", body: "The hour before Maghrib: a time hoped for answered prayers.", url: "/" },
+    night: { title: "Last third of the night ✨", body: "A good time for tahajjud, seeking forgiveness and du'a.", url: "/" },
+    labels: { isnin: "Monday fast", khamis: "Thursday fast", bidh: "the White Days fast", arafah: "the Day of Arafah fast", tasua: "Tasu'a fast (9 Muharram)", asyura: "Ashura fast (10 Muharram)" },
   },
 };
+const EV_KINDS = ["fast", "yasin", "jumaat", "night"], EV_LABELS = ["isnin", "khamis", "bidh", "arafah", "tasua", "asyura"];
+// Timed events worked out on the device (sunnah fasts, Friday-night Yasin, Friday afternoon, last third of the night).
+function cleanEvents(list, now) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const e of list.slice(0, 120)) {
+    const t = Math.floor(+(e && e.t));
+    if (!(t > now - 86400000 && t < now + 50 * 86400000) || !EV_KINDS.includes(e.k)) continue;
+    const it = { t, k: e.k };
+    if (e.k === "fast") { const x = Array.isArray(e.x) ? [...new Set(e.x.filter((v) => EV_LABELS.includes(v)))] : []; if (!x.length) continue; it.x = x; }
+    out.push(it);
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
 export async function handleRemind(req, store, webpush, now = Date.now()) {
   if (req.method === "GET") {
     const keys = await vapidKeys(store, webpush);
@@ -362,9 +386,10 @@ export async function handleRemind(req, store, webpush, now = Date.now()) {
     lastRead: okDate(body.lastRead) || old.lastRead || null,
     done: { ...cleanDone(old.done), ...cleanDone(body.done) },
     sent: old.sent && typeof old.sent === "object" ? old.sent : {},
+    ev: cleanEvents(body.ev, now), sentEv: Array.isArray(old.sentEv) ? old.sentEv.slice(-60) : [],
     upd: now,
   };
-  if (rec.daily == null && rec.waqiah == null && rec.mulk == null) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
+  if (rec.daily == null && rec.waqiah == null && rec.mulk == null && !rec.ev.length) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
   await store.setJSON(rsKey(endpoint), rec);
   return json({ ok: true });
 }
@@ -375,7 +400,9 @@ export function dueReminders(rec, now = new Date()) {
   if (rec.daily != null && rec.lastRead !== today && sent.daily !== today && h >= rec.daily && h <= 23) due.push("daily");
   if (rec.waqiah != null && done["56"] !== today && sent.waqiah !== today && h >= rec.waqiah && h < 12) due.push("waqiah");
   if (rec.mulk != null && done["67"] !== today && sent.mulk !== today && h >= rec.mulk && h <= 23) due.push("mulk");
-  return { today, due };
+  const t = now.getTime(), sentEv = rec.sentEv || [];
+  const events = (rec.ev || []).filter((e) => e.t <= t && t - e.t <= 90 * 60000 && !sentEv.includes(e.t));
+  return { today, due, events };
 }
 export async function runDeviceReminders(store, webpush, now = new Date()) {
   const { blobs } = await store.list({ prefix: "rs/" });
@@ -387,10 +414,22 @@ export async function runDeviceReminders(store, webpush, now = new Date()) {
     const rec = await store.get(b.key, { type: "json" });
     if (!rec || !rec.sub) return;
     if (now.getTime() - (rec.upd || 0) > 180 * 86400000) { await store.delete(b.key); removed++; return; } // device gone quiet for 6 months
-    const { today, due } = dueReminders(rec, now);
-    if (!due.length) return;
+    const { today, due, events } = dueReminders(rec, now);
+    if (!due.length && !events.length) return;
     const text = RS_TEXT[rec.lang === "en" ? "en" : "ms"];
     rec.sent = { ...(rec.sent || {}) };
+    rec.sentEv = [...(rec.sentEv || [])];
+    for (const e of events) {
+      const tx = text[e.k], body = typeof tx.body === "function" ? tx.body((e.x || []).map((k) => text.labels[k]).join(" & ")) : tx.body;
+      try {
+        await webpush.sendNotification(rec.sub, JSON.stringify({ title: tx.title, body, url: tx.url, tag: e.k }), { TTL: 2 * 3600, urgency: "normal" });
+        sent++; rec.sentEv.push(e.t);
+      } catch (err) {
+        if (err && (err.statusCode === 404 || err.statusCode === 410)) { await store.delete(b.key); removed++; return; }
+        failed++;
+      }
+    }
+    rec.sentEv = rec.sentEv.slice(-60);
     for (const k of due) {
       try {
         await webpush.sendNotification(rec.sub, JSON.stringify({ ...text[k], tag: k }), { TTL: 3 * 3600, urgency: "normal" });
