@@ -81,6 +81,20 @@ export function cleanLearn(l) {
     }
     out.notes = notes;
   }
+  if (l.zk && typeof l.zk === "object" && !Array.isArray(l.zk)) {
+    const zk = {};
+    for (const [d, day] of Object.entries(l.zk).slice(-60)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !day || typeof day !== "object") continue;
+      const o = {};
+      for (const [k, v] of Object.entries(day).slice(0, 30)) {
+        if (!/^_?[a-z0-9]{1,20}$/.test(k)) continue;
+        if (k[0] === "_") { if (Array.isArray(v)) { const a = [...new Set(v.filter((x) => typeof x === "string" && /^[a-z0-9]{1,12}$/.test(x)))].slice(0, 10); if (a.length) o[k] = a; } }
+        else { const n = Math.floor(+v); if (n > 0) o[k] = Math.min(1e6, n); }
+      }
+      if (Object.keys(o).length) zk[d] = o;
+    }
+    out.zk = zk;
+  }
   if (Array.isArray(l.sfav)) out.sfav = [...new Set(l.sfav.map((n) => Math.floor(+n)).filter((n) => n >= 1 && n <= 114))].slice(0, 114);
   return out;
 }
@@ -324,6 +338,11 @@ const RS_TEXT = {
     yasin: { title: "Malam Jumaat 🌙", body: "Malam ini malam Jumaat. Jom baca Surah Yasin.", url: "/?surah=36" },
     jumaat: { title: "Petang Jumaat ✨", body: "Sejam sebelum Maghrib: antara waktu yang diharapkan doa dimakbulkan.", url: "/" },
     night: { title: "Sepertiga malam terakhir ✨", body: "Waktu yang baik untuk tahajjud, istighfar dan berdoa.", url: "/" },
+    zkpr: { title: "Zikir selepas solat 📿", body: (p) => `Selepas ${p}: Tasbih 33, Tahmid 33, Takbir 33 dan tahlil.`, url: "/?action=zikir-solat" },
+    zkev: { title: "Masa untuk berzikir 📿", body: "Sasaran zikir hari ini belum capai. Sambung sedikit?", url: "/?action=zikir" },
+    zksl: { title: "Zikir sebelum tidur 🌙", body: "Ayat Kursi, 3 Qul, dan Tasbih 33 · Tahmid 33 · Takbir 34.", url: "/?action=zikir-tidur" },
+    zkjm: { title: "Perbanyakkan selawat ✨", body: "Malam dan hari Jumaat: perbanyakkan selawat ke atas Nabi ﷺ.", url: "/?action=zikir-selawat" },
+    prayers: { fajr: "Subuh", dhuhr: "Zohor", asr: "Asar", maghrib: "Maghrib", isha: "Isyak" },
     labels: { isnin: "puasa sunat Isnin", khamis: "puasa sunat Khamis", bidh: "puasa Ayyamul Bidh", arafah: "puasa Hari Arafah", tasua: "puasa Tasu'a (9 Muharam)", asyura: "puasa Asyura (10 Muharam)" },
   },
   en: {
@@ -335,6 +354,11 @@ const RS_TEXT = {
     yasin: { title: "Friday night 🌙", body: "Tonight is the night before Friday. Let's read Surah Yasin.", url: "/?surah=36" },
     jumaat: { title: "Friday afternoon ✨", body: "The hour before Maghrib: a time hoped for answered prayers.", url: "/" },
     night: { title: "Last third of the night ✨", body: "A good time for tahajjud, seeking forgiveness and du'a.", url: "/" },
+    zkpr: { title: "After-prayer dhikr 📿", body: (p) => `After ${p}: Tasbih 33, Tahmid 33, Takbir 33 and the tahlil.`, url: "/?action=zikir-solat" },
+    zkev: { title: "Time for dhikr 📿", body: "Today's dhikr targets aren't met yet. Carry on a little?", url: "/?action=zikir" },
+    zksl: { title: "Dhikr before sleep 🌙", body: "Ayat al-Kursi, the 3 Quls, and Tasbih 33 · Tahmid 33 · Takbir 34.", url: "/?action=zikir-tidur" },
+    zkjm: { title: "Send abundant salawat ✨", body: "Thursday night and Friday: send abundant blessings upon the Prophet ﷺ.", url: "/?action=zikir-selawat" },
+    prayers: { fajr: "Fajr", dhuhr: "Dhuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" },
     labels: { isnin: "Monday fast", khamis: "Thursday fast", bidh: "the White Days fast", arafah: "the Day of Arafah fast", tasua: "Tasu'a fast (9 Muharram)", asyura: "Ashura fast (10 Muharram)" },
   },
 };
@@ -351,6 +375,16 @@ function cleanEvents(list, now) {
     out.push(it);
   }
   return out.sort((a, b) => a.t - b.t);
+}
+const ZK_PR = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
+// Zikir reminder settings sent by the device: after-prayer times (local minutes), every-N-hours nudge, before-sleep hour, Friday salawat.
+export function cleanZk(z) {
+  if (!z || typeof z !== "object") return null;
+  const pr = (Array.isArray(z.pr) ? z.pr.slice(0, 5) : []).filter((x) => Array.isArray(x) && ZK_PR.includes(x[0]) && Number.isInteger(x[1]) && x[1] >= 0 && x[1] < 1440).map((x) => [x[0], x[1]]);
+  const ev = [2, 3, 4].includes(z.ev) ? z.ev : 0, sl = okHour(z.sl, 20, 23), jm = !!z.jm;
+  const mg = Number.isInteger(z.mg) && z.mg >= 900 && z.mg <= 1300 ? z.mg : 1155;
+  if (!pr.length && !ev && sl == null && !jm) return null;
+  return { pr, ev, sl, jm, mg, dd: okDate(z.dd) };
 }
 export async function handleRemind(req, store, webpush, now = Date.now()) {
   if (req.method === "GET") {
@@ -387,9 +421,10 @@ export async function handleRemind(req, store, webpush, now = Date.now()) {
     done: { ...cleanDone(old.done), ...cleanDone(body.done) },
     sent: old.sent && typeof old.sent === "object" ? old.sent : {},
     ev: cleanEvents(body.ev, now), sentEv: Array.isArray(old.sentEv) ? old.sentEv.slice(-60) : [],
+    zk: cleanZk(body.zk), zsent: old.zsent && typeof old.zsent === "object" ? old.zsent : {},
     upd: now,
   };
-  if (rec.daily == null && rec.waqiah == null && rec.mulk == null && !rec.ev.length) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
+  if (rec.daily == null && rec.waqiah == null && rec.mulk == null && !rec.ev.length && !rec.zk) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
   await store.setJSON(rsKey(endpoint), rec);
   return json({ ok: true });
 }
@@ -402,7 +437,16 @@ export function dueReminders(rec, now = new Date()) {
   if (rec.mulk != null && done["67"] !== today && sent.mulk !== today && h >= rec.mulk && h <= 23) due.push("mulk");
   const t = now.getTime(), sentEv = rec.sentEv || [];
   const events = (rec.ev || []).filter((e) => e.t <= t && t - e.t <= 90 * 60000 && !sentEv.includes(e.t));
-  return { today, due, events };
+  const zk = [], z = rec.zk, zs = rec.zsent || {};
+  if (z) {
+    const m = Math.round(localHour(now, tz) * 60), dow = new Date(today + "T00:00:00Z").getUTCDay();
+    for (const [p, at] of z.pr || []) if (m >= at && m - at <= 90 && zs["p_" + p] !== today) zk.push({ k: "zkpr", key: "p_" + p, v: today, x: p });
+    if (z.ev && z.dd !== today && h >= 8 && h <= 22 && (h - 8) % z.ev === 0 && zs.ev !== `${today}T${h}`) zk.push({ k: "zkev", key: "ev", v: `${today}T${h}` });
+    if (z.sl != null && h >= z.sl && zs.sl !== today) zk.push({ k: "zksl", key: "sl", v: today });
+    const jThu = dow === 4 && m >= z.mg + 30 && m - (z.mg + 30) <= 150, jFri = dow === 5 && h >= 8 && h < 12;
+    if (z.jm && (jThu || jFri) && zs.jm !== today) zk.push({ k: "zkjm", key: "jm", v: today });
+  }
+  return { today, due, events, zk };
 }
 export async function runDeviceReminders(store, webpush, now = new Date()) {
   const { blobs } = await store.list({ prefix: "rs/" });
@@ -414,8 +458,8 @@ export async function runDeviceReminders(store, webpush, now = new Date()) {
     const rec = await store.get(b.key, { type: "json" });
     if (!rec || !rec.sub) return;
     if (now.getTime() - (rec.upd || 0) > 180 * 86400000) { await store.delete(b.key); removed++; return; } // device gone quiet for 6 months
-    const { today, due, events } = dueReminders(rec, now);
-    if (!due.length && !events.length) return;
+    const { today, due, events, zk } = dueReminders(rec, now);
+    if (!due.length && !events.length && !zk.length) return;
     const text = RS_TEXT[rec.lang === "en" ? "en" : "ms"];
     rec.sent = { ...(rec.sent || {}) };
     rec.sentEv = [...(rec.sentEv || [])];
@@ -430,6 +474,17 @@ export async function runDeviceReminders(store, webpush, now = new Date()) {
       }
     }
     rec.sentEv = rec.sentEv.slice(-60);
+    rec.zsent = { ...(rec.zsent || {}) };
+    for (const e of zk) {
+      const tx = text[e.k], body = typeof tx.body === "function" ? tx.body(text.prayers[e.x] || "") : tx.body;
+      try {
+        await webpush.sendNotification(rec.sub, JSON.stringify({ title: tx.title, body, url: tx.url, tag: e.k }), { TTL: 2 * 3600, urgency: "normal" });
+        sent++; rec.zsent[e.key] = e.v;
+      } catch (err) {
+        if (err && (err.statusCode === 404 || err.statusCode === 410)) { await store.delete(b.key); removed++; return; }
+        failed++;
+      }
+    }
     for (const k of due) {
       try {
         await webpush.sendNotification(rec.sub, JSON.stringify({ ...text[k], tag: k }), { TTL: 3 * 3600, urgency: "normal" });
