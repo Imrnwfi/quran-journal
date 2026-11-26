@@ -95,6 +95,14 @@ export function cleanLearn(l) {
     }
     out.zk = zk;
   }
+  if (l.tz && typeof l.tz === "object" && !Array.isArray(l.tz)) {
+    const okId = (x) => typeof x === "string" && /^[a-z0-9_-]{1,24}$/.test(x), okD = (x) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x);
+    const t = { r: {}, a: {}, s: [] };
+    if (l.tz.r && typeof l.tz.r === "object") for (const [k, v] of Object.entries(l.tz.r).slice(0, 400)) if (okId(k) && okD(v)) t.r[k] = v;
+    if (l.tz.a && typeof l.tz.a === "object") for (const [k, v] of Object.entries(l.tz.a).slice(-60)) if (okD(k) && Array.isArray(v)) { const ids = [...new Set(v.filter(okId))].slice(0, 10); if (ids.length) t.a[k] = ids; }
+    if (Array.isArray(l.tz.s)) t.s = [...new Set(l.tz.s.filter(okId))].slice(0, 100);
+    out.tz = t;
+  }
   if (Array.isArray(l.sfav)) out.sfav = [...new Set(l.sfav.map((n) => Math.floor(+n)).filter((n) => n >= 1 && n <= 114))].slice(0, 114);
   return out;
 }
@@ -976,4 +984,60 @@ export async function handlePasskey(req, store, wa) {
     return json({ token: tokenFor(auth) });
   }
   return json({ error: "unknown_action" }, 400);
+}
+
+// ---------- Tazkirah groups (family / usrah): members see who has read today's tazkirah ----------
+const TG_CODE = /^[A-HJ-NP-Z2-9]{8}$/;
+const tgKey = (code) => `tg/${code}`;
+const tgName = (v, max = 40) => (typeof v === "string" ? v.replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, max) : "");
+const tgMember = (m) => (m && typeof m === "object" && typeof m.id === "string" && /^[a-z0-9]{8,32}$/.test(m.id) && tgName(m.name, 30) ? { id: m.id, name: tgName(m.name, 30) } : null);
+function tgView(g, me) {
+  return { code: g.code, name: g.name, members: g.members.map((m) => ({ id: m.id, name: m.name, d: m.d || null, tz: m.tz || null, me: m.id === me || undefined })) };
+}
+export async function handleTGroup(req, store, now = Date.now()) {
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+  let body;
+  try { body = await req.json(); } catch { return json({ error: "bad_json" }, 400); }
+  if (!body || typeof body !== "object") return json({ error: "bad_json" }, 400);
+  const rl = await rateLimit(req, store, "tgroup", 120, 10 * 60 * 1000, now); if (rl) return rl;
+  const op = body.op, member = tgMember(body.member);
+  if (op === "create") {
+    const rl2 = await rateLimit(req, store, "tgroup-create", 10, 60 * 60 * 1000, now); if (rl2) return rl2;
+    const name = tgName(body.name);
+    if (!name || !member) return json({ error: "invalid" }, 400);
+    const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 8; i++) code += abc[crypto.randomInt(abc.length)];
+    const g = { code, name, members: [member], created: now, upd: now };
+    await store.setJSON(tgKey(code), g);
+    return json(tgView(g, member.id));
+  }
+  const code = typeof body.code === "string" ? body.code.toUpperCase().trim() : "";
+  if (!TG_CODE.test(code)) return json({ error: "invalid" }, 400);
+  const g = await store.get(tgKey(code), { type: "json" });
+  if (!g) return json({ error: "not_found" }, 404);
+  const meId = member ? member.id : typeof body.me === "string" ? body.me : "";
+  const i = g.members.findIndex((m) => m.id === meId);
+  if (op === "get") { if (i < 0) return json({ error: "not_member" }, 403); return json(tgView(g, meId)); }
+  if (op === "join") {
+    if (!member) return json({ error: "invalid" }, 400);
+    if (i >= 0) g.members[i].name = member.name;
+    else { if (g.members.length >= 30) return json({ error: "full" }, 409); g.members.push(member); }
+    g.upd = now; await store.setJSON(tgKey(code), g);
+    return json(tgView(g, member.id));
+  }
+  if (i < 0) return json({ error: "not_member" }, 403);
+  if (op === "read") {
+    const d = typeof body.d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.d) ? body.d : null, tz = typeof body.tz === "string" && /^[a-z0-9_-]{1,24}$/.test(body.tz) ? body.tz : null;
+    if (!d || !tz) return json({ error: "invalid" }, 400);
+    g.members[i].d = d; g.members[i].tz = tz; g.upd = now;
+    await store.setJSON(tgKey(code), g);
+    return json(tgView(g, meId));
+  }
+  if (op === "leave") {
+    g.members.splice(i, 1); g.upd = now;
+    if (g.members.length) await store.setJSON(tgKey(code), g); else await store.delete(tgKey(code));
+    return json({ ok: true });
+  }
+  return json({ error: "invalid" }, 400);
 }
