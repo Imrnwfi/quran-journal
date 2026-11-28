@@ -351,6 +351,10 @@ const RS_TEXT = {
     zksl: { title: "Zikir sebelum tidur 🌙", body: "Ayat Kursi, 3 Qul, dan Tasbih 33 · Tahmid 33 · Takbir 34.", url: "/?action=zikir-tidur" },
     zkjm: { title: "Perbanyakkan selawat ✨", body: "Malam dan hari Jumaat: perbanyakkan selawat ke atas Nabi ﷺ.", url: "/?action=zikir-selawat" },
     prayers: { fajr: "Subuh", dhuhr: "Zohor", asr: "Asar", maghrib: "Maghrib", isha: "Isyak" },
+    az: { title: (p, n) => `Azan ${p} dalam ${n} minit 🕌`, body: (t, z) => `${t} · ${z}. Masa untuk bersiap dan berwuduk.`, url: "/?action=solat" },
+    azj: { title: (p, n) => `Solat Jumaat dalam ${n} minit 🕌`, body: (t) => `Azan Zohor ${t}. Bersiap ke masjid; jangan lupa baca Al-Kahfi.`, url: "/?action=solat" },
+    aznow: { title: (p) => `Sudah masuk waktu ${p}`, body: (t, z) => `${t} · ${z}`, url: "/?action=solat" },
+    ampm: (h) => (h < 12 ? "pagi" : h < 14 ? "tengah hari" : h < 19 ? "petang" : "malam"),
     labels: { isnin: "puasa sunat Isnin", khamis: "puasa sunat Khamis", bidh: "puasa Ayyamul Bidh", arafah: "puasa Hari Arafah", tasua: "puasa Tasu'a (9 Muharam)", asyura: "puasa Asyura (10 Muharam)" },
   },
   en: {
@@ -367,6 +371,10 @@ const RS_TEXT = {
     zksl: { title: "Dhikr before sleep 🌙", body: "Ayat al-Kursi, the 3 Quls, and Tasbih 33 · Tahmid 33 · Takbir 34.", url: "/?action=zikir-tidur" },
     zkjm: { title: "Send abundant salawat ✨", body: "Thursday night and Friday: send abundant blessings upon the Prophet ﷺ.", url: "/?action=zikir-selawat" },
     prayers: { fajr: "Fajr", dhuhr: "Dhuhr", asr: "Asr", maghrib: "Maghrib", isha: "Isha" },
+    az: { title: (p, n) => `${p} adhan in ${n} minutes 🕌`, body: (t, z) => `${t} · ${z}. Time to get ready and make wudu.`, url: "/?action=solat" },
+    azj: { title: (p, n) => `Friday prayer in ${n} minutes 🕌`, body: (t) => `Dhuhr adhan ${t}. Get ready for the mosque, and read Al-Kahf.`, url: "/?action=solat" },
+    aznow: { title: (p) => `It's time for ${p}`, body: (t, z) => `${t} · ${z}`, url: "/?action=solat" },
+    ampm: (h) => (h < 12 ? "am" : "pm"),
     labels: { isnin: "Monday fast", khamis: "Thursday fast", bidh: "the White Days fast", arafah: "the Day of Arafah fast", tasua: "Tasu'a fast (9 Muharram)", asyura: "Ashura fast (10 Muharram)" },
   },
 };
@@ -429,10 +437,11 @@ export async function handleRemind(req, store, webpush, now = Date.now()) {
     done: { ...cleanDone(old.done), ...cleanDone(body.done) },
     sent: old.sent && typeof old.sent === "object" ? old.sent : {},
     ev: cleanEvents(body.ev, now), sentEv: Array.isArray(old.sentEv) ? old.sentEv.slice(-60) : [],
-    zk: cleanZk(body.zk), zsent: old.zsent && typeof old.zsent === "object" ? old.zsent : {},
+    zk: cleanZk(body.zk), zsent: old.zsent && typeof old.zsent === "object" ? old.zsent : {}, az: cleanAzan(body.az),
     upd: now,
   };
-  if (rec.daily == null && rec.waqiah == null && rec.mulk == null && !rec.ev.length && !rec.zk) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
+  await azIndex(store, rsKey(endpoint), !!rec.az);
+  if (rec.daily == null && rec.waqiah == null && rec.mulk == null && !rec.ev.length && !rec.zk && !rec.az) { await store.delete(rsKey(endpoint)); return json({ ok: true, off: true }); }
   await store.setJSON(rsKey(endpoint), rec);
   return json({ ok: true });
 }
@@ -824,10 +833,16 @@ export async function handleSolat(req, store, fetchImpl = fetch, now = new Date(
   const url = new URL(req.url);
   const zone = (url.searchParams.get("zone") || "").toUpperCase();
   if (!/^[A-Z]{3}\d{2}$/.test(zone)) return json({ error: "invalid_zone" }, 400);
+  const body = await solatDays(store, zone, fetchImpl, now);
+  if (!body) return json({ error: "unavailable" }, 502);
+  return json(body, 200, { "cache-control": "public, max-age=1800" });
+}
+// Prayer times for a zone (cached per day): { zone, source, days: [{ date, fajr, dhuhr, asr, maghrib, isha, ... }] } or null
+export async function solatDays(store, zone, fetchImpl = fetch, now = new Date()) {
   const today = localDate(now, DEFAULT_TZ);
   const key = `solat/${zone}/${today}`;
   const cached = await store.get(key, { type: "json" });
-  if (cached) return json(cached, 200, { "cache-control": "public, max-age=1800" });
+  if (cached) return cached;
 
   const get = async (u) => {
     const res = await fetchImpl(u, { headers: { accept: "application/json", "user-agent": "QuranNote/1.0 (+prayer times)" }, signal: AbortSignal.timeout(8000) });
@@ -845,11 +860,11 @@ export async function handleSolat(req, store, fetchImpl = fetch, now = new Date(
       if (days) source = "waktusolat.app (data JAKIM e-Solat)";
     } catch (e) {}
   }
-  if (!days) return json({ error: "unavailable" }, 502);
+  if (!days) return null;
   days = days.filter((d) => d.date >= today).slice(0, 8);
   const body = { zone, source, days, fetchedAt: now.toISOString() };
   await store.setJSON(key, body);
-  return json(body, 200, { "cache-control": "public, max-age=1800" });
+  return body;
 }
 
 /* ---------------- weekly report (Sunday 9 pm) ---------------- */
@@ -1040,4 +1055,70 @@ export async function handleTGroup(req, store, now = Date.now()) {
     return json({ ok: true });
   }
   return json({ error: "invalid" }, 400);
+}
+
+// ---------- Reminders before the adhan (checked every 5 minutes) ----------
+export function cleanAzan(a) {
+  if (!a || typeof a !== "object" || !a.on) return null;
+  const pr = (Array.isArray(a.pr) ? a.pr : []).filter((p) => ZK_PR.includes(p)).slice(0, 5);
+  const zone = typeof a.zone === "string" && /^[A-Z]{3}\d{2}$/.test(a.zone) ? a.zone : null;
+  if (!zone || (!pr.length && !a.jm)) return null;
+  return { pr, off: [5, 10, 15, 20].includes(a.off) ? a.off : 10, at: !!a.at, jm: !!a.jm, zone };
+}
+// Devices with adhan reminders, so the 5-minute check reads only those records.
+async function azIndex(store, key, on) {
+  const idx = (await store.get("az/idx", { type: "json" })) || { keys: [] };
+  const has = idx.keys.includes(key);
+  if (on === has) return;
+  idx.keys = on ? [...idx.keys, key].slice(-5000) : idx.keys.filter((k) => k !== key);
+  await store.setJSON("az/idx", idx);
+}
+const hmMin = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(t || ""); return m ? +m[1] * 60 + +m[2] : null; };
+export function dueAzan(rec, day, now = new Date()) {
+  const a = rec.az; if (!a || !day) return [];
+  const tz = rec.tz || DEFAULT_TZ, today = localDate(now, tz), m = Math.floor(localHour(now, tz) * 60 + 1e-6), dow = new Date(today + "T00:00:00Z").getUTCDay(), zs = rec.zsent || {}, out = [];
+  for (const p of ZK_PR) {
+    const t = hmMin(day[p]); if (t == null) continue;
+    const jum = p === "dhuhr" && dow === 5 && a.jm;
+    if (a.pr.includes(p) || jum) {
+      const off = jum ? 30 : a.off;
+      if (m >= t - off && m < t && zs["a_" + p] !== today) out.push({ k: jum ? "azj" : "az", key: "a_" + p, v: today, x: p, n: t - m, t });
+    }
+    if (a.at && a.pr.includes(p) && m >= t && m - t <= 20 && zs["z_" + p] !== today) out.push({ k: "aznow", key: "z_" + p, v: today, x: p, t });
+  }
+  return out;
+}
+export async function runAzanReminders(store, webpush, now = new Date(), fetchImpl = fetch) {
+  const idx = (await store.get("az/idx", { type: "json" })) || { keys: [] };
+  if (!idx.keys.length) return { devices: 0 };
+  const keys = await vapidKeys(store, webpush);
+  webpush.setVapidDetails("mailto:noreply@quran-journal.app", keys.publicKey, keys.privateKey);
+  const zones = new Map(), gone = [];
+  let sent = 0, failed = 0;
+  for (const key of idx.keys) {
+    const rec = await store.get(key, { type: "json" });
+    if (!rec || !rec.sub || !rec.az) { gone.push(key); continue; }
+    const today = localDate(now, rec.tz || DEFAULT_TZ);
+    if (!zones.has(rec.az.zone)) { let d = null; try { d = await solatDays(store, rec.az.zone, fetchImpl, now); } catch (e) {} zones.set(rec.az.zone, d); }
+    const zd = zones.get(rec.az.zone), day = zd && zd.days ? zd.days.find((d) => d.date === today) : null;
+    const due = dueAzan(rec, day, now);
+    if (!due.length) continue;
+    const text = RS_TEXT[rec.lang === "en" ? "en" : "ms"];
+    rec.zsent = { ...(rec.zsent || {}) };
+    let dead = false;
+    for (const e of due) {
+      const h = Math.floor(e.t / 60), mm = String(e.t % 60).padStart(2, "0"), time = `${h % 12 || 12}:${mm} ${text.ampm(h)}`, name = text.prayers[e.x];
+      const tx = text[e.k];
+      try {
+        await webpush.sendNotification(rec.sub, JSON.stringify({ title: tx.title(name, e.n), body: tx.body(time, rec.az.zone), url: tx.url, tag: "az-" + e.x }), { TTL: 20 * 60, urgency: "high" });
+        sent++; rec.zsent[e.key] = e.v;
+      } catch (err) {
+        if (err && (err.statusCode === 404 || err.statusCode === 410)) { await store.delete(key); gone.push(key); dead = true; break; }
+        failed++;
+      }
+    }
+    if (!dead) await store.setJSON(key, rec);
+  }
+  if (gone.length) { const fresh = (await store.get("az/idx", { type: "json" })) || { keys: [] }; fresh.keys = fresh.keys.filter((k) => !gone.includes(k)); await store.setJSON("az/idx", fresh); }
+  return { devices: idx.keys.length, sent, failed, removed: gone.length };
 }
